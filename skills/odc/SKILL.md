@@ -77,6 +77,7 @@ Each `context_*` row also carries `isReferenced` (true ⇒ inherited from a refe
 - Reuse the same session across follow-up turns in one task — the server-side OML and tool history stay loaded.
 - Start a fresh session (call without `mentor_session_*`) when: (a) mentor hallucinates entities/actions that don't exist; (b) you switch to an unrelated task on the same app; or (c) prior turns left the OML in a bad state.
 - If mentor refuses or returns empty, rephrase with concrete keys and a smaller scope before retrying.
+- For required fields, ask mentor to set `IsMandatory=True` on the input widget and leave the label text bare — the platform paints a single red `*` after the label automatically. Don't ask mentor to put a literal `*` in `Label.Text`; it renders black, theme-blind, and stacks with the platform asterisk.
 
 ## Context Service visibility (`owned_only` semantics)
 
