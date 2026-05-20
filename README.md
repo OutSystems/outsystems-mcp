@@ -2,6 +2,12 @@
 
 Distribution repo for the OutSystems MCP: Claude Code plugin + Kiro Power. To install, paste the matching prompt below into your AI assistant.
 
+## ⚠️ Disclaimer
+> Early Alpha. Please Read Before Using
+> This project is in early alpha and is provided as-is, without warranties or guarantees of any kind. It is not production-ready, expect bugs, incomplete features, breaking changes, and unstable behaviors. Do not rely on it for critical, commercial, or production use.
+> No support, SLAs, or maintenance commitments are offered. We are sharing this publicly because we value community input, not because it is ready for broad adoption.
+> Bug reports, feature requests, and feedback are welcome, feel free to open an issue. Responses and fixes happen on a best-effort basis with no defined timeline.
+
 ## Install - Claude Code
 
 Paste into Claude Code:
