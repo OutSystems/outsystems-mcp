@@ -2,6 +2,8 @@
 
 You are connected to OutSystems over the MCP HTTP transport. OutSystems is a cloud-native low-code platform where apps are built from OML (OutSystems Model Language), a binary format describing entities, screens, actions, and logic. Every tool call carries the harness's validated OAuth bearer; tenant + user identity are derived from the JWT, not from arguments.
 
+**Before your first OutSystems call**, read the live `tools/list`. This skill names domains, not tools — names, parameters, and defaults can change server-side, and the server is the source of truth.
+
 ## Authenticating
 
 OAuth-protected. The server exposes two MCP tools the agent drives directly. Your harness will surface them under its own naming convention — Claude Code prefixes as `mcp__outsystems__authenticate`, Cursor as `mcp_outsystems_authenticate`, others use their own form. The tool names on the wire are:
@@ -20,27 +22,30 @@ OAuth-protected. The server exposes two MCP tools the agent drives directly. You
 
 ## Tools at a glance
 
-Tool catalog and per-tool semantics live in the MCP server's `tools/list`; treat each tool's `description` + `inputSchema` as the source of truth, since defaults can change server-side. Tools group as:
+Tool catalog and per-tool semantics live in the MCP server's `tools/list`; treat each tool's `description` + `inputSchema` as the source of truth. Tools group into seven domains:
 
-- **Apps**: `app_list`, `app_info`, `app_refs`, `app_revisions`
-- **Context Service** (seven typed lookups): `context_entities`, `context_actions`, `context_screens`, `context_structures`, `context_roles`, `context_themes`, `context_connections`
-- **Mentor** (server-side OML editing): `mentor_start`, `mentor_get_run`, `mentor_cancel`
-- **Publish**: `publish_start`, `publish_status`, `publish_logs`
-- **Deployments**: `deploy_start`, `deploy_status`, `deploy_messages`, `deploy_rollback`, `deploy_impact`, `deploy_impact_status`
-- **External libraries**: `extlib_upload`, `extlib_publish`, `extlib_status`, `extlib_logs`, `extlib_download_source`, `extlib_download_status`
-- **Environments**: `env_list`
+- **Apps** — list, inspect, and follow references between apps.
+- **Context Service** — typed lookups for entities, actions, screens, structures, roles, themes, and connections within an app or tenant-wide.
+- **Mentor** — server-side OML editing as a multi-turn conversation; start, poll, cancel.
+- **Publish** — push the edits from a mentor session to a running environment.
+- **Deployments** — promote builds across environments, run impact analyses, roll back.
+- **External libraries** — upload, publish, inspect, and download source for .NET extension libraries.
+- **Environments** — enumerate environments visible to the user.
+
+Discover the exact tool names and parameters via `tools/list` before calling.
 
 ### Caveats
 
 Cross-tool behaviors not expressible in a single per-tool description:
 
-- **`deploy_start` — `from_env` required when both `build_key` and `revision` are omitted and `operation != "Undeploy"`.** The target `env_key` is not used as the source environment on HTTP.
-- **`publish_start` — `app_key` comes from the `mentor_session_token` claims, not arguments.** Required params: `mentor_session_id`, `mentor_session_token`, `env_key`. An explicit `app_key` is ignored.
-- **`extlib_upload` — 50 MB decoded cap (~67 MB encoded `zip_b64`); per-replica concurrency gating.** Pre-flight rejects oversize payloads; concurrent uploads queue per replica rather than reject.
-- **`context_*` — `owned_only` defaults to `true` when `app` is set, `false` tenant-wide.** Pass `owned_only: false` with `app` to keep rows inherited from referenced libraries (OutSystemsUI, Charts, etc.).
+- **Deploy start — source environment is explicit.** When neither `build_key` nor `revision` is pinned and the operation isn't `"Undeploy"`, `from_env` is required; the target `env_key` is not used as the source on HTTP.
+- **Publish start — `app_key` comes from the mentor session token claims, not arguments.** An explicit `app_key` argument is ignored; required identity is `mentor_session_id` + `mentor_session_token` + `env_key`.
+- **External library upload — 50 MB decoded cap (~67 MB encoded `zip_b64`); per-replica concurrency gating.** Pre-flight rejects oversize payloads; concurrent uploads queue per replica rather than reject.
+- **Context lookups — `owned_only` defaults to `true` when `app` is set, `false` tenant-wide.** Pass `owned_only: false` with `app` to keep rows inherited from referenced libraries (OutSystemsUI, Charts, etc.).
 
 ## Rules
 
+- **Read `tools/list` before your first call.** This skill names domains; the server names tools.
 - **Agent-facing tools.** Don't expose raw tool output; extract the relevant fields and present them naturally.
 - **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy `authenticate` described above; identity comes from the harness-negotiated bearer.
 - **Confirm before tenant-state mutations.** Before invoking any tool that can change tenant state, restate the planned change to the user and wait for explicit confirmation. Skip the prompt only when the user has already authorised this specific change in the current turn. A generic "go ahead with the task" earlier in the conversation is not authorisation for a specific destructive call. The destructive tool set: `deploy_start`, `deploy_rollback`, `deploy_impact`, `publish_start`, `extlib_upload`, `extlib_publish`, `extlib_delete`, `app_create`. Read-only tools (`app_list`, `app_info`, `app_refs`, the `context_*` family, `*_status`, `*_logs`, `*_messages`, `env_list`, `deploy_list`) and inert local-mutating tools are unaffected. The mentor tools (`mentor_start`, `mentor_get_run`, `mentor_cancel`) edit the in-memory mentor OML, not deployed tenant assets; they do not require confirmation. The MCP host's own `destructiveHint` prompt is a backstop, not a substitute: this rule applies on every host regardless of whether the host gates on the hint.
@@ -48,14 +53,14 @@ Cross-tool behaviors not expressible in a single per-tool description:
 - **Never guess opaque IDs.** If `env_key`, `app_key`, an asset key, or a `mentor_session_*` token is missing and you can't resolve it, ask the user.
 - **No selected environment.** Every environment-scoped tool takes `env_key` per call; the transport is stateless by design. When a user asks for a session-persistent `env select` style toggle, say so explicitly rather than refusing silently, and reframe the request so they pass `env_key` per call.
 - **No local CWD.** The server has no view of the caller's filesystem. When a user asks about local paths, working directories, or CWD-relative artifacts, state the limit plainly and surface the closest server-side data inline (e.g. paste the `env_list` payload back so the user can save it themselves) instead of attempting the operation. Don't silently route a write or a read through a non-MCP tool; the architectural fact has to reach the user.
-- **Parallelize independent calls** (e.g. once you have an app key, fetch `app_info` + the per-type `context_*` lookups concurrently).
+- **Parallelize independent calls** (e.g. once you have an app key, fetch app metadata + the per-type context lookups concurrently).
 - **Use `data.category`, not message text, for error retry decisions.** Categories: `AuthError`, `ValidationError`, `UpstreamError`, `InternalError`; upstream errors also carry `data.upstream_status`.
-- **Long-running tools return an id; poll for status.** Applies to all `deploy_*` (status via `deploy_status` / `deploy_impact_status`), `publish_start` (via `publish_status`), `extlib_*` operations (via `extlib_status` / `extlib_download_status`), and mentor (`mentor_start` returns a `runId`; poll `mentor_get_run` until terminal; `mentor_cancel` to abort). Per-tool polling shape is in each tool's live description.
+- **Long-running tools return an id; poll for status.** Applies to every Mentor, Publish, Deployments, and External libraries operation. Per-tool polling shape is in each tool's live description.
 - **Don't bare-sleep between polls.** Bare `sleep N` is blocked by many harnesses as a context-burning idle wait. Use your harness's background-task / background-sleep mechanism, **then end your turn**; the harness re-invokes you on completion. Calling the next tool right after a background sleep returns synchronously = no pacing. See "Pacing polls" under Mentor for cadence and the cursor pattern.
 
 ## Names
 
-- `name` is the display form (may contain spaces, e.g. `"AI Agent Feedback Portal"`); `assetName` is the internal identifier (e.g. `"AIAgentFeedbackPortal"`). The `app:` parameter on `context_*` and `app_list --search` accepts either — case-insensitive substring match against both the display name and its space-stripped variant.
+- `name` is the display form (may contain spaces, e.g. `"AI Agent Feedback Portal"`); `assetName` is the internal identifier (e.g. `"AIAgentFeedbackPortal"`). The `app` parameter on context lookups and the apps-domain search accepts either — case-insensitive substring match against both the display name and its space-stripped variant.
 - The canonical identifier is the **asset key** (UUID). Prefer it across calls; names can be edited, the key is stable.
 
 ## Answering
@@ -66,61 +71,55 @@ The rule fires when the agent did the lookup itself in this conversation **or** 
 
 ## Mentor session round-trip
 
-Mentor is a multi-turn conversation backed by a server-side session that holds the loaded OML. Driven via the async surface — `mentor_start` opens a run, `mentor_get_run` polls progress, `mentor_cancel` aborts. Per-call args, response shape, polling cadence, cursor semantics, and error codes are in each tool's live `description` + `inputSchema`.
+Mentor is a multi-turn conversation backed by a server-side session that holds the loaded OML. Driven via an async surface — open a run, poll progress, cancel if needed. Per-call args, response shape, polling cadence, cursor semantics, and error codes are in each tool's live `description` + `inputSchema`.
 
-- **First turn** vs **resume turn** is determined by whether you pass a prior `mentor_session_token` to `mentor_start`. The token is HMAC-signed and binds (tenant, user, session id, app, agent_resume_id); echo it back **verbatim** on resume.
-- The refreshed `mentor_session_token` only appears in the terminal `mentor_get_run.result` (alongside `mentor_session_id`, `summary`, and `events`). Use the newest token on the next start.
+- **First turn** vs **resume turn** is determined by whether you pass a prior `mentor_session_token` when starting the run. The token is HMAC-signed and binds (tenant, user, session id, app, agent_resume_id); echo it back **verbatim** on resume.
+- The refreshed `mentor_session_token` only appears in the terminal poll result (alongside `mentor_session_id`, `summary`, and `events`). Use the newest token on the next start.
 - Sessions auto-GC after 30 min idle. Resuming after GC transparently re-downloads the OML; same `mentor_session_id` and conversation continue.
-- To call `publish_start` on the edited OML you need `mentor_session_id` + `mentor_session_token` from the most recent terminal-success `mentor_get_run.result`.
+- To publish the edited OML you need `mentor_session_id` + `mentor_session_token` from the most recent terminal-success poll result.
 
 **Pacing polls:**
 
-- Poll `mentor_get_run` **immediately** after `mentor_start`, and again immediately while the cursor advances — mentor events are cursor-paged and arrive in batches.
-- Pause only when the cursor is drained and `status` isn't terminal. **~30s is a reference for mentor**, not a target — without one, agents tend to drift to 60–180s. `publish_status` / `deploy_status` / `extlib_status` finish faster; **5–15s** is fine for those.
+- Poll the mentor run **immediately** after starting it, and again immediately while the cursor advances — mentor events are cursor-paged and arrive in batches.
+- Pause only when the cursor is drained and `status` isn't terminal. **~30s is a reference for mentor**, not a target — without one, agents tend to drift to 60–180s. Publish, deploy, and external-library polls finish faster; **5–15s** is fine for those.
 
-**When to use the mentor flow vs `context_*`:**
-- For *info* about an app, prefer `context_*`. Lightweight, structured, no OML download. Only fall back to mentor when context can't answer (deep OML internals, logic flow traversal).
-- For *edits*, the mentor flow is the only path.
+**When to use the Mentor flow vs Context Service:**
+- For *info* about an app, prefer the Context Service. Lightweight, structured, no OML download. Only fall back to Mentor when context can't answer (deep OML internals, logic flow traversal).
+- For *edits*, the Mentor flow is the only path.
 - Reuse the same session across follow-up turns in one task; the server-side OML and tool history stay loaded.
-- Start a fresh session (call `mentor_start` without `mentor_session_*`) when: (a) mentor hallucinates entities/actions that don't exist; (b) you switch to an unrelated task on the same app; or (c) prior turns left the OML in a bad state.
-- If mentor refuses or returns empty, rephrase with concrete keys and a smaller scope before retrying.
-- For required fields, ask mentor to set `IsMandatory=True` on the input widget and leave the label text bare — the platform paints a single red `*` after the label automatically. Don't ask mentor to put a literal `*` in `Label.Text`; it renders black, theme-blind, and stacks with the platform asterisk.
+- Start a fresh session (no `mentor_session_*` on start) when: (a) Mentor hallucinates entities/actions that don't exist; (b) you switch to an unrelated task on the same app; or (c) prior turns left the OML in a bad state.
+- If Mentor refuses or returns empty, rephrase with concrete keys and a smaller scope before retrying.
+- For required fields, ask Mentor to set `IsMandatory=True` on the input widget and leave the label text bare — the platform paints a single red `*` after the label automatically. Don't ask Mentor to put a literal `*` in `Label.Text`; it renders black, theme-blind, and stacks with the platform asterisk.
 
 ## Context Service visibility (`owned_only`)
 
-`context_*` tools index by **visibility**, not ownership: app-scoped queries return owned rows plus rows inherited from referenced libraries (OutSystemsUI, Charts, etc.). Each row carries `isReferenced` and `producerAssetKey`/`producerAssetName`. `owned_only` defaults to `true` when `app` is set, `false` tenant-wide; pass `owned_only: false` with `app` to keep inherited rows.
+Context lookups index by **visibility**, not ownership: app-scoped queries return owned rows plus rows inherited from referenced libraries (OutSystemsUI, Charts, etc.). Each row carries `isReferenced` and `producerAssetKey`/`producerAssetName`. `owned_only` defaults to `true` when `app` is set, `false` tenant-wide; pass `owned_only: false` with `app` to keep inherited rows.
 
 ## Workflows
 
 **Describe an existing app (no OML needed):**
-1. If you only have a name, `app_list {search: "<name>"}`, or pass the name directly to `app` on the context tools and let it resolve.
-2. Run per-type lookups in parallel:
-   - `context_screens {app}` for UI surface
-   - `context_entities {app}` for data model
-   - `context_actions {app}` for logic
-   - `context_roles {app}` for security
-   - `app_refs {key}` for dependencies on other modules / external libraries
+1. Resolve the app — either search the Apps domain by name, or pass the name directly on a context lookup and let it resolve.
+2. Run per-type context lookups in parallel (screens, entities, actions, roles), plus the Apps-domain references lookup for dependencies on other modules / external libraries.
 3. Synthesize into the user-facing explanation.
 
 **Edit an existing app and ship it:**
-1. First turn: `mentor_start {app_key, prompt: "Add a due date field to Task"}` returns a `runId`. Poll `mentor_get_run {runId, cursor}` until terminal; pull `mentor_session_id` + `mentor_session_token` out of `result`.
-2. Optional follow-up turns: `mentor_start {mentor_session_id, mentor_session_token, prompt: "..."}` and poll the same way. Each terminal result returns a fresh token; use the newest one next.
-3. `publish_start {mentor_session_id, mentor_session_token, env_key}` returns `publication_id`.
-4. Poll `publish_status {publication_id}` until terminal. Use `publish_logs {pub_key: publication_id}` for messages on failure.
+1. First turn: start a Mentor run with the app key and a natural-language prompt; poll until terminal; pull `mentor_session_id` + `mentor_session_token` out of the result.
+2. Optional follow-up turns: start a new Mentor run with the latest session token and a new prompt; poll the same way. Each terminal result returns a fresh token; use the newest one next.
+3. Publish using the session id + token + target `env_key`; poll publish status until terminal. On failure, fetch publish logs for diagnostics.
 
 **Promote a build across environments:**
-1. `deploy_start {asset_key, env_key: "<target>", from_env: "<source>"}` (or pin with `build_key`+`revision`) returns operation key.
-2. Poll `deploy_status {operation_key}` until terminal.
-3. On failure: `deploy_messages {operation_key}` for diagnostic messages.
+1. Start a deploy with the asset key, target `env_key`, and either `from_env` (latest source build) or a pinned `build_key` + `revision`.
+2. Poll deploy status until terminal.
+3. On failure, fetch deploy messages for diagnostics.
 
 **Publish a new external library:**
 1. Build a .NET 8 lib with `[OSInterface(Name = "<UniqueName>")]` (reusing a name produces a new revision, not a fresh asset). `dotnet publish -c Release`, zip the `.dll` + `.deps.json` at the zip root (no nested folder). Base64-encode the zip.
-2. `extlib_upload {zip_b64: "<base64>", auto_publish: true}` returns operation key.
-3. Poll `extlib_status {operation_key}` until `Published`. On validation failure use `extlib_logs {operation_key}`.
+2. Upload through the External libraries domain with `auto_publish: true`.
+3. Poll until `Published`. On validation failure, fetch the operation logs.
 
 **Reference an external library from an app:**
-- Just ask mentor: `mentor_start {app_key, prompt: "Use the <ActionName> action from <LibraryName> in <screen edit>."}`, then poll `mentor_get_run` as usual.
+- Ask Mentor directly: start a run on the app with a prompt like "Use the `<ActionName>` action from `<LibraryName>` in `<screen edit>`," then poll as usual.
 
 **Run a deployment-impact analysis:**
-1. `deploy_impact {key, env_key}` returns analysis id.
-2. Poll `deploy_impact_status {analysis_id, kind: "deployment"}` until terminal. Use `kind: "deletion"` instead when you started the analysis with `delete: true`.
+1. Start an impact analysis for the asset key + `env_key`; you get an analysis id.
+2. Poll impact status with `kind: "deployment"` (or `"deletion"` if the analysis was started with `delete: true`) until terminal.
