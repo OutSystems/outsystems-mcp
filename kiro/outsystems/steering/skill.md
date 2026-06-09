@@ -56,13 +56,15 @@ OAuth-protected. The harness exposes two deferred tools; the agent drives the fl
 
 Tool catalog and per-tool semantics live in the MCP server's `tools/list`; treat each tool's `description` + `inputSchema` as the source of truth. Tools group into seven domains:
 
-- **Apps**: `app_list`, `app_info`, `app_refs`, `app_revisions`
-- **Context Service** (seven typed lookups): `context_entities`, `context_actions`, `context_screens`, `context_structures`, `context_roles`, `context_themes`, `context_connections`
-- **Mentor** (server-side OML editing): `mentor_start`, `mentor_get_run`, `mentor_cancel`
-- **Publish**: `publish_start`, `publish_status`, `publish_logs`
-- **Deployments**: `deploy_start`, `deploy_status`, `deploy_messages`, `deploy_rollback`, `deploy_impact`, `deploy_impact_status`
-- **External libraries**: `extlib_upload`, `extlib_publish`, `extlib_status`, `extlib_logs`, `extlib_download_source`, `extlib_download_status`
-- **Environments**: `env_list`
+- **Apps** — list, inspect, and follow references between apps.
+- **Context Service** — typed lookups for entities, actions, screens, structures, roles, themes, and connections within an app or tenant-wide.
+- **Mentor** — server-side OML editing as a multi-turn conversation; start, poll, cancel.
+- **Publish** — push the edits from a mentor session to a running environment.
+- **Deployments** — promote builds across environments, run impact analyses, roll back.
+- **External libraries** — upload, publish, inspect, and download source for .NET extension libraries.
+- **Environments** — enumerate environments visible to the user.
+
+Discover the exact tool names and parameters via `tools/list` before calling.
 
 ### Caveats
 
@@ -83,7 +85,7 @@ Cross-tool behaviors not expressible in a single per-tool description:
 - **Never guess opaque IDs.** If `env_key`, `app_key`, an asset key, or a `mentor_session_*` token is missing and you can't resolve it, ask the user.
 - **No selected environment.** Every environment-scoped tool takes `env_key` per call; the transport is stateless by design. When a user asks for a session-persistent `env select` style toggle, say so explicitly rather than refusing silently, and reframe the request so they pass `env_key` per call.
 - **No local CWD.** The server has no view of the caller's filesystem. When a user asks about local paths, working directories, or CWD-relative artifacts, state the limit plainly and surface the closest server-side data inline (e.g. paste the `env_list` payload back so the user can save it themselves) instead of attempting the operation. Don't silently route a write or a read through a non-MCP tool; the architectural fact has to reach the user.
-- **Parallelize independent calls** (e.g. once you have an app key, fetch `app_info` + the per-type `context_*` lookups concurrently).
+- **Parallelize independent calls** (e.g. once you have an app key, fetch app metadata + the per-type context lookups concurrently).
 - **Use `data.category`, not message text, for error retry decisions.** Categories: `AuthError`, `ValidationError`, `UpstreamError`, `InternalError`; upstream errors also carry `data.upstream_status`.
 - **Long-running tools return an id; poll for status.** Applies to every Mentor, Publish, Deployments, and External libraries operation. Per-tool polling shape is in each tool's live description.
 - **Don't bare-sleep between polls.** Bare `sleep N` is blocked by many harnesses as a context-burning idle wait. Use your harness's background-task / background-sleep mechanism, **then end your turn**; the harness re-invokes you on completion. Calling the next tool right after a background sleep returns synchronously = no pacing. See "Pacing polls" under Mentor for cadence and the cursor pattern.
