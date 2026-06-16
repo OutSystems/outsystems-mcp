@@ -10,6 +10,11 @@ The remote MCP server is OAuth-protected with **standard OAuth**: an unauthentic
 - **GitHub Copilot / VS Code (and most other MCP clients)** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
 - **Kiro** drives the sign-in through its own MCP UI — same as the IDE clients above, no `authenticate` tool.
 
+**Lazy.** Before the first OutSystems tool call in a session, authenticate and share the returned URL with the user. Then:
+
+- **Local session** (browser can reach `http://localhost:<port>/callback`): the server's real tools appear automatically — wait for the user's confirmation, then proceed.
+- **Remote session** (callback page fails to load, e.g. SSH / devcontainer): have the user copy the full URL from their browser's address bar (`http://localhost:<port>/callback?code=...&state=...`) and complete the authentication flow.
+
 **Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — re-trigger its sign-in (Claude Code: call `mcp__outsystems__authenticate` again; other clients re-prompt on the next call), then retry the original call ONCE. Don't hunt for an auth tool your harness doesn't expose.
 
 **If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.

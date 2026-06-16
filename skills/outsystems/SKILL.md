@@ -26,7 +26,7 @@ If the user already has an `outsystems` MCP server registered but pointing at th
 
 ## Authenticating
 
-The remote MCP server is OAuth-protected with **standard OAuth** (an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + DCR: `/authorize`, `/token`, `/register`, PKCE S256). **The OutSystems server exposes no `authenticate` tool.** Instead, Claude Code synthesizes a bootstrap tool pair for any unauthenticated OAuth HTTP server and the agent drives it — the user does NOT run `/mcp -> outsystems -> Authenticate` manually.
+OAuth-protected. The harness exposes two deferred tools; the agent drives the flow — the user does NOT run `/mcp -> outsystems -> Authenticate` manually.
 
 - `mcp__outsystems__authenticate`: starts the OAuth flow; returns an authorization URL.
 - `mcp__outsystems__complete_authentication { callback_url }`: finalizes auth for remote sessions.
@@ -38,9 +38,7 @@ The remote MCP server is OAuth-protected with **standard OAuth** (an unauthentic
 
 **Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): call `mcp__outsystems__authenticate` again, then retry the original call ONCE.
 
-**Don't fall back to the `/mcp -> outsystems -> Authenticate` menu** — Claude Code keeps the bootstrap tool pair available; the menu is the host's emergency fallback.
-
-**These tools are Claude Code's, not the OutSystems server's.** Other harnesses (GitHub Copilot, Kiro, …) don't expose them — they run OAuth through their own UI. This skill ships in the Claude Code plugin, so the tool-driven flow above is the one to use here.
+**Don't fall back to the `/mcp -> outsystems -> Authenticate` menu** — the deferred tool pair is always available; the menu is the host's emergency fallback.
 
 **If `authenticate` itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
 
@@ -68,7 +66,7 @@ Cross-tool behaviors not expressible in a single per-tool description:
 ## Rules
 
 - **Agent-facing tools.** Don't expose raw tool output; extract the relevant fields and present them naturally.
-- **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy sign-in described above; identity comes from the harness-negotiated bearer.
+- **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy `authenticate` described above; identity comes from the harness-negotiated bearer.
 - **Confirm before tenant-state mutations.** Before invoking any tool that can change tenant state, restate the planned change to the user and wait for explicit confirmation. Skip the prompt only when the user has already authorised this specific change in the current turn. A generic "go ahead with the task" earlier in the conversation is not authorisation for a specific destructive call. The destructive tool set: `deploy_start`, `deploy_rollback`, `deploy_impact`, `publish_start`, `extlib_upload`, `extlib_publish`, `extlib_delete`, `app_create`. Read-only tools (`app_list`, `app_info`, `app_refs`, the `context_*` family, `*_status`, `*_logs`, `*_messages`, `env_list`, `deploy_list`) and inert local-mutating tools are unaffected. The mentor tools (`mentor_start`, `mentor_get_run`, `mentor_cancel`) edit the in-memory mentor OML, not deployed tenant assets; they do not require confirmation. The MCP host's own `destructiveHint` prompt is a backstop, not a substitute: this rule applies on every host regardless of whether the host gates on the hint.
 - **OML stays server-side.** No `app_download`. Inspect with `app_refs` + `context_*`; edit with the mentor flow (`mentor_start` → poll `mentor_get_run`). The OML lives in the server-side mentor session and never crosses the wire as bytes. When a user asks for the OML on disk, say plainly that the remote MCP transport does not expose a file-to-local-disk download (the server has no local filesystem to write to), and where useful offer the partially answerable portion (e.g. `app_revisions` for the latest version number).
 - **Never guess opaque IDs.** If `env_key`, `app_key`, an asset key, or a `mentor_session_*` token is missing and you can't resolve it, ask the user.

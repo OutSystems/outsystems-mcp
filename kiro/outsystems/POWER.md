@@ -145,7 +145,7 @@ Workflows below show MCP tool form. Identity (tenant + user) is derived from the
 **Symptom:** Browser tab doesn't open, OR the browser shows "site can't be reached" / a redirect-uri mismatch on the `localhost:<port>/callback` page.
 
 **Solutions:**
-1. **Browser didn't open at all:** re-trigger the sign-in — ask Kiro Chat to retry the OutSystems action (the first tool call re-initiates OAuth), or authenticate the `outsystems` server from Kiro's MCP UI. Kiro owns the OAuth flow; there is no agent-callable `authenticate` tool to invoke.
+1. **Browser didn't open at all:** re-trigger the sign-in — ask Kiro Chat to retry the OutSystems action (the first tool call re-initiates OAuth), or authenticate the `outsystems` server from Kiro's MCP UI. Kiro owns the OAuth flow.
 2. **Callback page shows "site can't be reached":** Kiro listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Kiro (see Prerequisites). On a remote/SSH session without a local browser, run Kiro where a browser can reach `localhost` and retry.
 3. **DCR or auth-handshake errors:** surface the error message verbatim and file an issue against `OutSystems/outsystems-mcp` with the symptoms.
 4. **Last resort:** remove and re-add the `outsystems` server in Kiro's MCP UI to wipe stale OAuth state, then ask Kiro Chat to redo the first-use steering flow.
