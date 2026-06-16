@@ -90,6 +90,8 @@ Mentor is a multi-turn conversation backed by a server-side session that holds t
 
 `context_*` tools index by **visibility**, not ownership: app-scoped queries return owned rows plus rows inherited from referenced libraries (OutSystemsUI, Charts, etc.). Each row carries `isReferenced` and `producerAssetKey`/`producerAssetName`. `owned_only` defaults to `true` when `app` is set, `false` tenant-wide; pass `owned_only: false` with `app` to keep inherited rows.
 
+**Static entities & grouping.** A row with `isStatic: true` is a **static entity** — the OutSystems term for the fixed-value lookup sets users loosely call "enums". Always call them "static entities", not "enums"; `objectType` is `"entities"` for both regular and static entities, so filter on `isStatic` to single them out (use `context_entities`, not a separate tool). When listing inherited elements (`owned_only: false`), group them by `producerAssetName` — the providing library/artifact (e.g. `OutSystemsUI`, `OutSystemsMaps`, `(System)`, or a Forge component). There is **no** "domain"/"business domain" field in this data; never invent one — group only by `producerAssetName`.
+
 ## Workflows
 
 **Describe an existing app (no OML needed):**
