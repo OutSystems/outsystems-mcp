@@ -6,19 +6,16 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 ## Authenticating
 
-OAuth-protected. The server exposes two MCP tools the agent drives directly. Your harness will surface them under its own naming convention — Claude Code prefixes as `mcp__outsystems__authenticate`, Cursor as `mcp_outsystems_authenticate`, others use their own form. The tool names on the wire are:
+The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.** How you sign in depends on the harness:
 
-- `authenticate`: starts the OAuth flow; returns an authorization URL.
-- `complete_authentication { callback_url }`: finalizes auth for remote sessions.
+- **GitHub Copilot / VS Code (and most other MCP clients)** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
+- **Kiro** drives the sign-in through its own MCP UI — same as the IDE clients above, no `authenticate` tool.
 
-**Lazy.** Before the first OutSystems tool call in a session, call `authenticate` and share the returned URL with the user. Then:
+**Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
 
-- **Local session** (browser can reach `http://localhost:<port>/callback`): the server's real tools appear automatically — wait for the user's confirmation, then proceed.
-- **Remote session** (callback page fails to load, e.g. SSH / devcontainer): have the user copy the full URL from their browser's address bar (`http://localhost:<port>/callback?code=...&state=...`) and call `complete_authentication { callback_url: "<that URL>" }`.
+**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — re-trigger its sign-in (your client re-prompts on the next call), then retry the original call ONCE. Don't hunt for an auth tool your harness doesn't expose.
 
-**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): call `authenticate` again, then retry the original call ONCE.
-
-**If `authenticate` itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
+**If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
 
 ## Tools at a glance
 
@@ -45,7 +42,7 @@ Cross-tool behaviors not expressible in a single per-tool description:
 
 - **Read `tools/list` before your first non-auth call.** This skill names domains; the server names tools. (Auth comes first; see Authenticating.)
 - **Agent-facing tools.** Don't expose raw tool output; extract the relevant fields and present them naturally.
-- **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy authentication step described above; identity comes from the harness-negotiated bearer.
+- **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy sign-in described above; identity comes from the harness-negotiated bearer.
 - **Confirm before tenant-state mutations.** Before invoking any tool that can change tenant state, restate the planned change to the user and wait for explicit confirmation. Skip the prompt only when the user has already authorised this specific change in the current turn. A generic "go ahead with the task" earlier in the conversation is not authorisation for a specific destructive call. The destructive actions are: starting or rolling back a deployment, running a deployment-impact analysis, publishing OML, uploading/publishing/deleting an external library, and creating an app. Read-only and inert local-mutating tools are unaffected: listing or inspecting apps, the context lookups, any status/logs/messages poll, enumerating environments, and listing deployments. Editing in a mentor session changes only the in-memory mentor OML, not deployed tenant assets, so it does not require confirmation. The MCP host's own `destructiveHint` prompt is a backstop, not a substitute: this rule applies on every host regardless of whether the host gates on the hint.
 - **OML stays server-side.** There is no download tool. Inspect an app through its references and the context lookups; edit it through the mentor flow (start a mentor run, then poll it until terminal). The OML lives in the server-side mentor session and never crosses the wire as bytes. When a user asks for the OML on disk, say plainly that the remote MCP transport does not expose a file-to-local-disk download (the server has no local filesystem to write to), and where useful offer the partially answerable portion (e.g. the app's revision history for the latest version number).
 - **Never guess opaque IDs.** If `env_key`, `app_key`, an asset key, or a `mentor_session_*` token is missing and you can't resolve it, ask the user.

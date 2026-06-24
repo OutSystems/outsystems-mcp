@@ -18,7 +18,7 @@ Step 1: run `claude plugin marketplace add OutSystems/outsystems-mcp`.
 Step 2: run `claude plugin install outsystems@outsystems`.
 Step 3: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
 Step 4: when I tell you, run `claude mcp add -s user --transport http --client-id service_studio --callback-port 7890 outsystems https://<my-tenant>/mcp` (substitute my actual tenant for `<my-tenant>`).
-Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; you'll drive the OAuth flow automatically via the `authenticate` tool. Do NOT tell me to run `/mcp -> outsystems -> Authenticate` manually.
+Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; you'll drive the OAuth flow automatically via Claude Code's synthesized `authenticate` tool (a client convenience, not a server tool). Do NOT tell me to run `/mcp -> outsystems -> Authenticate` manually.
 ```
 
 ## Install - Kiro Chat
@@ -33,7 +33,7 @@ Step 2: base64-encode ~/git/outsystems-mcp/kiro/outsystems/icon.png with `base64
 Step 3: tell me to restart Kiro so it auto-installs the Power.
 Step 4: after the restart, ask me for my OutSystems tenant hostname.
 Step 5: when I tell you, set the URL `https://<my-tenant>/mcp` in ~/.kiro/settings/mcp.json under top-level `mcpServers.outsystems` (read first, preserve every other entry): `{"type": "http", "url": "https://<my-tenant>/mcp", "timeout": 100000}`.
-Step 6: tell me the OAuth flow opens automatically on the next OutSystems tool call; you'll drive auth via the `authenticate` tool, not by clicking in Kiro's UI.
+Step 6: tell me the OAuth sign-in opens automatically on the next OutSystems tool call — Kiro runs the flow itself and opens the browser for the localhost callback; I just complete the sign-in when prompted. There is no `authenticate` tool to call in Kiro.
 ```
 
 ## Install - other AI assistants (best effort)
@@ -47,6 +47,6 @@ Install the OutSystems MCP server.
 Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
 Step 2: register `outsystems` as an MCP server in this harness's configuration, pointing at `https://<my-tenant>/mcp` over the streamable HTTP transport. Use whatever wiring the harness prefers — a CLI command (similar to Claude Code's `claude mcp add`), a settings UI, or hand-editing the harness's MCP config file. The server requires OAuth and supports Dynamic Client Registration, so no shared `client_id` setup is needed.
 Step 3: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and inject its contents into this harness's instructions/rules/system-prompt mechanism (e.g. `AGENTS.md` for Codex CLI, `.cursorrules` for Cursor, the system prompt config for Continue, etc.). The skill covers conventions (OML stays server-side, polling shape for long-running tools, error category enums, mentor session round-trip) that the tool descriptions alone don't fully convey.
-Step 4: trigger authentication. If the harness exposes per-server `authenticate` / `complete_authentication` tools after registration, call those (lazy on first tool call). Otherwise let the harness's built-in MCP auth UI handle the OAuth handshake.
+Step 4: trigger authentication. If the harness synthesizes per-server `authenticate` / `complete_authentication` tools after registration (as Claude Code does — they're a client convenience, not server tools), call those (lazy on first tool call). Otherwise let the harness's built-in MCP auth UI handle the OAuth handshake.
 Step 5: depending on the harness, the new MCP server may not be visible until you reload its MCP config or restart. If the harness has a CLI to list registered MCP servers (similar to `claude mcp list`), run it to check whether `outsystems` is visible — if not, tell me to restart the harness. Once the tools appear, ask me anything OutSystems-related to confirm the install is complete.
 ```

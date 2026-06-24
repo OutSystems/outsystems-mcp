@@ -29,28 +29,22 @@ Steps:
    {"type": "http", "url": "<URL>", "timeout": 100000}
    ```
    ALWAYS keep top-level `mcpServers` as an object (Kiro's user-level loader rejects the file without it).
-5. **Tell the user** Kiro's MCP file watcher will reload within a few seconds. Then proceed to the "Authenticating" section below; the agent drives the OAuth flow on the first OutSystems tool call.
+5. **Tell the user** Kiro's MCP file watcher will reload within a few seconds. Then proceed to the "Authenticating" section below; Kiro runs the OAuth sign-in on the first OutSystems tool call.
 6. **Retry the user's original request** once authentication completes.
 
 If the user later asks to switch tenants, repeat this flow; the patch overwrites the URL idempotently.
 
 ## Authenticating
 
-OAuth-protected. The harness exposes two deferred tools; the agent drives the flow — the user does NOT click anywhere in Kiro's UI.
+The remote MCP server is OAuth-protected with **standard OAuth** (an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + DCR: `/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by Kiro, not by an OutSystems tool — the server exposes no `authenticate` tool, and there is no agent-callable auth tool in Kiro.**
 
-- `mcp__outsystems__authenticate`: starts the OAuth flow; returns an authorization URL.
-- `mcp__outsystems__complete_authentication { callback_url }`: finalizes auth for remote sessions.
+On the first OutSystems tool call in a session, Kiro detects the `401` and runs the OAuth sign-in through its own MCP UI (opens the browser, captures the `localhost` callback). Make the call, then ask the user to complete Kiro's sign-in prompt; the real tools become usable once they authorize.
 
-**Lazy.** Before the first OutSystems tool call in a session, call `mcp__outsystems__authenticate` and share the returned URL with the user. Then:
+**Needs a local browser.** Kiro opens the system browser and listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Kiro. On a remote/SSH session with no local browser, run Kiro where a browser can reach `localhost` and retry — there is no "copy the callback URL" fallback in Kiro, and the agent never receives an authorization URL to relay.
 
-- **Local session** (browser can reach `http://localhost:<port>/callback`): the server's real tools appear automatically — wait for the user's confirmation, then proceed.
-- **Remote session** (callback page fails to load, e.g. SSH / devcontainer): have the user copy the full URL from their browser's address bar (`http://localhost:<port>/callback?code=...&state=...`) and call `mcp__outsystems__complete_authentication { callback_url: "<that URL>" }`.
+**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): Kiro's session lapsed — ask the user to re-authorize via Kiro's MCP UI, then retry the original call ONCE.
 
-**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): call `mcp__outsystems__authenticate` again, then retry the original call ONCE.
-
-**Don't fall back to removing and re-adding the server in Kiro's MCP UI** — the deferred tool pair is always available; UI removal is the host's emergency fallback.
-
-**If `authenticate` itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
+**If sign-in fails** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
 
 ## Tools at a glance
 
