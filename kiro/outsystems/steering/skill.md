@@ -40,7 +40,7 @@ The remote MCP server is OAuth-protected with **standard OAuth** (an unauthentic
 
 On the first OutSystems tool call in a session, Kiro detects the `401` and runs the OAuth sign-in through its own MCP UI (opens the browser, captures the `localhost` callback). Make the call, then ask the user to complete Kiro's sign-in prompt; the real tools become usable once they authorize.
 
-**Needs a local browser.** Kiro opens the system browser and listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Kiro. On a remote/SSH session with no local browser, run Kiro where a browser can reach `localhost` and retry — there is no "copy the callback URL" fallback in Kiro (that's a Claude Code affordance), and the agent never receives an authorization URL to relay.
+**Needs a local browser.** Kiro opens the system browser and listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Kiro. On a remote/SSH session with no local browser, run Kiro where a browser can reach `localhost` and retry — there is no "copy the callback URL" fallback in Kiro, and the agent never receives an authorization URL to relay.
 
 **Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): Kiro's session lapsed — ask the user to re-authorize via Kiro's MCP UI, then retry the original call ONCE.
 
