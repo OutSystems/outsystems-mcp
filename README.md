@@ -1,6 +1,6 @@
 # outsystems-mcp
 
-Distribution repo for the OutSystems MCP: Claude Code plugin + Kiro Power. To install, paste the matching prompt below into your AI assistant.
+Distribution repo for the OutSystems MCP: Claude Code plugin, Claude Desktop, and Kiro Power. To install, paste the matching prompt below into your AI assistant.
 
 ## ⚠️ Disclaimer
 > Early Alpha. Please Read Before Using
@@ -20,6 +20,23 @@ Step 3: ask me for my OutSystems tenant hostname (something like `mycompany.outs
 Step 4: when I tell you, run `claude mcp add -s user --transport http --client-id service_studio --callback-port 7890 outsystems https://<my-tenant>/mcp` (substitute my actual tenant for `<my-tenant>`).
 Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; you'll drive the OAuth flow automatically via Claude Code's synthesized `authenticate` tool (a client convenience, not a server tool). Do NOT tell me to run `/mcp -> outsystems -> Authenticate` manually.
 ```
+
+## Install - Claude Desktop
+
+Paste into Claude Desktop (requires Node.js with `npx` available on your machine):
+
+```
+Install the OutSystems MCP server in Claude Desktop.
+Step 1: check whether `mcp-remote` is available by running `npx mcp-remote --version`. If it errors, install it globally first: `npm install -g mcp-remote`.
+Step 2: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+Step 3: locate the Claude Desktop config file — macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
+  - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp"]}`
+  - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp"]}`
+Substitute my actual tenant hostname for `<my-tenant>`. Write the file back.
+Step 4: tell me to restart Claude Desktop. After restarting, the first OutSystems tool call will open a browser window for OAuth sign-in — complete the sign-in when prompted.
+```
+
+> **Note:** Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in your terminal. If the server fails to connect after restart, find the full path to `npx` (run `which npx` on macOS/Linux or `where npx` on Windows) and replace `"npx"` in the config with that full path (e.g. `/opt/homebrew/bin/npx`).
 
 ## Install - Kiro Chat
 
