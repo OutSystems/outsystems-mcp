@@ -27,7 +27,7 @@ Paste into Claude Desktop (requires Node.js with `npx` available on your machine
 
 ```
 Install the OutSystems MCP server in Claude Desktop.
-Step 1: check whether `mcp-remote` is available by running `npx mcp-remote --version`. If it errors, install it globally first: `npm install -g mcp-remote`.
+Step 1: install `mcp-remote` globally: `npm install -g mcp-remote`. This is idempotent — safe to run even if already installed.
 Step 2: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
 Step 3: locate the Claude Desktop config file — macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
   - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp"]}`
