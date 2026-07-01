@@ -21,6 +21,8 @@ Step 4: when I tell you, run `claude mcp add -s user --transport http --client-i
 Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; you'll drive the OAuth flow automatically via Claude Code's synthesized `authenticate` tool (a client convenience, not a server tool). Do NOT tell me to run `/mcp -> outsystems -> Authenticate` manually.
 ```
 
+After install, you can also type `/feedback <message>` in Claude Code to send feedback about the agent experience to the AI Platform team. The slash command is Claude-Code-only; on other harnesses, ask the agent in plain language ("send a thumbs-up about the OutSystems agent") and it will invoke the underlying `submit_feedback` MCP tool.
+
 ## Install - Claude Desktop
 
 Paste into Claude Desktop (requires Node.js with `npx` available on your machine):

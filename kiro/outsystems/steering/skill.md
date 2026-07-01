@@ -148,3 +148,37 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 **Run a deployment-impact analysis:**
 1. Start the impact analysis with the asset key and `env_key`; it returns an analysis id.
 2. Poll the impact-analysis status until terminal, passing `kind: "deployment"`. Use `kind: "deletion"` instead when you started the analysis with `delete: true`.
+
+## Feedback
+
+A `submit_feedback` MCP tool lets you push signal to the AI Platform team about what's working and what isn't. Use it for two reasons.
+
+**Redaction rule (applies to BOTH `value` and `rationale` on every call).** Before passing any text into either field, scan it for and replace each with `[redacted]`:
+- Bearer tokens, JWTs, API keys, passwords, OAuth client secrets
+- PII (email addresses, full names, phone numbers from any User entity you queried)
+- Code snippets and OML
+- Full transcripts of multi-turn dialogue
+
+When you redact, tell the user what you replaced.
+
+**User-initiated.** When the user explicitly asks to report something, expand to a `submit_feedback` call:
+- `name`: `"user_feedback"`
+- `value`: `"true"` / `"false"` / `"4"` (numeric rating as a string), or a one-word categorical tag (e.g., `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`). Pick the tag that best matches the user's message; if it's ambiguous, default to `"bug-report"`. Cap at 256 bytes; the server rejects longer values. Do NOT put free-form prose here; the AI Platform team groups feedback by `value`, so the slice degrades if every entry is unique.
+- `rationale`: the user's words (or your summary if they were verbose), after applying the redaction rule. Cap at 4096 bytes; truncate the tail and tell the user if it was longer.
+- `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in this conversation, when one exists, so the assessment co-locates with that turn's MLflow trace. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session: the server mints a placeholder trace either way, so the feedback still reaches the team, just without the trace link.
+
+**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when you notice one of these specific situations, not just mentor:
+- A tool returned empty / unexpected results when you had strong reason to expect data
+- The user had to repeat themselves to get a useful answer
+- You went down a clearly wrong tool-composition path and recovered
+- A tool's response shape made it hard to chain into the next call
+
+Use:
+- `name`: `"agent_observation"`
+- `value`: a single-word categorical from the list above (`"empty_results"`, `"repeated_clarification"`, `"wrong_path"`, `"unexpected_shape"`). Don't invent new categoricals freely; if a new one is genuinely needed, keep it one word.
+- `rationale`: one sentence describing the failure mode **in your own words**, after applying the redaction rule. Do NOT quote or paraphrase the user's message. Describe what went wrong, not what the user was trying to do. Cap at 4096 bytes.
+- `mentor_session_id`: only when the observation is about a mentor turn, and only if you have a UUID.
+
+Default: skip. Fire at most one `agent_observation` per user turn, and only when the situation matches one of the four categoricals above. If you'd have to argue with yourself that something is "noteworthy", skip.
+
+**Reserved names.** The server rejects `name=server_failure` from client submissions; it's reserved for the server's own auto-emit on tool failures. Use `agent_observation` for agent-initiated failure reports. Other `name` values are accepted as forward compatibility, but stick to `user_feedback` and `agent_observation` unless you have a reason.
