@@ -8,6 +8,13 @@ Distribution repo for the OutSystems MCP: Claude Code plugin, Claude Desktop, an
 > No support, SLAs, or maintenance commitments are offered. We are sharing this publicly because we value community input, not because it is ready for broad adoption.
 > Bug reports, feature requests, and feedback are welcome, feel free to open an issue. Responses and fixes happen on a best-effort basis with no defined timeline.
 
+## Before you install
+
+Some installs get stuck on an older plugin version (0.6.0 / 0.6.2) even with autoupdate enabled, which silently keeps you on a pre-fix install prompt. Before pasting any install prompt below:
+
+- **Claude Code / Claude Desktop:** open Settings > Extensions (or Plugins), find `outsystems`, and click "Check for updates". Confirm the version is at least the current release. If you cannot see or click update, follow the Reset in Troubleshooting.
+- **Kiro:** run `git pull` in the local `outsystems-mcp` clone before restarting Kiro.
+
 ## Install - Claude Code
 
 Paste into Claude Code:
@@ -18,7 +25,7 @@ Step 1: run `claude plugin marketplace add OutSystems/outsystems-mcp`.
 Step 2: run `claude plugin install outsystems@outsystems`.
 Step 3: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
 Step 4: when I tell you, run `claude mcp add -s user --transport http --client-id service_studio --callback-port 7890 outsystems https://<my-tenant>/mcp` (substitute my actual tenant for `<my-tenant>`).
-Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; you'll drive the OAuth flow automatically via Claude Code's synthesized `authenticate` tool (a client convenience, not a server tool). Do NOT tell me to run `/mcp -> outsystems -> Authenticate` manually.
+Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; the OAuth flow is normally driven automatically by Claude Code's synthesized `authenticate` tool (a client convenience, not a server tool). If the auto-auth does not trigger, tell me to open `/mcp`, select `outsystems`, and click Authenticate.
 ```
 
 ## Install - Claude Desktop
@@ -67,3 +74,47 @@ Step 3: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/S
 Step 4: trigger authentication. If the harness synthesizes per-server `authenticate` / `complete_authentication` tools after registration (as Claude Code does — they're a client convenience, not server tools), call those (lazy on first tool call). Otherwise let the harness's built-in MCP auth UI handle the OAuth handshake.
 Step 5: depending on the harness, the new MCP server may not be visible until you reload its MCP config or restart. If the harness has a CLI to list registered MCP servers (similar to `claude mcp list`), run it to check whether `outsystems` is visible — if not, tell me to restart the harness. Once the tools appear, ask me anything OutSystems-related to confirm the install is complete.
 ```
+
+## Troubleshooting
+
+If the install prompt succeeded but the MCP is still not working, match the symptom below.
+
+### "The authenticate tool isn't loaded, authenticate via the Claude CLI"
+
+Your plugin is still on an older version that used the pre-fix install prompt. Update it (see "Before you install") and re-run the install prompt in a fresh Claude Code tab. If updating does not stick, follow the Reset below.
+
+### "This session is non-interactive, I can't run the OAuth flow here"
+
+Same underlying cause as above (older install prompt still cached). Update the plugin, then Reset if needed.
+
+### "Server Disconnected" or "failed authorization" in Developer Settings
+
+The OAuth sign-in did not complete inside Claude Desktop's server-initialization timeout. Complete OAuth from a terminal, where there is no timeout:
+
+```
+npx -y mcp-remote https://<my-tenant>/mcp
+```
+
+Sign in when the browser opens. Once the terminal reports the token was saved (a file appears under `~/.mcp-auth/` on macOS/Linux or `%USERPROFILE%\.mcp-auth\` on Windows), press Ctrl+C and restart Claude Desktop. Subsequent launches reuse the cached token.
+
+### Windows: `npx` not found by Claude Desktop
+
+Claude Desktop launches processes with a minimal PATH. Run `where npx` in a terminal, then edit `claude_desktop_config.json` and replace `"npx"` with the full path returned.
+
+### Reset (when updates will not stick)
+
+1. Uninstall the `outsystems` plugin.
+2. In Claude, open Help > Troubleshooting > Clear cache.
+3. Fully quit and reopen Claude.
+4. Reinstall the plugin from the marketplace. This pulls the latest version.
+5. Paste the install prompt again in a fresh Claude Code tab.
+
+## Getting logs
+
+If you need to file a bug or ask for help, attach the relevant bridge log:
+
+- **macOS:** `~/Library/Logs/Claude/mcp-server-outsystems.log`
+- **Windows:** `%APPDATA%\Claude\logs\mcp-server-outsystems.log`
+- **Linux:** `~/.config/Claude/logs/mcp-server-outsystems.log`
+
+The file is per-server. Replace `outsystems` with the key name you used in `claude_desktop_config.json`.
