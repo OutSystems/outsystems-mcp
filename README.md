@@ -83,9 +83,17 @@ If the install prompt succeeded but the MCP is still not working, match the symp
 
 Your plugin is still on an older version that used the pre-fix install prompt. Update it (see "Before you install") and re-run the install prompt in a fresh Claude Code tab. If updating does not stick, follow the Reset below.
 
-### "This session is non-interactive, I can't run the OAuth flow here"
+### "This session is non-interactive, I can't run the OAuth flow here" (Claude Desktop)
 
-Same underlying cause as above (older install prompt still cached). Update the plugin, then Reset if needed.
+The plugin is installed and the `outsystems` server is registered, but no OAuth token is cached yet, and Claude Desktop's embedded agent runtime cannot open a browser tab to complete sign-in from inside a chat turn. Bootstrap the token once from a regular terminal, where the browser can open normally:
+
+```
+npx -y mcp-remote https://<my-tenant>/mcp
+```
+
+Sign in when the browser opens. Once the terminal reports the token was saved, press Ctrl+C and restart Claude Desktop. The `outsystems` slash command will work on the next turn because the bridge finds the cached token in `~/.mcp-auth/`.
+
+Same fix works if you prefer the Claude Code CLI: run `claude mcp` (or `/mcp`) in a real interactive terminal, select `outsystems`, and click Authenticate.
 
 ### "Server Disconnected" or "failed authorization" in Developer Settings
 
