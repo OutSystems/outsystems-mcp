@@ -82,7 +82,8 @@ Mentor is a multi-turn conversation backed by a server-side session that holds t
 - For *info* about an app, prefer the context lookups. Lightweight, structured, no OML download. Only fall back to mentor when context can't answer (deep OML internals, logic flow traversal).
 - For *edits*, the mentor flow is the only path.
 - Reuse the same session across follow-up turns in one task; the server-side OML and tool history stay loaded.
-- Start a fresh session (start a run without `mentor_session_*`) when: (a) mentor hallucinates entities/actions that don't exist; (b) you switch to an unrelated task on the same app; or (c) prior turns left the OML in a bad state.
+- **Resume with `fresh_context: true`** (a resume-only flag on the mentor start call — pass it alongside `mentor_session_id` + `mentor_session_token`) when the conversation hits its max length (`OS-AISA-40001`), mentor starts hallucinating entities/actions that don't exist, or you switch to another task on the *same* app. It starts a new conversation over the session's *current* (already-edited) OML while keeping the session slot, the server-side OML, and any unpublished edits — so it doesn't burn a second per-tenant session slot and doesn't discard in-session work. It's a boolean and strictly typed: pass JSON `true`, not the string `"true"` or `1`. On the first turn (`app_key`, no token) it's ignored. If the server predates the flag it rejects the whole call (unknown property), so only send it when recovering.
+- **Start a brand-new session** (start a run without `mentor_session_*`) when you need to reset the OML itself — prior turns left it in a bad state you can't unwind — or you move to an unrelated app; `fresh_context` keeps the edited OML, so it does NOT revert it. A brand-new session re-downloads the pristine tenant OML.
 - If mentor refuses or returns empty, rephrase with concrete keys and a smaller scope before retrying.
 - For required fields, ask mentor to set `IsMandatory=True` on the input widget and leave the label text bare — the platform paints a single red `*` after the label automatically. Don't ask mentor to put a literal `*` in `Label.Text`; it renders black, theme-blind, and stacks with the platform asterisk.
 
@@ -100,7 +101,7 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 **Edit an existing app and ship it:**
 1. First turn: start a mentor run with the `app_key` and your prompt (e.g. "Add a due date field to Task"). It returns a `runId`; poll the run with its `cursor` until terminal, then pull `mentor_session_id` + `mentor_session_token` out of the result.
 2. Optional follow-up turns: start another run passing `mentor_session_id` + `mentor_session_token` and your next prompt, and poll the same way. Each terminal result returns a fresh token; use the newest one next.
-3. Publish the edited OML with `mentor_session_id` + `mentor_session_token` + `env_key`; it returns a publication id.
+3. Publish the edited OML with `mentor_session_id` + `mentor_session_token` + `env_key`; it returns a publication id. An optional `message` (max 500 chars) attaches a publish note to the created revision — the same note ODC Studio's "1-Click Publish with message" sets; over-length is rejected up front, and attaching the note is best-effort so a failure to attach it doesn't fail the publish.
 4. Poll the publication status until terminal. Pull the publication logs for messages on failure.
 
 **Promote a build across environments:**

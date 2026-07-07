@@ -104,8 +104,8 @@ Workflows below show MCP tool form. Identity (tenant + user) is derived from the
 ### Workflow 2: Edit an app and ship it
 
 1. `mentor_start { app_key: "<key>", prompt: "Add a due date field to Task" }` → returns `runId`. Poll `mentor_get_run { runId, cursor }` until terminal; pull `mentor_session_id` + `mentor_session_token` out of `result`.
-2. (Optional) Follow-up turns: `mentor_start { mentor_session_id, mentor_session_token, prompt: "..." }` and poll the same way. Each terminal result returns a fresh token; use the newest one next.
-3. `publish_start { mentor_session_id, mentor_session_token, env_key: "<env>" }` → returns `publication_id`.
+2. (Optional) Follow-up turns: `mentor_start { mentor_session_id, mentor_session_token, prompt: "..." }` and poll the same way. Each terminal result returns a fresh token; use the newest one next. If the conversation hits its max length (`OS-AISA-40001`) or mentor starts hallucinating, add `fresh_context: true` to the resume call — it starts a new conversation over the session's *current* OML while keeping the session slot and any unpublished edits (boolean, JSON `true`; ignored on a first `app_key` turn; a server that predates the flag rejects the call). Start a run *without* `mentor_session_*` only to reset the OML to pristine or move to an unrelated app.
+3. `publish_start { mentor_session_id, mentor_session_token, env_key: "<env>", message?: "<publish note>" }` → returns `publication_id`. The optional `message` attaches a publish note to the created revision (ODC Studio's "1-Click Publish with message"; max 500 chars — over-length is rejected up front; attaching the note is best-effort, so a failure to attach it does not fail the publish).
 4. Poll `publish_status { publication_id }` until terminal. On failure, `publish_logs { pub_key: publication_id }`.
 
 ### Workflow 3: Promote a build across environments
