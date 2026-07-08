@@ -138,7 +138,7 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 3. On failure: pull the deployment messages for diagnostics.
 
 **Publish a new external library:**
-1. Build a .NET 8 lib with `[OSInterface(Name = "<UniqueName>")]` (reusing a name produces a new revision, not a fresh asset). `dotnet publish -c Release`, zip the `.dll` + `.deps.json` at the zip root (no nested folder). Base64-encode the zip.
+1. Build a .NET 10 lib with `[OSInterface(Name = "<UniqueName>")]` (reusing a name produces a new revision, not a fresh asset). `dotnet publish -c Release`, zip the `.dll` + `.deps.json` at the zip root (no nested folder). Base64-encode the zip.
 2. Upload the library with `zip_b64` and `auto_publish: true`; it returns an operation key.
 3. Poll the external-library status until `Published`. On validation failure, pull the operation logs.
 
