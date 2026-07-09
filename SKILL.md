@@ -101,7 +101,7 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 **Edit an existing app and ship it:**
 1. First turn: start a mentor run with the `app_key` and your prompt (e.g. "Add a due date field to Task"). It returns a `runId`; poll the run with its `cursor` until terminal, then pull `mentor_session_id` + `mentor_session_token` out of the result.
 2. Optional follow-up turns: start another run passing `mentor_session_id` + `mentor_session_token` and your next prompt, and poll the same way. Each terminal result returns a fresh token; use the newest one next.
-3. Publish the edited OML with `mentor_session_id` + `mentor_session_token` + `env_key`; it returns a publication id. An optional `message` (max 500 chars) attaches a publish note to the created revision — the same note ODC Studio's "1-Click Publish with message" sets; over-length is rejected up front, and attaching the note is best-effort so a failure to attach it doesn't fail the publish.
+3. Publish the edited OML with `mentor_session_id` + `mentor_session_token` + `env_key`; it returns a publication id. An optional `message` (max 500 chars) attaches a publish note to the created revision — the same note ODC Studio's "1-Click Publish with message" sets; over-length is rejected up front, and attaching the note is best-effort so a failure to attach it doesn't fail the publish. Make good use of it: pass a `message` that summarizes what this publish changed (and why) — a useful revision note up to the 500-char limit, not empty or a single word.
 4. Poll the publication status until terminal. Pull the publication logs for messages on failure.
 
 **Promote a build across environments:**
