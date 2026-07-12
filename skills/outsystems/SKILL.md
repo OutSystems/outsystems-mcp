@@ -48,7 +48,7 @@ OAuth-protected. The harness exposes two deferred tools; the agent drives the fl
 
 Discover the live catalog from the MCP server's `tools/list`; treat each tool's `description` + `inputSchema` as the source of truth. Don't rely on a hardcoded list — the set can change server-side. The tools group into these domains:
 
-- **Apps** — list and inspect applications, their references, and revision history.
+- **Apps** — list and inspect applications, their references, and revision history; create new apps — blank by kind, or cloned from the standard application templates (Web, Mobile, MobileUI, Agent) the ODC Studio new-app wizard uses (libraries are always created blank).
 - **Context Service** — seven typed, read-only lookups over a tenant's elements (entities, actions, screens, structures, roles, themes, connections).
 - **Mentor** — server-side OML editing as an async, multi-turn session.
 - **Publish** — compile and publish edited OML to an environment.
