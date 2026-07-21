@@ -1,6 +1,6 @@
 # outsystems-mcp
 
-Distribution repo for the OutSystems MCP: Claude Code plugin, Claude Desktop, and Kiro Power. To install, paste the matching prompt below into your AI assistant.
+Distribution repo for the OutSystems MCP. To install, paste the matching prompt below into your AI assistant.
 
 ## ⚠️ Disclaimer
 > Early Alpha. Please Read Before Using
@@ -55,9 +55,53 @@ Step 5: when I tell you, set the URL `https://<my-tenant>/mcp` in ~/.kiro/settin
 Step 6: tell me the OAuth sign-in opens automatically on the next OutSystems tool call — Kiro runs the flow itself and opens the browser for the localhost callback; I just complete the sign-in when prompted. There is no `authenticate` tool to call in Kiro.
 ```
 
+## Install - Copilot in VS Code
+
+Paste into VS Code copilot chat:
+
+```
+Install the OutSystems MCP server in VS Code Copilot.
+Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+Step 2: open my user MCP config (behind `MCP: Open User Configuration`) or create `.vscode/mcp.json`. Read it first and preserve existing entries, then add under the top-level `servers` object (the key is `servers`, NOT `mcpServers`) the canonical `servers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/mcp.json), substituting my tenant for `<my-tenant>`:
+{"outsystems": {"type": "http", "url": "https://<my-tenant>/mcp"}}
+Do NOT add an `oauth.clientId` — the server supports Dynamic Client Registration and VS Code registers its own client automatically.
+Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in my workspace. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Step 4: tell me to open `.vscode/mcp.json`, check for `outsystems` and start it. A browser opens automatically for OAuth on first connection.
+Step 5: then tell me to ask `list 10 of my outsystems apps` to ensure it is working
+```
+
+## Install - Copilot in CLI
+
+Paste into copilot:
+
+```
+Install the OutSystems MCP server in Copilot CLI.
+Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+Step 2: run `copilot mcp add --transport http outsystems https://<my-tenant>/mcp` (substitute my tenant). This writes the server to `~/.copilot/mcp-config.json` under the top-level `mcpServers` object — it's added to config, but a CLI session that's already running won't load it until Step 4. This matches the canonical `mcpServers.outsystems` block at https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/mcp.json. Add no auth headers or client_id; the server uses OAuth + Dynamic Client Registration.
+Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in the working directory (or `AGENTS.md` if the project uses that). Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Step 4: since `copilot mcp add` wrote the server to config from outside this running session, the session hasn't loaded it yet. Tell me to type `/mcp reload` in the CLI to load it (then optionally `/mcp show outsystems` to confirm it's listed). Note: `/mcp ...` are interactive slash commands I type in the REPL — you cannot run them for me, so ask me to run them rather than executing them yourself. The OAuth flow runs on the first OutSystems tool call — a browser opens for me to authorize.
+Step 5: once the tools are listed, tell me to ask `list 10 of my outsystems apps` to ensure it is working.
+````
+
+## Install - Copilot in Visual Studio (Windows)
+
+Paste into copilot chat:
+
+```
+Install the OutSystems MCP server in Visual Studio Copilot.
+Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+Step 2: create or edit `.mcp.json` in my solution dir (`<SolutionDir>\.mcp.json`) or global `%USERPROFILE%\.mcp.json`. Read it first and preserve existing entries, then add under the top-level `servers` object the canonical `servers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/mcp.json), substituting my tenant:
+{"outsystems": {"type": "http", "url": "https://<my-tenant>/mcp"}}
+Do NOT add an `oauth.clientId` — the server supports Dynamic Client Registration.
+Step 3: install the OutSystems conventions file by DOWNLOADING it — do NOT read it into chat and retype it. Run this terminal command from the repo root (approve it when Visual Studio asks): `New-Item -ItemType Directory -Force .github | Out-Null; Invoke-WebRequest -Uri https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md -OutFile .github\copilot-instructions.md`. Then verify it downloaded fully — `(Get-Content .github\copilot-instructions.md).Count` should report ~150+ lines; if it's short, re-run the command, never hand-type the content.
+Step 4: tell me to open the Tools picker, and ENABLE the `outsystems` tools — in Visual Studio, MCP tools are disabled by default and must be turned on manually. It will fail due to authentication, click "view details" and follow the steps in the authentication section. Finally, enable all tools.
+Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
+```
+
+
 ## Install - other AI assistants (best effort)
 
-Claude Code and Kiro Chat are the two harnesses we test against. For other agentic harnesses (Codex CLI, Cursor, Continue, Cline, Aider, etc.), this is a best-effort install path — the MCP server is a stock streamable-HTTP MCP endpoint with OAuth + Dynamic Client Registration, so most harnesses should be able to wire it up, but we don't validate the flow ourselves. If something breaks, file an issue with the symptoms.
+For other agentic harnesses (Codex CLI, Cursor, Continue, Cline, Aider, etc.), this is a best-effort install path — the MCP server is a stock streamable-HTTP MCP endpoint with OAuth + Dynamic Client Registration, so most harnesses should be able to wire it up, but we don't validate the flow ourselves. If something breaks, file an issue with the symptoms.
 
 Paste into your harness:
 
