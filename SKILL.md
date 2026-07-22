@@ -136,7 +136,8 @@ When you redact, tell the user what you replaced.
 - `name`: `"user_feedback"`
 - `value`: `"true"` / `"false"` / `"4"` (numeric rating as a string), or a one-word categorical tag (e.g., `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`). Pick the tag that best matches the user's message; if it's ambiguous, default to `"bug-report"`. Cap at 256 bytes; the server rejects longer values. Do NOT put free-form prose here; the AI Platform team groups feedback by `value`, so the slice degrades if every entry is unique.
 - `rationale`: the user's words (or your summary if they were verbose), after applying the redaction rule. Cap at 4096 bytes; truncate the tail and tell the user if it was longer.
-- `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in this conversation, when one exists, so the assessment co-locates with that turn's MLflow trace. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session: the server mints a placeholder trace either way, so the feedback still reaches the team, just without the trace link.
+- `ide_conversation_id`: only when the user explicitly provided a Studio ConversationId (e.g., via the `/feedback --cid=<id>` flag, or by mentioning it in prose - "correlate this to Studio conversation `cid-abc-123`"). Do NOT invent or guess an id. When present, the writer emits it as `mlflow.trace.session` so downstream `mlflow.search_traces` returns both the feedback and the studio-agent trace for that conversation.
+- `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in this conversation, when one exists, so the assessment co-locates with that turn's MLflow trace. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session: the server mints a placeholder trace either way. Server precedence: if both `ide_conversation_id` and `mentor_session_id` are passed, IDE wins (mentor is dropped from the correlation dict but still recorded for our own debug queries).
 
 **Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when you notice one of these specific situations, not just mentor:
 - A tool returned empty / unexpected results when you had strong reason to expect data
@@ -148,6 +149,7 @@ Use:
 - `name`: `"agent_observation"`
 - `value`: a single-word categorical from the list above (`"empty_results"`, `"repeated_clarification"`, `"wrong_path"`, `"unexpected_shape"`). Don't invent new categoricals freely; if a new one is genuinely needed, keep it one word.
 - `rationale`: one sentence describing the failure mode **in your own words**, after applying the redaction rule. Do NOT quote or paraphrase the user's message. Describe what went wrong, not what the user was trying to do. Cap at 4096 bytes.
+- `ide_conversation_id`: same rule as user-initiated - only when you know the Studio ConversationId that this observation applies to (e.g., because the observation happened while you were driving a mentor turn on a specific Studio session). Never invent.
 - `mentor_session_id`: only when the observation is about a mentor turn, and only if you have a UUID.
 
 Default: skip. Fire at most one `agent_observation` per user turn, and only when the situation matches one of the four categoricals above. If you'd have to argue with yourself that something is "noteworthy", skip.
