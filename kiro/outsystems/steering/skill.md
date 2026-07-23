@@ -152,7 +152,7 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 
 ## Feedback
 
-A `submit_feedback` MCP tool lets you push signal to the AI Platform team about what's working and what isn't. Use it for two reasons.
+A `submit_feedback` MCP tool lets you push signal to the OutSystems maintainers about what's working and what isn't. Use it for two reasons.
 
 **Redaction rule (applies to BOTH `value` and `rationale` on every call).** Before passing any text into either field, scan it for and replace each with `[redacted]`:
 - Bearer tokens, JWTs, API keys, passwords, OAuth client secrets
@@ -164,7 +164,7 @@ When you redact, tell the user what you replaced.
 
 **User-initiated.** When the user explicitly asks to report something, expand to a `submit_feedback` call:
 - `name`: `"user_feedback"`
-- `value`: `"true"` / `"false"` / `"4"` (numeric rating as a string), or a one-word categorical tag (e.g., `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`). Pick the tag that best matches the user's message; if it's ambiguous, default to `"bug-report"`. Cap at 256 bytes; the server rejects longer values. Do NOT put free-form prose here; the AI Platform team groups feedback by `value`, so the slice degrades if every entry is unique.
+- `value`: `"true"` / `"false"` / `"4"` (numeric rating as a string), or a one-word categorical tag (e.g., `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`). Pick the tag that best matches the user's message; if it's ambiguous, default to `"bug-report"`. Cap at 256 bytes; the server rejects longer values. Do NOT put free-form prose here; the product team groups feedback by `value`, so the slice degrades if every entry is unique.
 - `rationale`: the user's words (or your summary if they were verbose), after applying the redaction rule. Cap at 4096 bytes; truncate the tail and tell the user if it was longer.
 - `ide_conversation_id`: only when the user explicitly provided a Studio ConversationId (by mentioning it in prose - "correlate this to Studio conversation `cid-abc-123`"). Do NOT invent or guess an id. When present, the writer emits it as `mlflow.trace.session` so downstream `mlflow.search_traces` returns both the feedback and the studio-agent trace for that conversation. Omitting it is fine - the writer already emits an automatic `odc.auth_session_id` (derived server-side from the JWT `sid`) on every submission, which groups feedback per login session without needing this key. Kiro Chat doesn't have a `/outsystems-feedback` slash command (that surface is Claude-Code-only, and the `outsystems-` prefix avoids the collision with Claude Code's built-in `/feedback`); Kiro users pass `ide_conversation_id` only via prose.
 - `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in this conversation, when one exists, so the assessment co-locates with that turn's MLflow trace. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session: the server also has a per-user auto-fallback that looks up the user's most-recent session on this pod when the caller doesn't pass one (RAOPST-3707), and mints a placeholder trace either way. Server precedence: if both `ide_conversation_id` and `mentor_session_id` are passed, IDE wins (mentor is dropped from the correlation dict but still recorded for our own debug queries).

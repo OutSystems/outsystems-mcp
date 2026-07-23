@@ -1,6 +1,6 @@
 ---
-description: Send feedback about your OutSystems agent experience to the AI Platform team
-argument-hint: [--cid=<studio-conversation-id>] [<message>] (leave empty for guided form)
+description: Send feedback about your OutSystems agent experience
+argument-hint: [<your feedback>] (leave empty for guided form)
 ---
 
 The user typed `/outsystems-feedback $ARGUMENTS`. They want to report something about the OutSystems agent experience (a bug, a thumbs-up / thumbs-down, a comment about a tool that misbehaved, etc.).
@@ -35,22 +35,23 @@ Map the user's pick to the `value` argument of `submit_feedback`:
 - "Feature request" -> `"feature-request"`
 - Any custom / "Other" free-text answer the user typed instead of picking -> default `value` to `"bug-report"` and include the user's free-text at the top of the message body.
 
+Do NOT offer numeric ratings ("4", "5") or booleans ("true", "false") in the picker. The server accepts them for schema flexibility, but users find rating scales less intuitive than named tags; a picker of four named categoricals is the whole surface.
+
 **Step 2 -- free-text message.** After the pick lands, reply to the user in a single conversational turn:
 
 > "Got it, <category>. What is the message you would like to include? (Skip this if the category above already says enough -- just reply 'none' or 'skip'.)"
 
 Wait for the user's next message. Treat that message as the raw feedback body (subject to the redaction step below). If the user replies "none" / "skip" / an empty line, use an empty rationale.
 
-**Step 3 -- optional Studio ConvId (skip when the user already passed `--cid=<value>` inline).** Call `AskUserQuestion` again:
+**Step 3 -- optional agent_context clarification (skip when the feedback is clearly general).** After Step 2's message lands, decide whether the message is about a specific tool interaction (e.g., "the deploy failed", "the publish returned garbage", "the diagram tool crashed on merge") vs general sentiment ("love it", "thumbs-up", "not intuitive"). If specific:
 
-- `question`: "Attach a Studio conversation id? Optional -- only if you want this feedback correlated with a specific studio-agent trace."
-- `header`: "Attach ConvId"
-- `multiSelect`: false
-- `options` (in this order):
-  - `label`: "Skip (Recommended)" -- `description`: "Do not attach a Studio ConversationId. The server still auto-emits `odc.auth_session_id` for per-login grouping -- most submissions do not need the ConvId."
-  - `label`: "I will provide one" -- `description`: "Ask me for the Studio ConversationId. Use this only when you want to correlate with a specific studio-agent trace."
+- Summarize in ONE sentence what you would attach as `agent_context` (e.g., "I'll include: your last three tool calls were env_info, publish_start (error OS-BEW-1234), and app_traces on app-1").
+- Ask "Attach this context to help the team reproduce? [yes / no]".
+- If yes, build the JSON blob from your actual tool-call history and use it as `agent_context`. If no, omit `agent_context`.
 
-If the user picks "I will provide one", reply "Paste the Studio ConversationId:" and wait for their next message. Use that value as `ide_conversation_id`. If they pick "Skip", omit `ide_conversation_id`.
+If the message is general, skip this step entirely -- do not attach `agent_context`.
+
+Do NOT prompt for a Studio ConversationId. Most users have no way of knowing that opaque id; the server auto-emits `odc.auth_session_id` on every submission (derived from the JWT), which covers per-login grouping without any user action. Advanced users who explicitly want to attach a ConvId can pass `--cid=<value>` inline in direct mode.
 
 Then proceed to the redaction step below with the values collected across steps 1-3.
 
@@ -77,17 +78,21 @@ After redacting, tell the user what you replaced. The redacted text is what you 
 Call the OutSystems `submit_feedback` MCP tool with:
 
 - `name`: `"user_feedback"` -- always for this command. `agent_observation` self-reports go through `submit_feedback` directly per the SKILL.md guidance, not through this command.
-- `value`: a one-word categorical tag (`"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`) or a rating string (`"true"` / `"false"` / `"4"`). In guided-form mode, this comes from Step 1's pick (the mapping is fixed). In direct mode, pick the tag that best matches the user's message; default to `"bug-report"` if you cannot tell. **Do NOT** put the user's prose into `value`; the AI Platform team groups feedback by `value` and free-form text breaks the slice. Cap 256 bytes (server rejects longer); single-word tags are well under.
+- `value`: a one-word categorical tag: `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`. In guided-form mode this comes from Step 1's pick (the mapping is fixed). In direct mode pick the tag that best matches the user's message; default to `"bug-report"` if you cannot tell. **Do NOT** put the user's prose into `value`; the value field is a discrete grouping key. Numeric ratings (`"4"`) and booleans (`"true"`, `"false"`) are accepted by the server for schema flexibility, but do NOT surface them to the user or emit them from this command; users find rating scales less intuitive than named tags. Cap 256 bytes (server rejects longer); single-word tags are well under.
 - `rationale`: the full redacted message body (cap 4096 bytes; truncate the tail and tell the user if it was longer). If the guided-form user replied "skip" / "none" / empty at Step 2, omit `rationale` entirely.
 - `ide_conversation_id`: only when the user passed `--cid=<value>` inline (direct mode) or picked "I will provide one" and pasted a value at guided-form Step 3. Do NOT invent or guess an id; do NOT reuse `mentor_session_id` here. When present, the writer emits it as the SDK-canonical `mlflow.trace.session` metadata key so downstream `mlflow.search_traces(filter="metadata.mlflow.trace.session=X")` returns this feedback alongside the studio-agent trace for the same conversation. When absent, omit the argument entirely (do not pass an empty string -- the server accepts it but downstream correlation stays orphan for this row).
-- `mentor_session_id`: if there is a `mentor_session_id` you have been working with in this conversation, include it so the AI Platform team can co-locate the feedback with the relevant mentor trace. **Must be a UUID** (the server rejects non-UUID strings). Otherwise omit it and the server auto-falls-back to the user's most-recent mentor session on this pod. Server precedence: if both `ide_conversation_id` and `mentor_session_id` are passed, the IDE conversation id wins and `mentor_session_id` is silently dropped from the correlation dict (still recorded for our own debug queries). The server mints a placeholder trace either way, so the feedback still reaches the team.
+- `mentor_session_id`: if there is a `mentor_session_id` you have been working with in this conversation, include it so the OutSystems maintainers can co-locate the feedback with the relevant mentor trace. **Must be a UUID** (the server rejects non-UUID strings). Otherwise omit it and the server auto-falls-back to the user's most-recent mentor session on this pod. Server precedence: if both `ide_conversation_id` and `mentor_session_id` are passed, the IDE conversation id wins and `mentor_session_id` is silently dropped from the correlation dict (still recorded for our own debug queries). The server mints a placeholder trace either way, so the feedback still reaches the team.
 - `agent_context`: OPTIONAL structured recap of what you were doing when the user invoked `/outsystems-feedback`. Include it when the message clearly refers to a specific tool-call that misbehaved (e.g., "the deploy failed", "the publish returned garbage") -- the recap makes downstream debug much faster. Shape: JSON string ≤2048 bytes with keys like `recent_tool_calls`, `app_key`, `env_key`. Redact secrets / PII (same rule as `rationale`). Skip when the feedback is general ("love the agent", "thumbs-up") -- no tool-call context is relevant.
 
 ## Handle the response
 
-- `status: "accepted"` → tell the user "Thanks, feedback sent to the AI Platform team."
-- `status: "not_configured"` → the feedback writer is not enabled on this stamp; tell the user "Feedback is not configured on this OutSystems environment yet; I have noted what you said but it did not reach the team."
-- Any error (`data.category` of `ValidationError` / `UpstreamError` / `InternalError` / etc., per the SKILL.md error-categories rule) → tell the user "I could not send your feedback right now (<short reason from `data.category`); your message has not been delivered." Do not retry; this is user-initiated and the user can re-invoke `/outsystems-feedback`.
+- `status: "accepted"` → confirm to the user and, when appropriate, offer a follow-up next step:
+  - Bug report / thumbs-down: "Thanks, your feedback has been recorded. If you want, I can also open a Jira ticket with the same context, or add a screenshot if you have one to share."
+  - Feature request: "Thanks, your feature request has been recorded. Want me to file it as a Jira story too so it enters the backlog?"
+  - Thumbs-up / general: "Thanks, your feedback has been recorded."
+  Do NOT name any internal team ("AI Platform team", "Product team", etc.) in the confirmation. Say "recorded" or "sent". The internal routing is not user-visible.
+- `status: "not_configured"` → the writer is not enabled on this environment; tell the user "Feedback is not configured on this OutSystems environment yet, so your message was not recorded. If you can share it directly with your OutSystems contact, that will reach the team."
+- Any error (`data.category` of `ValidationError` / `UpstreamError` / `InternalError` / etc., per the SKILL.md error-categories rule) → tell the user "I could not record your feedback right now (<short reason from `data.category`). Would you like to try again in a moment, or share it directly with your OutSystems contact?" Do not retry automatically; this is user-initiated.
 
 ## Scope
 
