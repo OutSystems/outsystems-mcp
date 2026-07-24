@@ -1,13 +1,22 @@
 ---
 description: Send feedback about your OutSystems agent experience
-argument-hint: [<your feedback>] (leave empty for guided form)
+argument-hint: [--dry-run] [--quiet] [<your feedback>] (leave empty for guided form)
 ---
 
 The user typed `/outsystems-feedback $ARGUMENTS`. They want to report something about the OutSystems agent experience (a bug, a thumbs-up / thumbs-down, a comment about a tool that misbehaved, etc.).
 
+## Optional flags (direct mode only)
+
+Parse and strip leading flags from `$ARGUMENTS` before deciding the mode:
+
+- `--dry-run` -- Show the exact `submit_feedback` tool call that WOULD be made (name, value, rationale, agent_context, mentor_session_id, mentor_turn_id, ide_conversation_id, experiment_id) as a code block, but do NOT invoke the tool. Reply with the preview and ask the user to confirm ("send it? [y / n]") before firing. On "n" or silence, do not send and say "OK, discarded."
+- `--quiet` -- Fire the `submit_feedback` call as normal but skip the confirmation narration on success. On `status: "accepted"`, reply with a single-word acknowledgment ("sent.") instead of the full "Thanks..." block. Errors and `not_configured` still surface with their normal text. Useful for CI-driven or scripted callers.
+
+Both flags may be combined (`--dry-run --quiet` shows the preview without narration decoration). Flags are only recognized in direct mode; the guided-form flow ignores them.
+
 ## Two modes
 
-Decide the mode from `$ARGUMENTS`:
+Decide the mode from `$ARGUMENTS` (after stripping leading flags above):
 
 - **Direct mode** -- `$ARGUMENTS` is non-empty and contains at least one non-whitespace character AFTER stripping any leading `--cid=<value>` token. The message body is whatever is left. Skip the guided-form steps and go straight to redaction + tool call.
 - **Guided-form mode** -- `$ARGUMENTS` is empty, whitespace-only, OR consists only of a `--cid=<value>` token with no following message. Do NOT reply with an error. Drive the guided form below so the user picks values instead of typing them. This is the closest thing plugins have to Claude Code's built-in `/feedback` modal.

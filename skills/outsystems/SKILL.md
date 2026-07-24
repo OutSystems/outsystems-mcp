@@ -211,6 +211,19 @@ Use:
 
 Default: skip. Fire at most one `agent_observation` per user turn, and only when the situation matches one of the five categoricals above. If you'd have to argue with yourself that something is "noteworthy", skip.
 
+**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer `/outsystems-feedback`", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
+
+> "That failed unexpectedly. Want to send feedback about it? (I already recorded a server-side auto-emit; this would add your context.)"
+
+Rules for the exception:
+- Fires at most once per session, no matter how many failures happen.
+- Skip when the failure was expected (dry-run, deliberate misconfiguration test, or the user just told you they're testing failure paths).
+- Skip when a `server_failure` auto-emit was NOT triggered — those cases aren't "clearly broken", they're user errors.
+- If the user says yes, drive the guided-form flow (skip Step 1 — pre-fill category as "Bug report").
+- If the user says no or ignores the ask, DO NOT re-ask this session.
+
+**User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that `/outsystems-feedback` is the surface AND offer to invoke it directly: "You can type `/outsystems-feedback` for a guided form, or `/outsystems-feedback <message>` to submit directly. Want me to open the guided form now?" This is an exception to "don't volunteer" — the user asked; walking them through it is helpful, not manipulative.
+
 **Reserved names.** The server rejects `name=server_failure` from client submissions; it's reserved for the server's own auto-emit on tool failures. Use `agent_observation` for agent-initiated failure reports. Other `name` values are accepted as forward compatibility, but stick to `user_feedback` and `agent_observation` unless you have a reason.
 
 Slash command shortcut for users (Claude Code): typing `/outsystems-feedback <message>` drives `submit_feedback` per the rules above (the redaction step applies to both `value` and `rationale`; the slash command body in `commands/outsystems-feedback.md` carries the same rules for the `/outsystems-feedback` entry point). The `outsystems-` prefix avoids the collision with Claude Code's built-in `/feedback`, which routes to Anthropic's issue tracker and would shadow an unprefixed plugin command.
