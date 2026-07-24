@@ -164,27 +164,68 @@ When you redact, tell the user what you replaced.
 
 **User-initiated.** When the user explicitly asks to report something, expand to a `submit_feedback` call:
 - `name`: `"user_feedback"`
-- `value`: `"true"` / `"false"` / `"4"` (numeric rating as a string), or a one-word categorical tag (e.g., `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`). Pick the tag that best matches the user's message; if it's ambiguous, default to `"bug-report"`. Cap at 256 bytes; the server rejects longer values. Do NOT put free-form prose here; the product team groups feedback by `value`, so the slice degrades if every entry is unique.
+- `value`: a one-word categorical tag: `"bug-report"`, `"feature-request"`, `"thumbs-up"`, or `"thumbs-down"`. Pick the tag that best matches the user's message; if it's ambiguous, default to `"bug-report"`. Cap at 256 bytes. **Do NOT** put free-form prose here; the value field is a discrete grouping key. Numeric ratings ("4") and booleans ("true"/"false") are accepted by the server for downstream flexibility, but do not surface them as options in a picker or prompt; users find rating scales less intuitive than named tags.
 - `rationale`: the user's words (or your summary if they were verbose), after applying the redaction rule. Cap at 4096 bytes; truncate the tail and tell the user if it was longer.
-- `ide_conversation_id`: only when the user explicitly provided a Studio ConversationId (by mentioning it in prose - "correlate this to Studio conversation `cid-abc-123`"). Do NOT invent or guess an id. When present, the writer emits it as `mlflow.trace.session` so downstream `mlflow.search_traces` returns both the feedback and the studio-agent trace for that conversation. Omitting it is fine - the writer already emits an automatic `odc.auth_session_id` (derived server-side from the JWT `sid`) on every submission, which groups feedback per login session without needing this key. Kiro Chat doesn't have a `/outsystems-feedback` slash command (that surface is Claude-Code-only, and the `outsystems-` prefix avoids the collision with Claude Code's built-in `/feedback`); Kiro users pass `ide_conversation_id` only via prose.
-- `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in this conversation, when one exists, so the assessment co-locates with that turn's MLflow trace. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session: the server also has a per-user auto-fallback that looks up the user's most-recent session on this pod when the caller doesn't pass one (RAOPST-3707), and mints a placeholder trace either way. Server precedence: if both `ide_conversation_id` and `mentor_session_id` are passed, IDE wins (mentor is dropped from the correlation dict but still recorded for our own debug queries).
-- `agent_context`: OPTIONAL structured recap of what you were doing when the user asked for feedback. JSON-encoded string, ≤2048 bytes. Suggested shape: `{"recent_tool_calls": [{"tool": "context_search", "status": "ok"}, {"tool": "publish_start", "status": "error", "code": "OS-BEW-1234"}], "app_key": "...", "env_key": "..."}`. Redact secrets / PII (same rule as `rationale`). Server emits it verbatim under `odc.agent_context` in trace metadata so downstream can see the tool-composition context alongside the user's message without a schema join.
+- `ide_conversation_id`: opaque correlation key. Only pass when the user explicitly supplied one in their message (e.g., "correlate this to conversation cid-abc-123"). Do NOT invent or guess. Do NOT prompt the user for a raw id — most users have no way of knowing it. Omitting it is safe; the server auto-emits `odc.auth_session_id` on every submission, which covers per-login-session grouping without any user-visible id. Kiro Chat has no slash-command surface for feedback (that's Claude-Code-only); Kiro users pass `ide_conversation_id` only via prose.
+- `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in THIS conversation, when one exists. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session in scope; the server has a per-user auto-fallback that supplies the most-recent one on this pod. Server precedence: if the user also supplied a Studio conversation id, that wins and `mentor_session_id` is dropped from correlation.
+- `mentor_turn_id`: optional opaque per-turn id (≤256 bytes), one level finer than `mentor_session_id`. Pass the `runId` from the most-recent mentor tool response the user is reacting to. Do NOT guess; if you lost track of which turn the user meant, omit it — silence is safer than a wrong-turn tag. There is NO server-side auto-fallback here (unlike session id); you are the only source of ground truth.
+- `experiment_id`: optional opaque A/B experiment tag (≤128 bytes). Include only when the harness is running an experiment the caller wants tagged. Omit for regular feedback.
+- `internal_only`: optional boolean (default false). Set to `true` when the user asks to submit "candid" / "internal" / "unattributed" feedback and does not want the submission surfaced back to them or attributed publicly. The server stamps `odc.internal_only=true`; downstream visibility policy enforces the don't-surface semantics. Do not set this on the user's behalf without them asking.
+- `agent_context`: OPTIONAL structured recap of what you were doing when the user asked for feedback. JSON-encoded string, ≤2048 bytes. Suggested shape:
+  ```json
+  {
+    "recent_tool_calls": [
+      {"tool": "context_search", "status": "ok"},
+      {"tool": "publish_start", "status": "error", "code": "OS-BEW-1234"}
+    ],
+    "app_key": "...",
+    "env_key": "...",
+    "error_details": {
+      "message": "verbatim error text from the failing tool response",
+      "step": "publish_start"
+    }
+  }
+  ```
+  The `error_details` sub-key is a convention (not enforced by the server): when the feedback is about a specific failure, include the verbatim error message + which step it fired on. Downstream triage can slice by `error_details.step` without paraphrasing loss. Redact secrets / PII in `error_details.message` per the redaction step. **Clarify with the user before including.** When the feedback is about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (env_info, publish_start with code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach.
 
-**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when you notice one of these specific situations, not just mentor:
-- A tool returned empty / unexpected results when you had strong reason to expect data
-- The user had to repeat themselves to get a useful answer
-- You went down a clearly wrong tool-composition path and recovered
-- A tool's response shape made it hard to chain into the next call
-- **Post-success reflection**: after a multi-step task lands, if you spot that a shorter tool sequence would have reached the same result (`value="shorter-path-available"`). You are the source of truth on "did the task succeed" - the server can't tell.
+**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when a situation clearly matches one of the five defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
+
+The five valid values for `agent_observation` are exactly:
+- `empty_results` — a tool returned zero results in a case where you had strong reason to expect data. The bar is "surprising empty return", not "any empty return". Searching for a plausible-sounding thing that legitimately doesn't exist is NOT this; searching for something the user just clearly referenced and getting nothing IS.
+- `repeated_clarification` — the same user intent required 3+ back-and-forth turns of ambiguous user replies before you could act (or you gave up because ambiguity persisted).
+- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR your first tool errored because it was fundamentally the wrong tool for the intent.
+- `unexpected_shape` — a tool response was well-formed but lacked expected fields or had an unexpected structure that made it hard to chain into the next call.
+- `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path.
+
+**Never invent a value.** These 5 are the entire enum. If none clearly fits, do NOT fire — silence is safer than a made-up categorical.
+
+**Disambiguation precedence** — when a situation could match multiple categoricals, use this order (first-match wins):
+1. `shorter-path-available` (only fires post-success; if the task succeeded, this pre-empts the others).
+2. `wrong_path` (recovering from a wrong-tool pick).
+3. `repeated_clarification` (the ambiguity pattern was the primary blocker).
+4. `unexpected_shape` (a well-formed response with a missing field, distinct from empty).
+5. `empty_results` (last resort — an empty return that was genuinely surprising).
 
 Use:
 - `name`: `"agent_observation"`
-- `value`: a single-word categorical from the list above (`"empty_results"`, `"repeated_clarification"`, `"wrong_path"`, `"unexpected_shape"`, `"shorter-path-available"`). Don't invent new categoricals freely; if a new one is genuinely needed, keep it one word.
-- `rationale`: one sentence describing the failure mode **in your own words**, after applying the redaction rule. Do NOT quote or paraphrase the user's message. Describe what went wrong (or, for `shorter-path-available`, the shortcut you spotted plus the attempts you made before landing the working path). Cap at 4096 bytes.
-- `ide_conversation_id`: same rule as user-initiated - only when you know the Studio ConversationId that this observation applies to. Never invent.
+- `value`: one of the 5 exactly, per the enum above. Rejecting silence is not a valid choice.
+- `rationale`: one sentence describing the situation **in your own words**, after applying the redaction rule. Do NOT quote or paraphrase the user's message. Describe what went wrong (or, for `shorter-path-available`, the shortcut you spotted plus the attempts you made before landing the working path). Cap at 4096 bytes.
+- `ide_conversation_id`: only when you know the Studio ConversationId this observation applies to. Never invent.
 - `mentor_session_id`: only when the observation is about a mentor turn, and only if you have a UUID.
-- `agent_context`: OPTIONAL structured recap of what you were doing when you constructed this observation. JSON-encoded string, ≤2048 bytes. Suggested shape: `{"recent_tool_calls": [{"tool": "context_search", "status": "ok"}, {"tool": "mentor_start", "status": "error", "code": "OS-BEW-1234"}], "app_key": "...", "env_key": "...", "mentor_session_id": "..."}`. Redact secrets / PII. Server emits it verbatim under `odc.agent_context` in trace metadata so downstream can slice by tool-composition patterns without a schema join.
+- `agent_context`: OPTIONAL structured recap of what you were doing when you constructed this observation. JSON-encoded string, ≤2048 bytes. Same shape and secrets rules as user-initiated.
 
 Default: skip. Fire at most one `agent_observation` per user turn, and only when the situation matches one of the five categoricals above. `shorter-path-available` in particular should be low-frequency (per successful multi-step task, not per turn; never on a one-step task that already took the direct path). If you'd have to argue with yourself that something is "noteworthy", skip.
+
+**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer feedback", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
+
+> "That failed unexpectedly. Want to send feedback about it? I'd include the tool call, error code, and pod version to help the team reproduce."
+
+Rules for the exception:
+- Fires at most once per session, no matter how many failures happen.
+- Skip when the failure was expected (dry-run, deliberate misconfiguration test, or the user just told you they're testing failure paths).
+- Skip when a `server_failure` auto-emit was NOT triggered — those cases aren't "clearly broken", they're user errors.
+- If the user says no or ignores the ask, DO NOT re-ask this session.
+
+**User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that `submit_feedback` is the surface AND offer to invoke it directly. This is an exception to "don't volunteer" — the user asked; walking them through it is helpful, not manipulative.
 
 **Reserved names.** The server rejects `name=server_failure` from client submissions; it's reserved for the server's own auto-emit on tool failures. Use `agent_observation` for agent-initiated failure reports. Other `name` values are accepted as forward compatibility, but stick to `user_feedback` and `agent_observation` unless you have a reason.
