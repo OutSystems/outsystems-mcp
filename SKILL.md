@@ -166,9 +166,11 @@ The five valid values for `agent_observation` are exactly:
 - `repeated_clarification` — the same user intent required 3+ back-and-forth turns of ambiguous user replies before you could act (or you gave up because ambiguity persisted).
 - `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR your first tool errored because it was fundamentally the wrong tool for the intent.
 - `unexpected_shape` — a tool response was well-formed but lacked expected fields or had an unexpected structure that made it hard to chain into the next call.
-- `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path.
+- `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path. If one of the steps you took also had an unexpected response shape, this STILL fires (not `unexpected_shape`) — the shortcut avoids the whole step, which is the higher-order insight.
 
 **Never invent a value.** These 5 are the entire enum. If none clearly fits, do NOT fire — silence is safer than a made-up categorical.
+
+**Scope: OutSystems MCP tool interactions only.** These 5 categoricals report on the OutSystems tools that composed for the user's request (`mentor_*`, `deploy_*`, `publish_*`, `env_*`, `app_*`, `extlib_*`, `db_query`, `context_*`). Do NOT fire on your own internal workflow — your skill / rule / documentation lookups, your planning, your reasoning steps. If you didn't call any OutSystems MCP tool this turn (e.g., the user just said "thanks" or "that's all", asked a general doc question you answered from memory, or asked you to look up a Claude Code skill), do NOT fire.
 
 **Disambiguation precedence** — when a situation could match multiple categoricals, use this order (first-match wins):
 1. `shorter-path-available` (only fires post-success; if the task succeeded, this pre-empts the others).
