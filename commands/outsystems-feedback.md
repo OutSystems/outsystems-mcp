@@ -30,11 +30,11 @@ Run these steps IN ORDER. Do not batch them into one `AskUserQuestion` call -- t
 - `question`: "What kind of feedback would you like to send?"
 - `header`: "Category"
 - `multiSelect`: false
-- `options` (in this order):
-  - `label`: "Thumbs up" -- `description`: "Something worked well or is delightful."
-  - `label`: "Thumbs down" -- `description`: "Something felt off but is not a full bug (mentor felt slow, output felt weird, etc.)."
-  - `label`: "Bug report" -- `description`: "Something is broken and should not be."
-  - `label`: "Feature request" -- `description`: "You would like the OutSystems agent to do something it does not currently do."
+- `options` (in this order, each with a concrete example to help disambiguate):
+  - `label`: "Thumbs up" -- `description`: "Something worked well or is delightful. Example: 'the mentor turn was fast and the OML edit was exactly what I wanted'."
+  - `label`: "Thumbs down" -- `description`: "Something felt off but is not a full bug. Example: 'the deploy took 3 minutes, felt slow' or 'the output was correct but not what I hoped for'."
+  - `label`: "Bug report" -- `description`: "Something is broken and should not be. Example: 'publish_start returned OS-BEW-1234 and never recovered'."
+  - `label`: "Feature request" -- `description`: "You would like the OutSystems agent to do something it does not currently do. Example: 'I want an env-diff tool that compares two environments'."
 
 Map the user's pick to the `value` argument of `submit_feedback`:
 
@@ -54,7 +54,7 @@ Wait for the user's next message. Treat that message as the raw feedback body (s
 
 **Step 2b -- expected-vs-actual (bug-report only).** If the category picked in Step 1 was "Bug report", ask ONE follow-up question after Step 2:
 
-> "To help the team reproduce: what did you expect to happen instead? (Optional -- reply 'skip' if the message above already covers it.)"
+> "Quick tip: a good bug report has three parts -- what you did, what happened, what you expected. To help the team reproduce: what did you expect to happen instead? (Optional -- reply 'skip' if the message above already covers it.)"
 
 Wait for the user's reply. If they answered anything other than "skip" / empty, combine the two parts into the final `rationale` as:
 
@@ -93,6 +93,8 @@ Applies to both modes. Before constructing the tool call, scan the message body 
 - Full transcripts of multi-turn dialogue
 
 After redacting, tell the user what you replaced. The redacted text is what you use below.
+
+**Trust note (only when the redaction step actually replaced something).** When the redaction step above found and replaced at least one token / secret / PII, add a one-line reassurance to your redaction acknowledgment: "Your message reaches the OutSystems maintainers with those tokens removed -- it does not go to Anthropic." When nothing was redacted, do NOT add this line -- it would read as a non-sequitur.
 
 ## Construct the call
 

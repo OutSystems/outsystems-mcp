@@ -213,7 +213,9 @@ Default: skip. Fire at most one `agent_observation` per user turn, and only when
 
 **Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer `/outsystems-feedback`", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
 
-> "That failed unexpectedly. Want to send feedback about it? (I already recorded a server-side auto-emit; this would add your context.)"
+> "That failed unexpectedly. Want to send feedback about it? I'd include the tool call, error code, and pod version to help the team reproduce."
+
+The one-line "what will be captured" note is important — users are more willing to file when they know what's shared. Keep it terse; do NOT elaborate into a wall of text.
 
 Rules for the exception:
 - Fires at most once per session, no matter how many failures happen.
