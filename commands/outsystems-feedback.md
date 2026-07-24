@@ -43,6 +43,18 @@ Do NOT offer numeric ratings ("4", "5") or booleans ("true", "false") in the pic
 
 Wait for the user's next message. Treat that message as the raw feedback body (subject to the redaction step below). If the user replies "none" / "skip" / an empty line, use an empty rationale.
 
+**Step 2b -- expected-vs-actual (bug-report only).** If the category picked in Step 1 was "Bug report", ask ONE follow-up question after Step 2:
+
+> "To help the team reproduce: what did you expect to happen instead? (Optional -- reply 'skip' if the message above already covers it.)"
+
+Wait for the user's reply. If they answered anything other than "skip" / empty, combine the two parts into the final `rationale` as:
+
+> Expected: <the Step 2b reply>
+>
+> Actual: <the Step 2 message>
+
+If they skipped, use the Step 2 message alone. This step fires ONLY for bug reports; thumbs-up / thumbs-down / feature-request keep the single-message rationale from Step 2.
+
 **Step 3 -- optional agent_context clarification (skip when the feedback is clearly general).** After Step 2's message lands, decide whether the message is about a specific tool interaction (e.g., "the deploy failed", "the publish returned garbage", "the diagram tool crashed on merge") vs general sentiment ("love it", "thumbs-up", "not intuitive"). If specific:
 
 - Summarize in ONE sentence what you would attach as `agent_context` (e.g., "I'll include: your last three tool calls were env_info, publish_start (error OS-BEW-1234), and app_traces on app-1").

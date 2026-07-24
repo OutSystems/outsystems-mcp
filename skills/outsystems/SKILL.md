@@ -166,7 +166,22 @@ When you redact, tell the user what you replaced.
 - `rationale`: the user's words (or your summary if they were verbose), after applying the redaction rule. Cap at 4096 bytes; truncate the tail and tell the user if it was longer.
 - `ide_conversation_id`: opaque correlation key. Only pass when the user explicitly supplied one in their message (e.g., "correlate this to conversation cid-abc-123"). Do NOT invent or guess. Do NOT prompt the user for a raw id — most users have no way of knowing it. Omitting it is safe; the server auto-emits `odc.auth_session_id` on every submission, which covers per-login-session grouping without any user-visible id.
 - `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in THIS conversation, when one exists. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session in scope; the server has a per-user auto-fallback that supplies the most-recent one on this pod. Server precedence: if the user also supplied a Studio conversation id, that wins and `mentor_session_id` is dropped from correlation.
-- `agent_context`: OPTIONAL structured recap of what you were doing when the user asked for feedback. JSON-encoded string, ≤2048 bytes. Suggested shape: `{"recent_tool_calls": [{"tool": "context_search", "status": "ok"}, {"tool": "publish_start", "status": "error", "code": "OS-BEW-1234"}], "app_key": "...", "env_key": "..."}`. **Clarify with the user before including.** When the feedback message is clearly about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (env_info, publish_start with code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach. Redact secrets / PII per the redaction step.
+- `agent_context`: OPTIONAL structured recap of what you were doing when the user asked for feedback. JSON-encoded string, ≤2048 bytes. Suggested shape:
+  ```json
+  {
+    "recent_tool_calls": [
+      {"tool": "context_search", "status": "ok"},
+      {"tool": "publish_start", "status": "error", "code": "OS-BEW-1234"}
+    ],
+    "app_key": "...",
+    "env_key": "...",
+    "error_details": {
+      "message": "verbatim error text from the failing tool response",
+      "step": "publish_start"
+    }
+  }
+  ```
+  The `error_details` sub-key is a convention (not enforced by the server): when the feedback is about a specific failure, include the verbatim error message + which step it fired on. Downstream triage can slice by `error_details.step` without paraphrasing loss. Redact secrets / PII in `error_details.message` per the redaction step. **Clarify with the user before including.** When the feedback message is clearly about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (env_info, publish_start with code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach.
 
 **Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when a situation clearly matches one of the five defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
 
