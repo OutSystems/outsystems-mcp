@@ -70,6 +70,13 @@ If they skipped, use the Step 2 message alone. This step fires ONLY for bug repo
 - Ask "Attach this context to help the team reproduce? [yes / no]".
 - If yes, build the JSON blob from your actual tool-call history and use it as `agent_context`. If no, omit `agent_context`.
 
+**Step 3b -- progressive disclosure of correlation ids (only when the message hints at them).** After Step 3, scan the user's message for keywords that suggest they know or care about a specific correlation id:
+- "session" / "mentor session" → offer to attach `mentor_session_id` if you have a UUID from a recent mentor tool call in this conversation.
+- "trace" / "run" / "runId" / "turn" → offer to attach `mentor_turn_id` from the most recent mentor tool response.
+- "conversation" / "conv id" / "cid" → offer to attach `ide_conversation_id` if the user provides one.
+
+Ask a single terse question ("You mentioned 'session' — want me to attach the current mentor session id (a UUID) so the team can jump straight to that turn?"). Skip the entire step when the user's message contains no such keywords. Skip individual offers when the corresponding id is not available in this session's context. Do NOT invent or guess ids; if you don't have one, don't offer to attach it.
+
 If the message is general, skip this step entirely -- do not attach `agent_context`.
 
 Do NOT prompt for a Studio ConversationId. Most users have no way of knowing that opaque id; the server auto-emits `odc.auth_session_id` on every submission (derived from the JWT), which covers per-login grouping without any user action. Advanced users who explicitly want to attach a ConvId can pass `--cid=<value>` inline in direct mode.
@@ -115,7 +122,14 @@ Call the OutSystems `submit_feedback` MCP tool with:
   - Thumbs-up / general: "Thanks, your feedback has been recorded."
   Do NOT name any internal team ("AI Platform team", "Product team", etc.) in the confirmation. Say "recorded" or "sent". The internal routing is not user-visible.
 - `status: "not_configured"` → the writer is not enabled on this environment; tell the user "Feedback is not configured on this OutSystems environment yet, so your message was not recorded. If you can share it directly with your OutSystems contact, that will reach the team."
-- Any error (`data.category` of `ValidationError` / `UpstreamError` / `InternalError` / etc., per the SKILL.md error-categories rule) → tell the user "I could not record your feedback right now (<short reason from `data.category`). Would you like to try again in a moment, or share it directly with your OutSystems contact?" Do not retry automatically; this is user-initiated.
+- Any error (`data.category` of `ValidationError` / `UpstreamError` / `InternalError` / etc., per the SKILL.md error-categories rule) → tell the user in plain language what actually blocked the submission, not just the category name. Map the common cases:
+  - `ValidationError` with a byte-cap message → "Your message was too long (over 4096 bytes). Trim it and send again."
+  - `ValidationError` on `mentor_session_id` shape → "The mentor session id needs to be a UUID. Either drop it (the server will auto-correlate) or paste the exact UUID."
+  - `ValidationError` on a reserved name → "'server_failure' is a reserved name only the server uses. Pick 'bug-report' instead."
+  - `ValidationError` on a value type → "Feedback value must be a short string, number, or true/false — not an object or null."
+  - `UpstreamError` (e.g. 5xx from Databricks) → "The feedback backend is temporarily unreachable. Try again in a minute; if it keeps failing, share the message with your OutSystems contact."
+  - `InternalError` or any other category → "Something went wrong on the server (<data.category>). Try again in a minute or share directly with your OutSystems contact."
+  Do not retry automatically; this is user-initiated. The point of unpacking the error is to give the user actionable next steps, not to relay implementation details.
 
 ## Scope
 
