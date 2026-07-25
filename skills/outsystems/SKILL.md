@@ -188,23 +188,16 @@ When you redact, tell the user what you replaced.
 
 **Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when a situation clearly matches one of the five defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
 
-The five valid values for `agent_observation` are exactly:
-- `empty_results` — a tool returned zero results in a case where you had strong reason to expect data. The bar is "surprising empty return", not "any empty return". Searching for a plausible-sounding thing that legitimately doesn't exist is NOT this; searching for something the user just clearly referenced and getting nothing IS.
+**Scope — HARD RULE: OutSystems MCP tool interactions only.** These 5 categoricals report ONLY on the OutSystems tools (`mentor_*`, `deploy_*`, `publish_*`, `env_*`, `app_*`, `extlib_*`, `db_query`, `context_*`) you actually invoked for the user's request. NEVER fire based on your OWN workflow: skill/rule/documentation lookups (reading SKILL.md, `commands/outsystems-feedback.md`, plugin guidance), Bash/Read/Glob/Grep filesystem operations, ToolSearch navigation, planning, or reasoning steps. **Concrete self-test before you fire**: read your draft rationale. If its subject names a skill, rule, `.md` file, plugin surface, or an internal Claude Code tool (Skill, Bash, Read, Glob, Grep, ToolSearch, Task) rather than a specific OutSystems MCP tool, DO NOT fire — silence is correct.
+
+The five valid values for `agent_observation` (listed in disambiguation-precedence order — first-match wins when a situation could match multiple):
+- `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path. **Tie-break rule**: if any step you took returned only data already present in a prior step's output (i.e., that step was redundant in retrospect), this fires — even if the redundant step's response also had a shape quirk. "Missing expected fields" on the redundant step is a symptom; the higher-order insight is that the step wasn't needed.
+- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different tool ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same. **Never fires on internal skill/rule lookups or filesystem navigation** (see Scope above).
 - `repeated_clarification` — the same user intent required 3+ back-and-forth turns of ambiguous user replies before you could act (or you gave up because ambiguity persisted).
-- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different tool ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same.
-- `unexpected_shape` — a tool response was well-formed but lacked expected fields or had an unexpected structure that made it hard to chain into the next call.
-- `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path. If one of the steps you took also had an unexpected response shape, this STILL fires (not `unexpected_shape`) — the shortcut avoids the whole step, which is the higher-order insight.
+- `unexpected_shape` — a tool response was well-formed but lacked expected fields or had an unexpected structure that made it hard to chain into the next call. NOT this if the "missing field" happened on a step that turned out to be redundant post-success — that's `shorter-path-available` (see tie-break above).
+- `empty_results` — a tool returned zero results in a case where you had strong reason to expect data. The bar is "surprising empty return", not "any empty return". Searching for a plausible-sounding thing that legitimately doesn't exist is NOT this; searching for something the user just clearly referenced and getting nothing IS.
 
 **Never invent a value.** These 5 are the entire enum. If none clearly fits, do NOT fire — silence is safer than a made-up categorical.
-
-**Scope: OutSystems MCP tool interactions only.** These 5 categoricals report on the OutSystems tools that composed for the user's request (`mentor_*`, `deploy_*`, `publish_*`, `env_*`, `app_*`, `extlib_*`, `db_query`, `context_*`). Do NOT fire on your own internal workflow — your skill / rule / documentation lookups, your planning, your reasoning steps. If you didn't call any OutSystems MCP tool this turn (e.g., the user just said "thanks" or "that's all", asked a general doc question you answered from memory, or asked you to look up a Claude Code skill), do NOT fire.
-
-**Disambiguation precedence** — when a situation could match multiple categoricals, use this order (first-match wins):
-1. `shorter-path-available` (only fires post-success; if the task succeeded, this pre-empts the others).
-2. `wrong_path` (recovering from a wrong-tool pick).
-3. `repeated_clarification` (the ambiguity pattern was the primary blocker).
-4. `unexpected_shape` (a well-formed response with a missing field, distinct from empty).
-5. `empty_results` (last resort — an empty return that was genuinely surprising).
 
 Use:
 - `name`: `"agent_observation"`
