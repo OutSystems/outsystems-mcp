@@ -57,6 +57,8 @@ Step 6: tell me the OAuth sign-in opens automatically on the next OutSystems too
 
 ## Install - Copilot in VS Code
 
+> On a Copilot Business/Enterprise plan, an admin must enable the "MCP servers in Copilot" policy.
+
 Paste into VS Code copilot chat:
 
 ```
@@ -72,6 +74,8 @@ Step 5: then tell me to ask `list 10 of my outsystems apps` to ensure it is work
 
 ## Install - Copilot in CLI
 
+> On a Copilot Business/Enterprise plan, an admin must enable the "MCP servers in Copilot" policy.
+
 Paste into copilot:
 
 ```
@@ -85,6 +89,8 @@ Step 5: once the tools are listed, tell me to ask `list 10 of my outsystems apps
 
 ## Install - Copilot in Visual Studio (Windows)
 
+> On a Copilot Business/Enterprise plan, an admin must enable the "MCP servers in Copilot" policy.
+
 Paste into copilot chat:
 
 ```
@@ -97,6 +103,10 @@ Step 3: install the OutSystems conventions file by DOWNLOADING it — do NOT rea
 Step 4: tell me to open the Tools picker, and ENABLE the `outsystems` tools — in Visual Studio, MCP tools are disabled by default and must be turned on manually. It will fail due to authentication, click "view details" and follow the steps in the authentication section. Finally, enable all tools.
 Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
 ```
+
+## Install - M365 Copilot (web browser)
+
+Currently, this assistant does not support custom mcp servers.
 
 
 ## Install - other AI assistants (best effort)
