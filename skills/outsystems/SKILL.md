@@ -167,7 +167,6 @@ When you redact, tell the user what you replaced.
 - `ide_conversation_id`: opaque correlation key. Only pass when the user explicitly supplied one in their message (e.g., "correlate this to conversation cid-abc-123"). Do NOT invent or guess. Do NOT prompt the user for a raw id — most users have no way of knowing it. Omitting it is safe; the server auto-emits `odc.auth_session_id` on every submission, which covers per-login-session grouping without any user-visible id.
 - `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in THIS conversation, when one exists. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session in scope; the server has a per-user auto-fallback that supplies the most-recent one on this pod. Server precedence: if the user also supplied a Studio conversation id, that wins and `mentor_session_id` is dropped from correlation.
 - `mentor_turn_id`: optional opaque per-turn id (≤256 bytes), one level finer than `mentor_session_id`. Pass the `runId` from the most-recent mentor tool response the user is reacting to. Do NOT guess; if you lost track of which turn the user meant, omit it — silence is safer than a wrong-turn tag. There is NO server-side auto-fallback here (unlike session id); you are the only source of ground truth.
-- **Correlation-id offer (bounded exception to "don't prompt for ids")**: when the user's feedback message references `session` (or `mentor session`) or `turn` (or `mentor turn`) — a hint they may know the id — offer ONCE, terse, to attach it before you submit: "You mentioned a mentor session / turn — do you have the id you want this tied to? If not, I'll submit without it and the server will auto-correlate to your most-recent one where it can." Do this only for the id(s) they hinted at (mentioning "session" doesn't unlock the turn-id ask). If they answer with an id, pass it verbatim in the corresponding field; if they say no, or ignore the ask, submit without and do NOT re-ask. Skip the offer when you already have the id in scope (you were working with it in this conversation) — just attach it.
 - `experiment_id`: optional opaque A/B experiment tag (≤128 bytes). Include only when the plugin / harness is running an experiment the caller wants tagged. Omit for regular feedback.
 - `internal_only`: optional boolean (default false). Set to `true` when the user asks to submit "candid" / "internal" / "unattributed" feedback and does not want the submission surfaced back to them or attributed publicly. The server stamps `odc.internal_only=true`; downstream visibility policy enforces the don't-surface semantics. Do not set this on the user's behalf without them asking.
 - `agent_context`: OPTIONAL structured recap of what you were doing when the user asked for feedback. JSON-encoded string, ≤2048 bytes. Suggested shape:
@@ -186,6 +185,26 @@ When you redact, tell the user what you replaced.
   }
   ```
   The `error_details` sub-key is a convention (not enforced by the server): when the feedback is about a specific failure, include the verbatim error message + which step it fired on. Downstream triage can slice by `error_details.step` without paraphrasing loss. Redact secrets / PII in `error_details.message` per the redaction step. **Clarify with the user before including.** When the feedback message is clearly about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (env_info, publish_start with code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach.
+
+**Correlation-id offer (mandatory when the user's message hints).** When the user's feedback message contains `session` / `mentor session` (hint for `mentor_session_id`) or `turn` / `mentor turn` / `trace` / `runId` / `run` (hint for `mentor_turn_id`), the agent MUST include an offer in its reply. Silently omitting the correlation without acknowledging the hint is not acceptable.
+
+Preferred flow (interactive session): ask BEFORE submitting.
+
+> "You mentioned a mentor [session|turn] -- do you have the id you want this tied to? If not, I'll submit without it and the server will auto-correlate to your most-recent one where it can."
+
+Wait for the reply. If they respond with an id, attach it verbatim in the corresponding field (`mentor_session_id` must be a UUID; `mentor_turn_id` is opaque ≤256 bytes). If they say no or reply without an id, submit without and do NOT re-ask.
+
+Acceptable alternative when interactive back-and-forth is not possible (fast-path direct-mode invocations, scripted callers): submit with the id null AND include the offer in the confirmation reply so the user can act on it:
+
+> "Sent. If you have the [session|turn] id you want this tied to, share it and I'll resubmit with correlation attached."
+
+What is NOT acceptable: submitting without the id AND without an offer, then only explaining post-hoc that no id was available. The mention of `session` or `turn` is the hint; the agent must honor it.
+
+Scope rules for the offer:
+- Only ask about the id-level the user hinted at. `session` in the message does not unlock the `mentor_turn_id` ask, and vice versa.
+- Skip the entire offer when the message contains NO such keywords — silent submission is correct.
+- Skip the offer when you already have the id in scope from a mentor tool call earlier in this conversation — attach it directly and confirm in the reply which id you attached.
+- Do NOT invent or guess ids. If the user replies with a value that isn't shaped like an id (e.g., not a UUID for `mentor_session_id`), tell them and skip the field rather than pass junk.
 
 **Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when a situation clearly matches one of the five defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
 

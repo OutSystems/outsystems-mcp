@@ -103,6 +103,36 @@ After redacting, tell the user what you replaced. The redacted text is what you 
 
 **Trust note (only when the redaction step actually replaced something).** When the redaction step above found and replaced at least one token / secret / PII, add a one-line reassurance to your redaction acknowledgment: "Your message reaches the OutSystems maintainers with those tokens removed -- it does not go to Anthropic." When nothing was redacted, do NOT add this line -- it would read as a non-sequitur.
 
+## Correlation-id offer (mandatory when the message hints)
+
+Applies to BOTH modes. Before or alongside constructing the tool call, scan the redacted message body for these keywords:
+
+- `session`, `mentor session` -> the user hinted they may know the `mentor_session_id`.
+- `turn`, `mentor turn`, `trace`, `runId`, `run` -> the user hinted they may know the `mentor_turn_id`.
+
+If any of these appear, the agent MUST include an offer in its reply. The offer is phrased so the user can act on it (share an id, or say no) and is mandatory even if the submission has already fired -- silently omitting the correlation without acknowledging the hint is not acceptable.
+
+Preferred flow (interactive session): ask BEFORE submitting.
+
+> "You mentioned a mentor [session|turn] -- do you have the id you want this tied to? If not, I'll submit without it and the server will auto-correlate to your most-recent one where it can."
+
+Then wait for the user's reply. If they respond with an id, attach it verbatim in the corresponding field (`mentor_session_id` must be a UUID; `mentor_turn_id` is opaque ≤256 bytes). If they say no or reply without an id, submit without and do NOT re-ask this session.
+
+Acceptable alternative when interactive back-and-forth is not possible (fast-path direct mode, scripted callers, one-shot invocations): submit with the id null AND include the offer as an actionable follow-up in the confirmation:
+
+> "Sent. If you have the [session|turn] id you want this tied to, share it and I'll resubmit with correlation attached."
+
+What is NOT acceptable: submitting without the id AND without an offer, then only explaining post-hoc that no id was available. The user's mention of `session` or `turn` is the hint; the agent must honor it.
+
+Scope rules:
+
+- Only ask about the id-level the user hinted at. `session` in the message does not unlock the `mentor_turn_id` ask, and vice versa.
+- Skip the entire step when the message contains NO such keywords -- silent submission is correct.
+- Skip the offer when you already have the id in scope from your current conversation (a mentor tool call earlier in this session gave you a UUID) -- attach it directly without asking, and confirm in the reply which id you attached.
+- Do NOT invent or guess ids. If the user says "yes I have it" but the value they paste is not shaped like an id (e.g. not a UUID for `mentor_session_id`), tell them and skip the field rather than pass junk.
+
+Studio ConversationId (`ide_conversation_id`) is a separate opt-in via the `--cid=` flag and is NOT covered by this section -- most users cannot know it, per the guidance below.
+
 ## Construct the call
 
 Call the OutSystems `submit_feedback` MCP tool with:
