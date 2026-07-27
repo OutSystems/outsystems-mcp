@@ -146,18 +146,17 @@ Call the OutSystems `submit_feedback` MCP tool with:
 
 ## Handle the response
 
-- `status: "accepted"` → confirm to the user and, when appropriate, offer a follow-up next step:
-  - Bug report / thumbs-down: "Thanks, your feedback has been recorded. If you want, I can also open a Jira ticket with the same context, or add a screenshot if you have one to share."
-  - Feature request: "Thanks, your feature request has been recorded. Want me to file it as a Jira story too so it enters the backlog?"
+- `status: "accepted"` → confirm to the user and, when appropriate, offer a follow-up next step. Keep the confirmation short and never name internal tools, ticketing systems, or team names (no "Jira", "Confluence", "AI Platform team", "Product team", etc.). Say "recorded" or "sent". The internal routing is not user-visible.
+  - Bug report / thumbs-down: "Thanks, your feedback has been recorded. If a screenshot or steps to reproduce would help, share them and I'll attach them."
+  - Feature request: "Thanks, your feature request has been recorded. Anything else you'd like to add — a use case, an example, a mock?"
   - Thumbs-up / general: "Thanks, your feedback has been recorded."
-  Do NOT name any internal team ("AI Platform team", "Product team", etc.) in the confirmation. Say "recorded" or "sent". The internal routing is not user-visible.
 - `status: "not_configured"` → the writer is not enabled on this environment; tell the user "Feedback is not configured on this OutSystems environment yet, so your message was not recorded. If you can share it directly with your OutSystems contact, that will reach the team."
 - Any error (`data.category` of `ValidationError` / `UpstreamError` / `InternalError` / etc., per the SKILL.md error-categories rule) → tell the user in plain language what actually blocked the submission, not just the category name. Map the common cases:
   - `ValidationError` with a byte-cap message → "Your message was too long (over 4096 bytes). Trim it and send again."
   - `ValidationError` on `mentor_session_id` shape → "The mentor session id needs to be a UUID. Either drop it (the server will auto-correlate) or paste the exact UUID."
   - `ValidationError` on a reserved name → "'server_failure' is a reserved name only the server uses. Pick 'bug-report' instead."
   - `ValidationError` on a value type → "Feedback value must be a short string, number, or true/false — not an object or null."
-  - `UpstreamError` (e.g. 5xx from Databricks) → "The feedback backend is temporarily unreachable. Try again in a minute; if it keeps failing, share the message with your OutSystems contact."
+  - `UpstreamError` (5xx from the downstream store — do NOT name the store to the user) → "The feedback backend is temporarily unreachable. Try again in a minute; if it keeps failing, share the message with your OutSystems contact."
   - `InternalError` or any other category → "Something went wrong on the server (<data.category>). Try again in a minute or share directly with your OutSystems contact."
   Do not retry automatically; this is user-initiated. The point of unpacking the error is to give the user actionable next steps, not to relay implementation details.
 
