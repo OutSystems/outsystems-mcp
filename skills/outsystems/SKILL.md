@@ -168,7 +168,6 @@ When you redact, tell the user what you replaced.
 - `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in THIS conversation, when one exists. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session in scope; the server has a per-user auto-fallback that supplies the most-recent one on this pod. Server precedence: if the user also supplied a Studio conversation id, that wins and `mentor_session_id` is dropped from correlation.
 - `mentor_turn_id`: optional opaque per-turn id (≤256 bytes), one level finer than `mentor_session_id`. Pass the `runId` from the most-recent mentor tool response the user is reacting to. Do NOT guess; if you lost track of which turn the user meant, omit it — silence is safer than a wrong-turn tag. There is NO server-side auto-fallback here (unlike session id); you are the only source of ground truth.
 - `experiment_id`: optional opaque A/B experiment tag (≤128 bytes). Include only when the plugin / harness is running an experiment the caller wants tagged. Omit for regular feedback.
-- `internal_only`: optional boolean (default false). Set to `true` when the user asks to submit "candid" / "internal" / "unattributed" feedback and does not want the submission surfaced back to them or attributed publicly. The server stamps `odc.internal_only=true`; downstream visibility policy enforces the don't-surface semantics. Do not set this on the user's behalf without them asking.
 - `agent_context`: OPTIONAL structured recap of what you were doing when the user asked for feedback. JSON-encoded string, ≤2048 bytes. Suggested shape:
   ```json
   {
@@ -233,7 +232,17 @@ Use:
 - `mentor_session_id`: only when the observation is about a mentor turn, and only if you have a UUID.
 - `agent_context`: OPTIONAL structured recap of what you were doing when you constructed this observation. JSON-encoded string, ≤2048 bytes. Same shape and secrets rules as user-initiated.
 
-Default: skip. Fire at most one `agent_observation` per user turn, and only when the situation matches one of the five categoricals above. If you'd have to argue with yourself that something is "noteworthy", skip.
+**When to fire.** When any of the five categoricals above clearly matches the just-completed tool interaction, fire it. One row is cheap; silence when a categorical actually applies costs the team a real signal. Do NOT wait for the user to grant permission — the SKILL is the permission. Fire at most one `agent_observation` per user turn.
+
+**When to skip.** Only when NONE of the five categoricals clearly matches AND all three scope invariants hold. If your draft rationale sentence would be about the agent's own workflow rather than a specific OutSystems tool call, skip. If the situation is genuinely borderline and you would have to argue with yourself that it is noteworthy, skip. `shorter-path-available` in particular should stay low-frequency — fires per successful multi-step task, not per turn; never on a one-step task that already took the direct path.
+
+**Positive triggers (fire immediately, do not deliberate)**:
+- Just did a lookup for a concrete resource the user named (an app, a deploy, a session) and it returned empty → fire `empty_results`.
+- Just called a tool, it errored or returned an unusable shape, you had to fall back to a different tool to make progress → fire `wrong_path`.
+- The user's last message corrected your tool choice ("no, use X instead") after you had already picked one → fire `wrong_path`.
+- A multi-step task just landed successfully AND one of its steps turned out to be structurally unnecessary (given the input the user handed you upfront) → fire `shorter-path-available`.
+- A tool's response is missing fields its description explicitly promised, and you needed those fields to proceed → fire `unexpected_shape`.
+- You are on the 3rd back-and-forth clarification about the same user intent → fire `repeated_clarification`.
 
 **Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer `/outsystems-feedback`", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
 
