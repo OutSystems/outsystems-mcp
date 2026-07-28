@@ -147,3 +147,116 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 **Run a deployment-impact analysis:**
 1. Start the impact analysis with the asset key and `env_key`; it returns an analysis id.
 2. Poll the impact-analysis status until terminal, passing `kind: "deployment"`. Use `kind: "deletion"` instead when you started the analysis with `delete: true`.
+
+## Feedback
+
+A `submit_feedback` MCP tool lets you push signal to the OutSystems maintainers about what's working and what isn't. Use it for two reasons.
+
+**Redaction rule (applies to BOTH `value` and `rationale` on every call).** Before passing any text into either field, scan it for and replace each with `[redacted]`:
+- Bearer tokens, JWTs, API keys, passwords, OAuth client secrets
+- PII (email addresses, full names, phone numbers from any User entity you queried)
+- Code snippets and OML
+- Full transcripts of multi-turn dialogue
+
+When you redact, tell the user what you replaced.
+
+**User-initiated.** When the user explicitly asks to report something, or when they type `/outsystems-feedback`, expand to a `submit_feedback` call:
+- `name`: `"user_feedback"`
+- `value`: a one-word categorical tag: `"bug-report"`, `"feature-request"`, `"thumbs-up"`, or `"thumbs-down"`. Pick the tag that best matches the user's message; if it's ambiguous, default to `"bug-report"`. Cap at 256 bytes. **Do NOT** put free-form prose here; the value field is a discrete grouping key. Numeric ratings ("4") and booleans ("true"/"false") are accepted by the server for downstream flexibility, but do not surface them as options in a picker or prompt; users find rating scales less intuitive than named tags.
+- `rationale`: the user's words (or your summary if they were verbose), after applying the redaction rule. Cap at 4096 bytes; truncate the tail and tell the user if it was longer.
+- `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in THIS conversation, when one exists. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session in scope; the server has a per-user auto-fallback that supplies the most-recent one on this pod.
+- `mentor_turn_id`: optional opaque per-turn id (≤256 bytes), one level finer than `mentor_session_id`. Pass the `runId` from the most-recent mentor tool response the user is reacting to. Do NOT guess; if you lost track of which turn the user meant, omit it — silence is safer than a wrong-turn tag. There is NO server-side auto-fallback here (unlike session id); you are the only source of ground truth.
+- `experiment_id`: optional opaque A/B experiment tag (≤128 bytes). Include only when the plugin / harness is running an experiment the caller wants tagged. Omit for regular feedback.
+- `agent_context`: OPTIONAL structured recap of what you were doing when the user asked for feedback. JSON-encoded string, ≤2048 bytes. Suggested shape:
+  ```json
+  {
+    "recent_tool_calls": [
+      {"tool": "context_search", "status": "ok"},
+      {"tool": "publish_start", "status": "error", "code": "OS-BEW-1234"}
+    ],
+    "app_key": "...",
+    "env_key": "...",
+    "error_details": {
+      "message": "verbatim error text from the failing tool response",
+      "step": "publish_start"
+    }
+  }
+  ```
+  The `error_details` sub-key is a convention (not enforced by the server): when the feedback is about a specific failure, include the verbatim error message + which step it fired on. Downstream triage can slice by `error_details.step` without paraphrasing loss. Redact secrets / PII in `error_details.message` per the redaction step. **Clarify with the user before including.** When the feedback message is clearly about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (env_info, publish_start with code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach.
+
+**Correlation-id offer (mandatory when the user's message hints).** When the user's feedback message contains `session` / `mentor session` (hint for `mentor_session_id`) or `turn` / `mentor turn` / `trace` / `runId` / `run` (hint for `mentor_turn_id`), the agent MUST include an offer in its reply. Silently omitting the correlation without acknowledging the hint is not acceptable.
+
+Preferred flow (interactive session): ask BEFORE submitting.
+
+> "You mentioned a mentor [session|turn] -- do you have the id you want this tied to? If not, I'll submit without it and the server will auto-correlate to your most-recent one where it can."
+
+Wait for the reply. If they respond with an id, attach it verbatim in the corresponding field (`mentor_session_id` must be a UUID; `mentor_turn_id` is opaque ≤256 bytes). If they say no or reply without an id, submit without and do NOT re-ask.
+
+Acceptable alternative when interactive back-and-forth is not possible (fast-path direct-mode invocations, scripted callers): submit with the id null AND include the offer in the confirmation reply so the user can act on it:
+
+> "Sent. If you have the [session|turn] id you want this tied to, share it and I'll resubmit with correlation attached."
+
+What is NOT acceptable: submitting without the id AND without an offer, then only explaining post-hoc that no id was available. The mention of `session` or `turn` is the hint; the agent must honor it.
+
+Scope rules for the offer:
+- Only ask about the id-level the user hinted at. `session` in the message does not unlock the `mentor_turn_id` ask, and vice versa.
+- Skip the entire offer when the message contains NO such keywords — silent submission is correct.
+- Skip the offer when you already have the id in scope from a mentor tool call earlier in this conversation — attach it directly and confirm in the reply which id you attached.
+- Do NOT invent or guess ids. If the user replies with a value that isn't shaped like an id (e.g., not a UUID for `mentor_session_id`), tell them and skip the field rather than pass junk.
+
+**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when a situation clearly matches one of the five defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
+
+**Scope.** `agent_observation` reports on how OutSystems tools composed to fulfill a specific user request in the current turn. An OutSystems tool is any tool from the connected OutSystems MCP server — the ones that let you inspect and change tenant state. Three invariants must all hold before you fire:
+
+1. **The current user turn contains a task that needs OutSystems tools.** Conversational messages ("thanks", "that's all", "sounds good") are not tasks — no tool composition happened for them, so there is nothing to observe.
+2. **You actually called at least one OutSystems tool to fulfill it.** The observation must have a real tool call as its subject. If the turn ran no OutSystems tool, there is no subject.
+3. **The subject is a tool interaction, not your own working-out.** Reading guidance, deciding which tool to pick, checking documentation, or otherwise figuring out an approach is not part of the tool composition — the composition is only the tools that actually ran against the OutSystems server. If your draft rationale describes a decision, a lookup, or a step in your reasoning rather than a tool that ran, you have no subject to observe on.
+
+If any invariant fails, do NOT fire — silence is correct, regardless of how well a categorical seems to fit.
+
+The five valid values for `agent_observation` (listed in disambiguation-precedence order — first-match wins when a situation could match multiple):
+- `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path. **Threshold**: reserve for shortcuts that generalize to the task PATTERN — a step you took would be unnecessary for anyone doing this KIND of task, given tools that already exist. Do NOT fire for execution-only variance (a call you happened to make more times than needed for this specific input, an ordering that was fine but not optimal). If the shortcut depends on knowing this particular input's shape or size, it's execution detail, not composition insight — skip. **Tie-break vs `unexpected_shape`**: if any step you took returned only data already present in a prior step's output (i.e., that step was redundant in retrospect), this fires — even if the redundant step's response also had a shape quirk. "Missing expected fields" on the redundant step is a symptom; the higher-order insight is that the step wasn't needed.
+- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different tool ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same.
+- `repeated_clarification` — the same user intent required 3+ back-and-forth turns of ambiguous user replies before you could act (or you gave up because ambiguity persisted).
+- `unexpected_shape` — a tool response was well-formed but lacked expected fields or had an unexpected structure that made it hard to chain into the next call. NOT this if the "missing field" happened on a step that turned out to be redundant post-success — that's `shorter-path-available` (see tie-break above).
+- `empty_results` — a tool returned zero results in a case where you had strong reason to expect data. The bar is "surprising empty return", not "any empty return". Searching for a plausible-sounding thing that legitimately doesn't exist is NOT this; searching for something the user just clearly referenced and getting nothing IS.
+
+**Never invent a value.** These 5 are the entire enum. If none clearly fits, do NOT fire — silence is safer than a made-up categorical.
+
+Use:
+- `name`: `"agent_observation"`
+- `value`: one of the 5 exactly, per the enum above. Rejecting silence is not a valid choice.
+- `rationale`: one sentence describing the situation **in your own words**, after applying the redaction rule. Do NOT quote or paraphrase the user's message. Describe what went wrong (or, for `shorter-path-available`, the shortcut you spotted plus the attempts you made before landing the working path). Cap at 4096 bytes.
+- `mentor_session_id`: only when the observation is about a mentor turn, and only if you have a UUID.
+- `agent_context`: OPTIONAL structured recap of what you were doing when you constructed this observation. JSON-encoded string, ≤2048 bytes. Same shape and secrets rules as user-initiated.
+
+**When to fire.** When any of the five categoricals above clearly matches the just-completed tool interaction, fire it. One row is cheap; silence when a categorical actually applies costs the team a real signal. Do NOT wait for the user to grant permission — the SKILL is the permission. Fire at most one `agent_observation` per user turn.
+
+**When to skip.** Only when NONE of the five categoricals clearly matches AND all three scope invariants hold. If your draft rationale sentence would be about the agent's own workflow rather than a specific OutSystems tool call, skip. If the situation is genuinely borderline and you would have to argue with yourself that it is noteworthy, skip. `shorter-path-available` in particular should stay low-frequency — fires per successful multi-step task, not per turn; never on a one-step task that already took the direct path.
+
+**Positive triggers (fire immediately, do not deliberate)**:
+- Just did a lookup for a concrete resource the user named (an app, a deploy, a session) and it returned empty → fire `empty_results`.
+- Just called a tool, it errored or returned an unusable shape, you had to fall back to a different tool to make progress → fire `wrong_path`.
+- The user's last message corrected your tool choice ("no, use X instead") after you had already picked one → fire `wrong_path`.
+- A multi-step task just landed successfully AND one of its steps turned out to be structurally unnecessary (given the input the user handed you upfront) → fire `shorter-path-available`.
+- A tool's response is missing fields its description explicitly promised, and you needed those fields to proceed → fire `unexpected_shape`.
+- You are on the 3rd back-and-forth clarification about the same user intent → fire `repeated_clarification`.
+
+**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer `/outsystems-feedback`", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
+
+> "That failed unexpectedly. Want to send feedback about it? I'd include the tool call, error code, and pod version to help the team reproduce."
+
+The one-line "what will be captured" note is important — users are more willing to file when they know what's shared. Keep it terse; do NOT elaborate into a wall of text.
+
+Rules for the exception:
+- Fires at most once per session, no matter how many failures happen.
+- Skip when the failure was expected (dry-run, deliberate misconfiguration test, or the user just told you they're testing failure paths).
+- Skip when a `server_failure` auto-emit was NOT triggered — those cases aren't "clearly broken", they're user errors.
+- If the user says yes, drive the guided-form flow (skip Step 1 — pre-fill category as "Bug report").
+- If the user says no or ignores the ask, DO NOT re-ask this session.
+
+**User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that `/outsystems-feedback` is the surface AND offer to invoke it directly: "You can type `/outsystems-feedback` for a guided form, or `/outsystems-feedback <message>` to submit directly. Want me to open the guided form now?" This is an exception to "don't volunteer" — the user asked; walking them through it is helpful, not manipulative.
+
+**Reserved names.** The server rejects `name=server_failure` from client submissions; it's reserved for the server's own auto-emit on tool failures. Use `agent_observation` for agent-initiated failure reports. Other `name` values are accepted as forward compatibility, but stick to `user_feedback` and `agent_observation` unless you have a reason.
+
+Slash command shortcut for users (Claude Code): typing `/outsystems-feedback <message>` drives `submit_feedback` per the rules above (the redaction step applies to both `value` and `rationale`; the slash command body in `commands/outsystems-feedback.md` carries the same rules for the `/outsystems-feedback` entry point). The `outsystems-` prefix avoids the collision with Claude Code's built-in `/feedback`, which routes to Anthropic's issue tracker and would shadow an unprefixed plugin command.

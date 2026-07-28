@@ -30,3 +30,20 @@ All three counts must be equal. If they aren't, the change is incomplete and the
 ### Exception: setup / installation flows
 
 Setup steps legitimately diverge between the three (Claude Code uses `claude mcp add`, Kiro Power patches `~/.kiro/settings/mcp.json`, the root SKILL.md describes the wire-level tool names without prescribing a host). The lockstep rule applies to `## Rules` and to behavioral guidance, not to host-specific install recipes.
+
+### Exception: host-specific affordances
+
+Host-specific UI surfaces (typed shortcuts, hotkeys) live only in the doc for the host that has them. The Claude Code marketplace plugin ships slash commands under `commands/` (declared in `.claude-plugin/plugin.json`'s `commands` key); Kiro Powers do not have an equivalent. So mentions of `/outsystems-feedback` and similar slash-command trigger phrases belong only in `skills/outsystems/SKILL.md`, not in `kiro/outsystems/steering/skill.md` or root `SKILL.md`. The underlying *behavior* (what the agent does on the trigger) still has to lockstep across all three docs.
+
+Naming note: slash-command filenames become the command name a user types. Claude Code ships a built-in `/feedback` that routes to Anthropic's issue tracker, so a plugin file named `commands/feedback.md` is shadowed by the host and never fires. Every plugin slash MUST be prefixed with `outsystems-` (`commands/outsystems-feedback.md` → `/outsystems-feedback`) so the host-vs-plugin collision surface is closed by the file name alone.
+
+`commands/` is a Claude-Code-plugin-only directory. There is no Kiro analog and no root analog; do not create one. Behavioral guidance about a command's effect still lands in all three skill docs per the main lockstep rule.
+
+### Manifest version lockstep
+
+Two files declare the plugin version and they must stay in sync on every bump:
+
+- `.claude-plugin/plugin.json` -> `version`
+- `.claude-plugin/marketplace.json` -> `plugins[0].version`
+
+`claude plugin update outsystems@outsystems` keys off `marketplace.json`'s version. Forgetting to bump it means users already on the prior version see "already at the latest" and never pull the new content. Always bump both in the same commit.
