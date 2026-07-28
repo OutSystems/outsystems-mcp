@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for two AI assistant harnesses — Claude Code (via a plugin) and Kiro (via a Power) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `kiro/`, and `skills/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for three AI assistant harnesses — Claude Code (via a plugin), Kiro (via a Power), and GitHub Copilot (via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `kiro/`, `copilot/`, and `skills/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
@@ -10,6 +10,7 @@ This is a distribution-only repository. It packages the OutSystems MCP integrati
 - At least one of the supported harnesses installed locally, to manually verify changes:
   - **Claude Code** (any recent version) for plugin/skill changes.
   - **Kiro 0.11.133 or newer** for Power changes.
+  - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
 - An OutSystems tenant you can authenticate against (e.g. `mycompany.outsystems.dev`) for end-to-end verification.
 
 ## Getting Started
@@ -21,7 +22,7 @@ git clone https://github.com/OutSystems/outsystems-mcp.git
 cd outsystems-mcp
 ```
 
-There is nothing to install or build. The files under `.claude-plugin/`, `kiro/`, and `skills/` are the source of truth.
+There is nothing to install or build. The files under `.claude-plugin/`, `kiro/`, `copilot/`, and `skills/` are the source of truth.
 
 ## Repository Structure
 
@@ -29,20 +30,23 @@ There is nothing to install or build. The files under `.claude-plugin/`, `kiro/`
 .claude-plugin/
   marketplace.json        # Claude Code marketplace manifest (lists the plugin)
   plugin.json             # Claude Code plugin manifest (name, version, skills dir)
-skills/
-  outsystems/
-    SKILL.md              # Agent-facing skill loaded by the Claude Code plugin
+copilot/
+  mcp.json                # Copilot MCP server configuration
+  skill.md                # Agent guidance for Copilot
 kiro/
   outsystems/
     POWER.md              # User-facing Kiro Power manifest (onboarding + troubleshooting)
     icon.png              # Logo shown in Kiro's Powers UI
     steering/
       skill.md            # Agent steering content loaded into Kiro Chat
-SKILL.md                  # Generic skill content for non-Claude-Code / non-Kiro harnesses
+skills/
+  outsystems/
+    SKILL.md              # Agent-facing skill loaded by the Claude Code plugin
+SKILL.md                  # Generic skill content for non-Claude-Code / non-Kiro / non-Copilot harnesses
 README.md                 # Install instructions for each supported harness
 ```
 
-`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, and the root `SKILL.md` overlap heavily in intent (they all describe the same MCP tools and conventions). Keep them aligned when changing tool semantics, but each is tailored to its harness — don't blindly copy edits across them.
+`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, and the root `SKILL.md` overlap heavily in intent (they all describe the same MCP tools and conventions). Keep them aligned when changing tool semantics, but each is tailored to its harness — don't blindly copy edits across them.
 
 ## Development Workflow
 
@@ -69,7 +73,7 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`, `POWER`.
 ### Pull requests
 
 1. Create a branch from `main`.
-2. Make your changes. If you touch tool semantics, update every place that documents them (`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, and the root `SKILL.md`) so the three stay aligned.
+2. Make your changes. If you touch tool semantics, update every place that documents them (`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, and the root `SKILL.md`) so they stay aligned.
 3. Open a PR targeting `main`.
 4. Verify the change in at least one supported harness (see "Testing" below) and describe what you tested in the PR body.
 5. After review and merge, the version bump goes out as the next release (see "Releases").
@@ -93,9 +97,13 @@ Restart Claude Code, register the MCP server with `claude mcp add` (see the `REA
 
 Point a local registry file at your checkout (Option A in `kiro/outsystems/POWER.md`), restart Kiro, and run an OutSystems-related prompt in Kiro Chat. Verify the agent walks through the tenant prompt and OAuth flow on first use, and that the Power appears in Kiro's Powers UI.
 
+### GitHub Copilot (VS Code, CLI, or Visual Studio)
+
+Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for VS Code / Visual Studio user config or Copilot CLI config), restart the application or reload the MCP servers, and run an OutSystems-related prompt end-to-end. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app.
+
 ### Generic harnesses
 
-For changes to the root `SKILL.md`, fetch it the way the install snippet does (`curl https://raw.githubusercontent.com/...`) and confirm it parses as plain markdown and doesn't reference Claude-Code-specific or Kiro-specific affordances.
+For changes to the root `SKILL.md`, fetch it the way the install snippet does (`curl https://raw.githubusercontent.com/...`) and confirm it parses as plain markdown and doesn't reference Claude-Code-specific, Kiro-specific, or Copilot-specific affordances.
 
 ## Code Standards
 

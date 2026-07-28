@@ -106,8 +106,7 @@ Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
 
 ## Install - M365 Copilot (web browser)
 
-Currently, this assistant does not support custom mcp servers.
-
+Currently, this assistant does not support custom MCP servers.
 
 ## Install - other AI assistants (best effort)
 

@@ -32,13 +32,14 @@ Steps:
      ```
      Or run: `copilot mcp add --transport http outsystems <URL>`.
 5. After the edit, the surface picks up the server (VS Code/VS re-query on save; the CLI adds it immediately). The OAuth flow runs on the first OutSystems tool call — see Authenticating.
+6. **Retry the user's original request** once authentication completes.
 
 ## Authenticating
 
 The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.** How you sign in depends on the harness:
 
 - **GitHub Copilot / VS Code** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
-- **Visual Studio** does not auto-open the browser on first call: tell the user to open `.mcp.json`, click the **Manage Authentication** CodeLens on the `outsystems` server entry, and complete the browser sign-in. After that, tool calls proceed as normal.
+- **Visual Studio** does not auto-open the browser on first call: tell the user to open the Tools picker and ENABLE the `outsystems` tools, and complete the browser sign-in. After that, tool calls proceed as normal.
 - **Copilot CLI** runs the OAuth flow on the first tool call (opens the system browser and listens on an ephemeral `localhost` port for the callback). A browser must be reachable on the same machine.
 
 **Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
