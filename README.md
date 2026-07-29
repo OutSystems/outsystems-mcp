@@ -68,7 +68,7 @@ Step 2: open my user MCP config (behind `MCP: Open User Configuration`) or creat
 {"outsystems": {"type": "http", "url": "https://<my-tenant>/mcp"}}
 Do NOT add an `oauth.clientId` — the server supports Dynamic Client Registration and VS Code registers its own client automatically.
 Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in my workspace. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
-Step 4: tell me to open `.vscode/mcp.json`, check for `outsystems` and start it. A browser opens automatically for OAuth on first connection.
+Step 4: tell me to open the MCP config I edited (either `.vscode/mcp.json` or the user configuration behind `MCP: Open User Configuration`), check for `outsystems` under `servers`, and start it. A browser opens automatically for OAuth on first connection.
 Step 5: then tell me to ask `list 10 of my outsystems apps` to ensure it is working
 ```
 

@@ -31,7 +31,7 @@ Steps:
      {"outsystems": {"type": "http", "url": "<URL>", "tools": ["*"]}}
      ```
      Or run: `copilot mcp add --transport http outsystems <URL>`.
-5. After the edit, the surface picks up the server (VS Code/VS re-query on save; the CLI adds it immediately). The OAuth flow runs on the first OutSystems tool call — see Authenticating.
+5. After the edit, the surface picks up the server (VS Code/VS re-query on save; for an already-running Copilot CLI session, tell the user to run `/mcp reload` to load the updated config). The OAuth flow runs on the first OutSystems tool call — see Authenticating.
 6. **Retry the user's original request** once authentication completes.
 
 ## Authenticating
@@ -170,7 +170,7 @@ When you redact, tell the user what you replaced.
 - `rationale`: the user's words (or your summary if they were verbose), after applying the redaction rule. Cap at 4096 bytes; truncate the tail and tell the user if it was longer.
 - `mentor_session_id`: pass the most-recent `mentor_session_id` you've worked with in THIS conversation, when one exists. **Must be a UUID** (server rejects non-UUID strings). Omit when there's no relevant mentor session in scope; the server has a per-user auto-fallback that supplies the most-recent one on this pod.
 - `mentor_turn_id`: optional opaque per-turn id (≤256 bytes), one level finer than `mentor_session_id`. Pass the `runId` from the most-recent mentor tool response the user is reacting to. Do NOT guess; if you lost track of which turn the user meant, omit it — silence is safer than a wrong-turn tag. There is NO server-side auto-fallback here (unlike session id); you are the only source of ground truth.
-- `experiment_id`: optional opaque A/B experiment tag (≤128 bytes). Include only when the plugin / harness is running an experiment the caller wants tagged. Omit for regular feedback.
+- `experiment_id`: optional opaque A/B experiment tag (≤128 bytes). Include only when the harness is running an experiment the caller wants tagged. Omit for regular feedback.
 - `agent_context`: OPTIONAL structured recap of what you were doing when the user asked for feedback. JSON-encoded string, ≤2048 bytes. Suggested shape:
   ```json
   {
@@ -186,7 +186,7 @@ When you redact, tell the user what you replaced.
     }
   }
   ```
-  The `error_details` sub-key is a convention (not enforced by the server): when the feedback is about a specific failure, include the verbatim error message + which step it fired on. Downstream triage can slice by `error_details.step` without paraphrasing loss. Redact secrets / PII in `error_details.message` per the redaction step. **Clarify with the user before including.** When the feedback message is clearly about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (env_info, publish_start with code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach.
+  The `error_details` sub-key is a convention (not enforced by the server): when the feedback is about a specific failure, include the verbatim error message + which step it fired on. Downstream triage can slice by `error_details.step` without paraphrasing loss. Redact secrets / PII in `error_details.message` per the redaction step. **Clarify with the user before including.** When the feedback is about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (env_info, publish_start with code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach.
 
 **Correlation-id offer (mandatory when the user's message hints).** When the user's feedback message contains `session` / `mentor session` (hint for `mentor_session_id`) or `turn` / `mentor turn` / `trace` / `runId` / `run` (hint for `mentor_turn_id`), the agent MUST include an offer in its reply. Silently omitting the correlation without acknowledging the hint is not acceptable.
 
@@ -246,19 +246,16 @@ Use:
 - A tool's response is missing fields its description explicitly promised, and you needed those fields to proceed → fire `unexpected_shape`.
 - You are on the 3rd back-and-forth clarification about the same user intent → fire `repeated_clarification`.
 
-**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer `/outsystems-feedback`", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
+**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer feedback", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
 
 > "That failed unexpectedly. Want to send feedback about it? I'd include the tool call, error code, and pod version to help the team reproduce."
-
-The one-line "what will be captured" note is important — users are more willing to file when they know what's shared. Keep it terse; do NOT elaborate into a wall of text.
 
 Rules for the exception:
 - Fires at most once per session, no matter how many failures happen.
 - Skip when the failure was expected (dry-run, deliberate misconfiguration test, or the user just told you they're testing failure paths).
 - Skip when a `server_failure` auto-emit was NOT triggered — those cases aren't "clearly broken", they're user errors.
-- If the user says yes, drive the guided-form flow (skip Step 1 — pre-fill category as "Bug report").
 - If the user says no or ignores the ask, DO NOT re-ask this session.
 
-**User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that feedback can be submitted and offer to help: tell the user you can submit feedback via the MCP tool. When you're about to submit, follow the workflow rules above.
+**User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that `submit_feedback` is the surface AND offer to invoke it directly. This is an exception to "don't volunteer" — the user asked; walking them through it is helpful, not manipulative.
 
 **Reserved names.** The server rejects `name=server_failure` from client submissions; it's reserved for the server's own auto-emit on tool failures. Use `agent_observation` for agent-initiated failure reports. Other `name` values are accepted as forward compatibility, but stick to `user_feedback` and `agent_observation` unless you have a reason.
