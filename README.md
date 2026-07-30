@@ -17,49 +17,96 @@ Install the OutSystems outsystems-mcp plugin from OutSystems/outsystems-mcp on G
 Step 1: run `claude plugin marketplace add OutSystems/outsystems-mcp`.
 Step 2: run `claude plugin install outsystems@outsystems`.
 Step 3: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 4: when I tell you, run `claude mcp add -s user --transport http --client-id service_studio --callback-port 7890 outsystems https://<my-tenant>/mcp` (substitute my actual tenant for `<my-tenant>`).
-Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; you'll drive the OAuth flow automatically via Claude Code's synthesized `authenticate` tool (a client convenience, not a server tool). Do NOT tell me to run `/mcp -> outsystems -> Authenticate` manually.
+Step 4: when I tell you, run `claude mcp add -s user --transport http outsystems https://<my-tenant>/mcp` (substitute my actual tenant for `<my-tenant>`). Add no `--client-id` and no `--callback-port`: the server supports OAuth Dynamic Client Registration, so Claude Code registers its own client on an ephemeral loopback port.
+Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; you'll drive the OAuth flow automatically via Claude Code's synthesized `authenticate` tool (a client convenience, not a server tool). If that doesn't trigger, or a call fails with an auth error, tell me to run `/mcp -> outsystems -> Authenticate` manually as the fallback.
 ```
 
 After install, you can also type `/outsystems-feedback <message>` in Claude Code to send feedback about the agent experience so the maintainers can act on it. The slash command is Claude-Code-only (and uses the `outsystems-` prefix so it doesn't collide with Claude Code's built-in `/feedback`, which routes to Anthropic's issue tracker); on other harnesses, ask the agent in plain language ("send a thumbs-up about the OutSystems agent") and it will invoke the underlying `submit_feedback` MCP tool.
 
 ## Install - Claude Desktop
 
+Claude Desktop connects to remote MCP servers natively, so there is nothing to install and no config file to edit. Do this in the UI:
+
+1. Open **Settings > Connectors**.
+2. Click **Add custom connector**.
+3. Enter `https://<my-tenant>/mcp`, substituting your OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+4. Click **Add**. The first OutSystems tool call opens a browser for OAuth sign-in.
+
+Available on Free, Pro, Max, Team and Enterprise, with Free limited to one custom connector.
+
+**On a Team or Enterprise plan you may not see "Add custom connector" at all.** Adding custom connectors is an organization-level permission: an Owner adds the connector in **Admin settings > Connectors** and members then click **Connect** on it. If your organization has custom connectors disabled entirely, no member can add one and neither can an Owner without changing that policy. Ask an organization Owner before assuming the connector path is unavailable to you.
+
+<details>
+<summary>Fallback: organization policy blocks custom connectors, or your tenant is not reachable from the public internet</summary>
+
+Two situations need a local proxy instead:
+
+- Your organization disallows custom connectors.
+- Your tenant is VPN-only or IP-allowlisted. A custom connector is reached from Anthropic's cloud rather than from your machine, so Anthropic cannot connect to a tenant that is not publicly reachable.
+
 Paste into Claude Desktop (requires Node.js with `npx` available on your machine):
 
 ```
-Install the OutSystems MCP server in Claude Desktop.
-Step 1: install `mcp-remote` globally: `npm install -g mcp-remote`. This is idempotent — safe to run even if already installed.
+Install the OutSystems MCP server in Claude Desktop via a local proxy.
+Step 1: install `mcp-remote` globally: `npm install -g mcp-remote`. This is idempotent, safe to run even if already installed.
 Step 2: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 3: locate the Claude Desktop config file — macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
+Step 3: locate the Claude Desktop config file. macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
   - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp"]}`
   - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp"]}`
 Substitute my actual tenant hostname for `<my-tenant>`. Write the file back.
-Step 4: tell me to restart Claude Desktop. After restarting, the first OutSystems tool call will open a browser window for OAuth sign-in — complete the sign-in when prompted.
+Step 4: tell me to restart Claude Desktop. After restarting, the first OutSystems tool call will open a browser window for OAuth sign-in; complete the sign-in when prompted.
 ```
 
-> **Note:** Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in your terminal. If the server fails to connect after restart, find the full path to `npx` (run `which npx` on macOS/Linux or `where npx` on Windows) and replace `"npx"` in the config with that full path (e.g. `/opt/homebrew/bin/npx`).
+Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in your terminal. If the server fails to connect after restart, find the full path to `npx` (run `which npx` on macOS/Linux or `where npx` on Windows) and replace `"npx"` in the config with that full path (e.g. `/opt/homebrew/bin/npx`).
+
+</details>
+
+> **Note:** neither path installs the OutSystems conventions doc, so Claude Desktop gets the tools without the usage guidance the other harnesses receive. Read [SKILL.md](SKILL.md) if you want the conventions, and expect to confirm destructive operations yourself rather than being prompted.
 
 ## Install - Kiro Chat
 
-Paste into Kiro Chat:
+Install the Power yourself from the Powers panel: **Add Custom Power** > **Import power from GitHub**, paste the URL below, then **Install**.
+
+```
+https://github.com/OutSystems/outsystems-mcp/tree/main/kiro/outsystems
+```
+
+Then paste into Kiro Chat:
+
+```
+Finish setting up the OutSystems Power in Kiro.
+Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+Step 2: when I tell you, set the URL `https://<my-tenant>/mcp` in ~/.kiro/settings/mcp.json under top-level `mcpServers.outsystems` (read first, preserve every other entry): `{"type": "http", "url": "https://<my-tenant>/mcp"}`.
+Step 3: tell me the OAuth sign-in opens automatically on the next OutSystems tool call. Kiro runs the flow itself and opens the browser for the localhost callback; I just complete the sign-in when prompted. There is no `authenticate` tool to call in Kiro.
+```
+
+The tenant URL goes under the **top-level** `mcpServers`, not under `powers.mcpServers`. Kiro rewrites the whole `powers` block on every Power install, uninstall or update, so a URL stored there is lost on the next update; a URL at the top level is untouched.
+
+<details>
+<summary>Alternative: install via a registry file (adds the icon to the Powers list)</summary>
+
+The GitHub import registers the Power without an icon. If you want the OutSystems logo in the Powers list, register it yourself instead. Paste into Kiro Chat:
 
 ```
 Install the OutSystems Power from https://github.com/OutSystems/outsystems-mcp.
 Step 1: clone the repo to ~/git/outsystems-mcp if it isn't there yet: `git clone https://github.com/OutSystems/outsystems-mcp.git ~/git/outsystems-mcp`.
 Step 2: base64-encode ~/git/outsystems-mcp/kiro/outsystems/icon.png with `base64 -w0` (Linux) or `base64 -i` (macOS). Then write ~/.kiro/powers/registries/outsystems.json with this content (substitute the literal value of $HOME, and inline the base64 string in place of <ICON_BASE64>):
 {"name":"OutSystems","type":"local","powers":[{"name":"outsystems","displayName":"OutSystems - MCP","description":"Edit, publish, deploy OutSystems apps from your AI assistant.","iconUrl":"data:image/png;base64,<ICON_BASE64>","source":{"type":"local","path":"$HOME/git/outsystems-mcp/kiro/outsystems"},"autoInstall":true}]}
-Step 3: tell me to restart Kiro so it auto-installs the Power.
-Step 4: after the restart, ask me for my OutSystems tenant hostname.
-Step 5: when I tell you, set the URL `https://<my-tenant>/mcp` in ~/.kiro/settings/mcp.json under top-level `mcpServers.outsystems` (read first, preserve every other entry): `{"type": "http", "url": "https://<my-tenant>/mcp", "timeout": 100000}`.
-Step 6: tell me the OAuth sign-in opens automatically on the next OutSystems tool call — Kiro runs the flow itself and opens the browser for the localhost callback; I just complete the sign-in when prompted. There is no `authenticate` tool to call in Kiro.
+Step 3: Kiro watches that directory and installs the Power within a few seconds. Restart only if it doesn't appear.
+Step 4: then complete Steps 1 to 3 of the main recipe above to set the tenant URL.
 ```
+
+The icon has to be inlined as base64 because Kiro's Powers view only loads images from `data:` URIs or its own CDN, so a `raw.githubusercontent.com` URL will not render.
+
+</details>
 
 ## Install - Copilot in VS Code
 
 > On a Copilot Business/Enterprise plan, an admin must enable the "MCP servers in Copilot" policy.
 
-Paste into VS Code copilot chat:
+One-click: [**Add the OutSystems MCP server to VS Code**](https://vscode.dev/redirect/mcp/install?name=outsystems&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2F%24%7Binput%3Aos_tenant%7D%2Fmcp%22%7D&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22os_tenant%22%2C%22description%22%3A%22Your%20OutSystems%20tenant%20hostname%20%28e.g.%20mycompany.outsystems.dev%29%22%7D%5D). VS Code prompts you for your tenant hostname the first time the server starts and remembers it after that. You still need the conventions doc, so run Step 3 of the recipe below afterwards.
+
+Or paste into VS Code copilot chat:
 
 ```
 Install the OutSystems MCP server in VS Code Copilot.
@@ -122,3 +169,37 @@ Step 3: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/S
 Step 4: trigger authentication. If the harness synthesizes per-server `authenticate` / `complete_authentication` tools after registration (as Claude Code does — they're a client convenience, not server tools), call those (lazy on first tool call). Otherwise let the harness's built-in MCP auth UI handle the OAuth handshake.
 Step 5: depending on the harness, the new MCP server may not be visible until you reload its MCP config or restart. If the harness has a CLI to list registered MCP servers (similar to `claude mcp list`), run it to check whether `outsystems` is visible — if not, tell me to restart the harness. Once the tools appear, ask me anything OutSystems-related to confirm the install is complete.
 ```
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+| :-- | :-- |
+| Tool calls fail with `403` and `tenant_not_allowed` | Your tenant is not yet enabled for the MCP server. This is a server-side allowlist and no amount of reinstalling changes it. Ask your OutSystems contact to have the tenant enabled, or open an issue here with the tenant hostname. |
+| The `authenticate` tool isn't loaded (Claude Code) | The MCP server isn't registered, or the session started before it was. Run `claude mcp list` and confirm `outsystems` appears. If it does, restart Claude Code. If it doesn't, re-run Step 4 of the Claude Code recipe. |
+| Auth never triggers in a non-interactive session | The OAuth flow needs a browser and a loopback callback, so it cannot complete in a headless or piped session. Authenticate once in an interactive session first; the token is reused afterwards. |
+| "Server Disconnected" or "failed authorization" | Usually a stale or partial OAuth grant. Run the reset below. If it persists, the tenant hostname is likely wrong: confirm it resolves and that `https://<my-tenant>/mcp` returns `401` rather than `404`. |
+| Nothing connects on Windows, or `npx` is "not found" | Applies to the Claude Desktop local-proxy fallback only. Claude Desktop launches processes with a minimal PATH. Replace `"npx"` in the config with the absolute path from `where npx`. |
+| Tools are listed but greyed out (Visual Studio) | MCP tools are disabled by default. Enable them in the Tools picker. |
+| Nothing appears at all on a Copilot Business or Enterprise plan | An admin must enable the "MCP servers in Copilot" policy. |
+| No "Add custom connector" button in Claude Desktop | Adding custom connectors is an organization-level permission. An Owner adds it in **Admin settings > Connectors**, or your organization has custom connectors disabled. Use the local-proxy fallback in the Claude Desktop section meanwhile. |
+
+### Reset
+
+When an install is wedged and updates don't stick, do a clean cycle rather than reinstalling on top:
+
+1. Remove the server: `claude mcp remove -s user outsystems` (Claude Code), or delete the `outsystems` entry from the relevant config file on other harnesses.
+2. Uninstall the plugin or Power, if you installed one.
+3. Clear the host's cache (in Claude Desktop: **Help > Troubleshooting > Clear cache**).
+4. Restart the host.
+5. Reinstall from the recipe above.
+
+### Getting logs
+
+Attach these when opening an issue; they are what makes a report actionable.
+
+- **Claude Code**: `claude mcp list` output, plus `claude --debug` for a failing session.
+- **Claude Desktop**: `~/Library/Application Support/Claude/logs/` on macOS, `%APPDATA%\Claude\logs\` on Windows, `~/.config/Claude/logs/` on Linux. There is a per-server log file alongside the main one.
+- **VS Code**: the MCP server output channel, via `MCP: List Servers` then **Show Output**.
+- **Kiro**: the Powers and MCP output channels.
+
+Redact your tenant hostname and any bearer tokens before posting.
