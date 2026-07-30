@@ -2,6 +2,38 @@
 
 Guidance for Claude Code (and other coding agents) when working in this repository.
 
+## Supported harnesses
+
+`README.md` ships an install path per harness. This table is the canonical list of what "all supported harnesses" means. Update it in the same PR that adds or drops a path.
+
+| Harness | Skill doc | How the skill doc arrives | MCP config target | Server key |
+| :-- | :-- | :-- | :-- | :-- |
+| Claude Code | `skills/outsystems/SKILL.md` | automatic, via `plugin.json`'s `skills` key | user scope, written by `claude mcp add` | n/a |
+| Claude Desktop | none | **not delivered** | `claude_desktop_config.json` | `mcpServers` |
+| Kiro Chat | `kiro/outsystems/steering/skill.md` | automatic, via the Power's `steering/` directory | `~/.kiro/settings/mcp.json` | `mcpServers` |
+| Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
+| Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
+| Copilot in Visual Studio | `copilot/skill.md` | manual download to `.github/copilot-instructions.md` | `<SolutionDir>\.mcp.json`, or `%USERPROFILE%\.mcp.json` | `servers` |
+| M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
+| Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
+
+Two traps the table encodes:
+
+- **`servers` vs `mcpServers`.** VS Code and Visual Studio read `servers`; Copilot CLI, Kiro, and Claude Desktop read `mcpServers`. `copilot/mcp.json` carries both keys so each surface copies the one it needs. Writing the wrong key fails silently: the file still parses and no server appears.
+- **Claude Desktop receives no skill doc.** Its install path wires up the MCP server and nothing else, so Desktop users get the tools without the conventions, the confirm-before-destructive rule included. Every behavioral rule below reaches every harness except that one.
+
+### Validate every change against every supported harness
+
+A change is not done because it works in the harness you happened to test. Before opening a PR, walk the table and account for every row. Exactly three outcomes are acceptable per harness: verified, not applicable with the reason, or a recorded gap with a follow-up. Silence on a row is none of the three.
+
+What "verified" requires depends on what the change touches:
+
+- **Skill-doc wording** -> the lockstep grep below, plus a read of the affected section in each doc that carries it.
+- **MCP server config** -> resolve the config on that harness and confirm the server appears with the URL you expect, using whatever the harness offers (`claude mcp list`, Kiro's MCP panel, `/mcp show outsystems` in Copilot CLI, the VS Code MCP view). A config that parses is not a config that loaded.
+- **Install recipe** -> run the pasted prompt end to end on that harness, from no configuration to a successful tool call.
+
+Harnesses differ in ways that break otherwise-correct changes: the config key (`servers` vs `mcpServers`), the file location, whether tools are enabled by default (Visual Studio disables them), whether an admin policy gates MCP at all (Copilot Business/Enterprise), and whether the harness synthesizes its own `authenticate` tool or drives OAuth itself. Assume none of these transfer between harnesses without checking.
+
 ## Skill docs must stay in lockstep across hosts
 
 This repo ships **four parallel skill documents**:
@@ -11,7 +43,7 @@ This repo ships **four parallel skill documents**:
 - `copilot/skill.md` is the GitHub Copilot skill doc, consumed by GitHub Copilot (VS Code, CLI, or Visual Studio).
 - `SKILL.md` at the repo root is the top-level fallback skill doc, consumed by hosts that look at the repo root or by anyone reading the repo on GitHub.
 
-All four carry an identical `## Rules` section, and broadly the same `## Tools at a glance`, `## Caveats`, and `## Workflows` sections. **Any behavioral change to one MUST be applied to all four.** Updating only one creates a host-specific protection gap. For example, a confirm-before-destructive rule added to `skills/outsystems/SKILL.md` alone protects Claude Code users but leaves Kiro Power and Copilot users (which is how OutSystems uses the skill internally) with no protection.
+All four carry an identical `## Rules` section, and broadly the same `## Tools at a glance`, `## Caveats`, and `## Workflows` sections. **Any behavioral change to one MUST be applied to all four.** Updating only one creates a host-specific protection gap. For example, a confirm-before-destructive rule added to `skills/outsystems/SKILL.md` alone protects Claude Code users but leaves Kiro Power and Copilot users with no protection.
 
 The common failure mode is to edit only `skills/outsystems/SKILL.md` because the marketplace install path points there. Don't.
 
