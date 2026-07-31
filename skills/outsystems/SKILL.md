@@ -19,8 +19,9 @@ If the `outsystems` MCP tools aren't visible in your toolset, or a call returns 
 3. **Construct the MCP URL**: `https://<TENANT>/mcp`.
 4. **Register the server.** Run:
    ```
-   claude mcp add -s user --transport http --client-id service_studio --callback-port 7890 outsystems <URL>
+   claude mcp add -s user --transport http outsystems <URL>
    ```
+   Do NOT pass `--client-id` or `--callback-port`. The server supports OAuth Dynamic Client Registration, so the host registers its own client on an ephemeral loopback port. Pinning a fixed callback port makes concurrent sessions contend for it, and the loser fails to bind and re-runs the browser flow instead of completing sign-in.
 5. **Authenticate.** Proceed to the "Authenticating" section below. The agent drives auth via tool calls; the user does NOT click anything in `/mcp`.
 6. **Retry the user's original request** once authentication completes.
 
