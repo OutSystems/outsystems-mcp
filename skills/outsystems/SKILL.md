@@ -21,7 +21,7 @@ If the `outsystems` MCP tools aren't visible in your toolset, or a call returns 
    ```
    claude mcp add -s user --transport http outsystems <URL>
    ```
-   Do NOT pass `--client-id` or `--callback-port`. The server supports OAuth Dynamic Client Registration, so the host registers its own client on an ephemeral loopback port. Pinning a fixed callback port makes concurrent sessions contend for it, and the loser fails to bind and re-runs the browser flow instead of completing sign-in.
+   Do NOT pass `--client-id` or `--callback-port`. The server supports OAuth Dynamic Client Registration, so the host registers its own client on an ephemeral loopback port.
 5. **Authenticate.** Proceed to the "Authenticating" section below. The agent drives auth via tool calls; the user does NOT click anything in `/mcp`.
 6. **Retry the user's original request** once authentication completes.
 
@@ -44,6 +44,14 @@ OAuth-protected. The harness exposes two deferred tools; the agent drives the fl
 **Don't fall back to the `/mcp -> outsystems -> Authenticate` menu** — the deferred tool pair is always available; the menu is the host's emergency fallback.
 
 **If `authenticate` itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
+
+**One exception, at most once per session:** an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. It is often a fixed port pinned by an older setup. Diagnose first with `claude mcp get outsystems`, reading the reported `URL`, `Scope` and `OAuth` line.
+
+- **If it reports a `callback_port`**, that is the pin. This mutates the user's MCP config, so restate the exact change and wait for explicit confirmation before running anything. Read the `URL` and `Scope` first, since you need both to re-register and the removal destroys the entry. Then `claude mcp remove outsystems`, re-register with `-s <the scope you read>` and that URL and no `--client-id` or `--callback-port`, and tell the user to restart Claude Code, because the running session keeps the registration it started with. Re-registering without `-s` would land it in `local` scope and quietly narrow where the server is available.
+  - Never touch a `project` scope yourself: that config is shared with the user's collaborators. Report it and let them decide.
+  - If the removal reports the name in multiple scopes it removed nothing. Re-run it per scope with `-s <scope>` for `local` and `user` only, and stop and report if one of the listed scopes is `project`.
+- **If it reports no `callback_port`**, the pin is not in the MCP config. Do not remove or re-register. Surface the message verbatim, note that a callback-port override in the environment or another process holding the port would both produce it, and point at https://github.com/OutSystems/outsystems-mcp#troubleshooting
+- **If the error survives one cycle**, stop. Surface it and point at the same place. Don't loop.
 
 ## Tools at a glance
 
@@ -80,6 +88,7 @@ Cross-tool behaviors not expressible in a single per-tool description:
 - **Use `data.category`, not message text, for error retry decisions.** Categories: `AuthError`, `ValidationError`, `UpstreamError`, `InternalError`; upstream errors also carry `data.upstream_status`.
 - **Long-running tools return an id; poll for status.** Applies to every deployment operation, publishing, all external-library operations, and mentor runs: the start call returns an id (a mentor run returns a `runId`), and you poll the matching status surface until it's terminal (a mentor run can also be cancelled). Per-tool polling shape is in each tool's live description.
 - **Don't bare-sleep between polls.** Bare `sleep N` is blocked by many harnesses as a context-burning idle wait. Use your harness's background-task / background-sleep mechanism, **then end your turn**; the harness re-invokes you on completion. Calling the next tool right after a background sleep returns synchronously = no pacing. See "Pacing polls" under Mentor for cadence and the cursor pattern.
+- **Never pin the OAuth callback port.** When registering this server, don't put a fixed callback port in the host's MCP config; the server supports Dynamic Client Registration, so let the host choose its own loopback port. A fixed port makes concurrent sessions contend for it, and the loser cannot complete sign-in. If a fixed port is already recorded, removing just that field from the `outsystems` entry in the host's MCP config lets a fresh port be chosen, but that config is the user's, and on several harnesses it is a file shared with their collaborators, so restate the edit and wait for explicit confirmation first and never edit a project-scoped or checked-in config yourself. Never delete a shared credential store such as `~/.mcp-auth` to achieve it: that signs the user out of every MCP server reached through the same local proxy. Recovery beyond editing the host's config is user-driven, not yours to run, and the per-host steps are under Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting.
 
 ## Names
 

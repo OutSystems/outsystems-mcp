@@ -164,7 +164,7 @@ Paste into your harness:
 ```
 Install the OutSystems MCP server.
 Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 2: register `outsystems` as an MCP server in this harness's configuration, pointing at `https://<my-tenant>/mcp` over the streamable HTTP transport. Use whatever wiring the harness prefers — a CLI command (similar to Claude Code's `claude mcp add`), a settings UI, or hand-editing the harness's MCP config file. The server requires OAuth and supports Dynamic Client Registration, so no shared `client_id` setup is needed.
+Step 2: register `outsystems` as an MCP server in this harness's configuration, pointing at `https://<my-tenant>/mcp` over the streamable HTTP transport. Use whatever wiring the harness prefers — a CLI command (similar to Claude Code's `claude mcp add`), a settings UI, or hand-editing the harness's MCP config file. The server requires OAuth and supports Dynamic Client Registration, so no shared `client_id` setup is needed, and do not pin a fixed callback port: let the harness pick its own loopback port.
 Step 3: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and inject its contents into this harness's instructions/rules/system-prompt mechanism (e.g. `AGENTS.md` for Codex CLI, `.cursorrules` for Cursor, the system prompt config for Continue, etc.). The skill covers conventions (OML stays server-side, polling shape for long-running tools, error category enums, mentor session round-trip) that the tool descriptions alone don't fully convey.
 Step 4: trigger authentication. If the harness synthesizes per-server `authenticate` / `complete_authentication` tools after registration (as Claude Code does — they're a client convenience, not server tools), call those (lazy on first tool call). Otherwise let the harness's built-in MCP auth UI handle the OAuth handshake.
 Step 5: depending on the harness, the new MCP server may not be visible until you reload its MCP config or restart. If the harness has a CLI to list registered MCP servers (similar to `claude mcp list`), run it to check whether `outsystems` is visible — if not, tell me to restart the harness. Once the tools appear, ask me anything OutSystems-related to confirm the install is complete.
@@ -176,9 +176,11 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 | :-- | :-- |
 | Tool calls fail with `403` and `tenant_not_allowed` | Your tenant is not yet enabled for the MCP server. This is a server-side allowlist and no amount of reinstalling changes it. Ask your OutSystems contact to have the tenant enabled, or open an issue here with the tenant hostname. |
 | The `authenticate` tool isn't loaded (Claude Code) | The MCP server isn't registered, or the session started before it was. Run `claude mcp list` and confirm `outsystems` appears. If it does, restart Claude Code. If it doesn't, re-run Step 4 of the Claude Code recipe. |
+| Auth fails with `OAuth callback port <port> is already in use ...` (Claude Code) | An earlier setup step pinned a fixed callback port, and the pin sits in your own config, so updating the plugin does not clear it. Run `claude mcp get outsystems` and note the reported URL, which you need to re-add. If it reports a `callback_port`, unpin it in the reset below. If it does not, the pin is not in your MCP config: check for a callback-port override in your environment, then for another process holding the port with `lsof -nP -iTCP:<port> -sTCP:LISTEN`, or `netstat -ano \| findstr :<port>` on Windows. |
 | Auth never triggers in a non-interactive session | The OAuth flow needs a browser and a loopback callback, so it cannot complete in a headless or piped session. Authenticate once in an interactive session first; the token is reused afterwards. |
 | "Server Disconnected" or "failed authorization" | Usually a stale or partial OAuth grant. Run the reset below. If it persists, the tenant hostname is likely wrong: confirm it resolves and that `https://<my-tenant>/mcp` returns `401` rather than `404`. |
 | Nothing connects on Windows, or `npx` is "not found" | Applies to the Claude Desktop local-proxy fallback only. Claude Desktop launches processes with a minimal PATH. Replace `"npx"` in the config with the absolute path from `where npx`. |
+| Browser windows keep reopening, and the proxy log shows `EADDRINUSE` | Applies whenever you reach the server through the `mcp-remote` proxy, which is the Claude Desktop fallback above and any harness you wired up that way. The proxy reuses the callback port saved in its own client registration and exits before sign-in completes, so the host restarts it and no token is ever stored. Clear the saved registration, in the reset below. |
 | Tools are listed but greyed out (Visual Studio) | MCP tools are disabled by default. Enable them in the Tools picker. |
 | Nothing appears at all on a Copilot Business or Enterprise plan | An admin must enable the "MCP servers in Copilot" policy. |
 | No "Add custom connector" button in Claude Desktop | Adding custom connectors is an organization-level permission. An Owner adds it in **Admin settings > Connectors**, or your organization has custom connectors disabled. Use the local-proxy fallback in the Claude Desktop section meanwhile. |
@@ -187,11 +189,31 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 
 When an install is wedged and updates don't stick, do a clean cycle rather than reinstalling on top:
 
-1. Remove the server: `claude mcp remove -s user outsystems` (Claude Code), or delete the `outsystems` entry from the relevant config file on other harnesses.
+1. Write down the whole `outsystems` entry first, on any harness, because removing it destroys the only record of your tenant URL and of any extra proxy arguments, and later steps need both. On Claude Code, `claude mcp get outsystems` prints the URL and the scope. Then remove the server: `claude mcp remove outsystems`, or delete the `outsystems` entry from the relevant config file on other harnesses. Removing it is also what drops a callback port pinned by an earlier setup step. Omitting `-s` clears whichever scope holds the entry; if the name exists in more than one the command removes nothing and lists them, so repeat it per scope with `-s <scope>`, and leave a `project` scope alone if the config is shared with other people.
 2. Uninstall the plugin or Power, if you installed one.
-3. Clear the host's cache (in Claude Desktop: **Help > Troubleshooting > Clear cache**).
+3. Clear the host's cache (in Claude Desktop: **Help > Troubleshooting > Clear cache**). If you reach the server through the `mcp-remote` proxy, also do the following before restarting.
+
+   <details>
+   <summary>Clear the saved proxy registration, only if you reach the server through the mcp-remote proxy</summary>
+
+   The proxy saves its own OAuth client registration under `~/.mcp-auth`, and that record pins the callback port it reuses on every later launch. You do not need to touch that store to clear it: give the proxy a different port on the command line and it discards the stale registration itself.
+
+   1. Quit the host, so it stops relaunching the proxy while you work.
+   2. Pick a port nothing is using. `lsof -nP -iTCP:<port> -sTCP:LISTEN` on macOS or Linux, `netstat -ano | findstr :<port>` on Windows, should print nothing for it.
+   3. Add that port as the last argument of the `outsystems` entry in the host's config, after the URL, for example `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp", "<free port>"]}`.
+   4. Continue with step 4 of the reset. On the next launch the proxy sees a port that disagrees with its saved registration, deletes that registration, and registers again on the port you gave it.
+
+   The proxy always records some port, so this replaces a stuck one rather than switching pinning off; that is an upstream limitation rather than a setting. Removing the argument again later just makes the proxy reuse the port it last recorded. Expect one extra sign-in, because the saved token belonged to the registration that was replaced.
+
+   If a different port does not help, the store itself can be cleared: it lives at `~/.mcp-auth`, or wherever `MCP_REMOTE_CONFIG_DIR` points. Removing it makes every server you reach through this proxy sign in again, so prefer the port change above, and never delete it to work around a port conflict you have not confirmed.
+
+   None of this is a permanent fix. The failure returns if the host exits without shutting the proxy down, leaving an orphaned proxy still running and holding the port. When that happens you do not need this block at all: find the orphan with `lsof -nP -iTCP:<port> -sTCP:LISTEN`, or `netstat -ano | findstr :<port>` on Windows, and stop it. A second proxy started while the first is still running normally waits for it, but only while the first one's lock is under 30 minutes old; past that the wait is skipped and the crash returns. On Windows the proxy never waits at all. The durable fix is proposed upstream but not yet merged, in [mcp-remote PR #262](https://github.com/geelen/mcp-remote/pull/262).
+
+   </details>
+
 4. Restart the host.
-5. Reinstall from the recipe above.
+5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
+6. Reinstall from the recipe above.
 
 ### Getting logs
 
