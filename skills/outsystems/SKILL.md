@@ -138,8 +138,9 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 
 **Publish a new external library:**
 1. Build a .NET 10 lib with `[OSInterface(Name = "<UniqueName>")]` (reusing a name produces a new revision, not a fresh asset). `dotnet publish -c Release`, zip the `.dll` + `.deps.json` at the zip root (no nested folder). Base64-encode the zip.
-2. Upload the library with `zip_b64` and `auto_publish: true`; it returns an operation key.
-3. Poll the external-library status until `Published`. On validation failure, pull the operation logs.
+2. Upload the library with `zip_b64`; it returns an operation key.
+3. Poll the external-library status until `ReadyForReview`. On validation failure, pull the operation logs.
+4. Publish the operation with that same operation key, then poll the status until `Published`.
 
 **Reference an external library from an app:**
 - Just ask mentor: start a run with the `app_key` and a prompt like "Use the <ActionName> action from <LibraryName> in <screen edit>.", then poll the run as usual.

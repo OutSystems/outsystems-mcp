@@ -117,8 +117,9 @@ Workflows below show MCP tool form. Identity (tenant + user) is derived from the
 ### Workflow 4: Publish a new external library
 
 1. Build a .NET 8 lib with `[OSInterface(Name = "<UniqueName>")]`. `dotnet publish -c Release`, zip `.dll` + `.deps.json` at the zip root, base64-encode it.
-2. `extlib_upload { zip_b64: "<base64>", auto_publish: true }` → returns operation key.
-3. Poll `extlib_status { operation_key }` until `Published`. Use `extlib_logs` on validation failure.
+2. `extlib_upload { zip_b64: "<base64>" }` → returns operation key.
+3. Poll `extlib_status { operation_key }` until `ReadyForReview`. Use `extlib_logs` on validation failure.
+4. `extlib_publish { operation_key }`, then poll `extlib_status` until `Published`.
 
 ## Conventions
 
