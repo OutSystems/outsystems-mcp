@@ -10,7 +10,7 @@
     {
       "name": "outsystems",
       "description": "Edit, publish, deploy, and search OutSystems apps from your AI assistant.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "OutSystems AI Platform"
       },
