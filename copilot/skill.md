@@ -46,7 +46,7 @@ The remote MCP server is OAuth-protected with **standard OAuth**: an unauthentic
 
 **Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — re-trigger its sign-in (your client re-prompts on the next call), then retry the original call ONCE. Don't hunt for an auth tool your harness doesn't expose.
 
-**If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
+**If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
 
 ## Tools at a glance
 
@@ -83,6 +83,7 @@ Cross-tool behaviors not expressible in a single per-tool description:
 - **Use `data.category`, not message text, for error retry decisions.** Categories: `AuthError`, `ValidationError`, `UpstreamError`, `InternalError`; upstream errors also carry `data.upstream_status`.
 - **Long-running tools return an id; poll for status.** Applies to every deployment operation, publishing, all external-library operations, and mentor runs: the start call returns an id (a mentor run returns a `runId`), and you poll the matching status surface until it's terminal (a mentor run can also be cancelled). Per-tool polling shape is in each tool's live description.
 - **Don't bare-sleep between polls.** Bare `sleep N` is blocked by many harnesses as a context-burning idle wait. Use your harness's background-task / background-sleep mechanism, **then end your turn**; the harness re-invokes you on completion. Calling the next tool right after a background sleep returns synchronously = no pacing. See "Pacing polls" under Mentor for cadence and the cursor pattern.
+- **Never pin the OAuth callback port.** When registering this server, don't put a fixed callback port in the host's MCP config; the server supports Dynamic Client Registration, so let the host choose its own loopback port. A fixed port makes concurrent sessions contend for it, and the loser cannot complete sign-in. If a fixed port is already recorded, removing just that field from the `outsystems` entry in the host's MCP config lets a fresh port be chosen, but that config is the user's, and on several harnesses it is a file shared with their collaborators, so restate the edit and wait for explicit confirmation first and never edit a project-scoped or checked-in config yourself. Never delete a shared credential store such as `~/.mcp-auth` to achieve it: that signs the user out of every MCP server reached through the same local proxy. Recovery beyond editing the host's config is user-driven, not yours to run, and the per-host steps are under Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting.
 
 ## Names
 
