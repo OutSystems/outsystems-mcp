@@ -11,6 +11,7 @@ This is a distribution-only repository. It packages the OutSystems MCP integrati
   - **Claude Code** (any recent version) for plugin/skill changes.
   - **Kiro 0.11.133 or newer** for Power changes.
   - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
+  - **Cursor CLI** (with `agent` commands available) for Cursor changes.
 - An OutSystems tenant you can authenticate against (e.g. `mycompany.outsystems.dev`) for end-to-end verification.
 
 ## Getting Started
@@ -104,13 +105,17 @@ Point a local registry file at your checkout (Option A in `kiro/outsystems/POWER
 
 Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for VS Code / Visual Studio user config or Copilot CLI config), restart the application or reload the MCP servers, and run an OutSystems-related prompt end-to-end. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app.
 
-### Cursor
+### Cursor CLI
 
-Point your local Cursor installation at the `cursor/mcp.json` file (for user or workspace config in `.cursor/settings.json` or `.vscode/mcp.json`), restart Cursor or reload the MCP servers, and run an OutSystems-related prompt end-to-end. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursorrules` is properly loaded and the conventions are applied.
+Point your local Cursor CLI at the `cursor/mcp.json` file (copy to `~/.cursor/mcp.json` global config or `.cursor/mcp.json` project config, using the `mcpServers` key without `type` field). Run:
+1. `agent mcp list` to verify `outsystems` is registered
+2. `agent mcp enable outsystems` if it shows "needs approval"
+3. `agent mcp login outsystems` to trigger OAuth sign-in
+4. Run an OutSystems-related prompt end-to-end in a new agent session. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursorrules` is properly loaded and the conventions are applied.
 
 ### Generic harnesses
 
-For changes to the root `SKILL.md`, fetch it the way the install snippet does (`curl https://raw.githubusercontent.com/...`) and confirm it parses as plain markdown and doesn't reference Claude-Code-specific, Kiro-specific, or Copilot-specific affordances.
+For changes to the root `SKILL.md`, fetch it the way the install snippet does (`curl https://raw.githubusercontent.com/...`) and confirm it parses as plain markdown and doesn't reference Claude-Code-specific, Kiro-specific, Copilot-specific, or Cursor-specific affordances.
 
 ## Code Standards
 

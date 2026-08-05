@@ -20,23 +20,29 @@ Steps:
 2. **Normalize, then validate.** Accept whatever the user gives you (URL, hostname, hostname-with-path). Strip the scheme (`https://`, `http://`), any leading `www.`, trailing slash, and any path or query — keep only the host. The result must match `^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`. Only ask again if the normalized value is still implausible (empty, contains whitespace, or clearly isn't a hostname). The tenant slug is whatever the user chose; do not assume a fixed pattern.
 3. **Construct the URL**: `https://<TENANT>/mcp`.
 4. **Write it into the right config for the current surface.** Read first, preserve every other entry, write back — never clobber siblings. The canonical shape lives in the repo at `cursor/mcp.json`; copy the entry to the destination below:
-   - **Cursor** → `.cursor/settings.json` (user settings, typically `~/.cursor/settings.json` on macOS/Linux or `%APPDATA%\Cursor\settings.json` on Windows), or `.vscode/mcp.json` (workspace settings). Top-level key **`servers`**:
+   - **Cursor CLI** → `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json` (project config, takes precedence). Top-level key **`mcpServers`** (not `servers`):
      ```
-     {"outsystems": {"type": "http", "url": "<URL>"}}
+     {"outsystems": {"url": "<URL>"}}
      ```
-     No `oauth` block is needed: the server supports Dynamic Client Registration, so Cursor registers its own client and opens the browser sign-in automatically. (A 404 on `/authorize` or a "manually provide a client registration" prompt means the tenant hostname is wrong or its OAuth discovery is misconfigured — re-check the tenant, don't pin a clientId.)
-5. After the edit, the surface picks up the server (Cursor re-queries on save). The OAuth flow runs on the first OutSystems tool call — see Authenticating.
+     Omit `"type": "http"` — Cursor CLI expects only the URL. No `oauth` block is needed: the server supports OAuth discovery + Dynamic Client Registration via `agent mcp login outsystems`. (A 404 on `/authorize` or a "manually provide a client registration" prompt means the tenant hostname is wrong or its OAuth discovery is misconfigured — re-check the tenant, don't pin a clientId.)
+5. Verify the server appears and enable/authenticate it:
+   - Run `agent mcp list` to see registered servers.
+   - If the server shows "needs approval", run `agent mcp enable outsystems`.
+   - Run `agent mcp login outsystems` to trigger OAuth sign-in (opens the browser).
 6. **Retry the user's original request** once authentication completes.
 
 ## Authenticating
 
 The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.** How you sign in depends on the harness:
 
-- **Cursor** exposes **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
+- **Cursor CLI** authentication runs via terminal commands (not inside the agent conversation):
+  - `agent mcp login outsystems` — opens the browser for OAuth sign-in. After the user completes sign-in, the token is cached locally.
+  - If the server shows `"needs approval"` on `agent mcp list`, run `agent mcp enable outsystems` first, then retry login.
+  - Once authenticated, the tools are ready for use in your agent prompts.
 
-**Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
+**Lazy.** Authenticate via `agent mcp login outsystems` before making your first OutSystems tool call. The real tools appear once the user has authorized — wait for that, then proceed.
 
-**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — re-trigger its sign-in (your client re-prompts on the next call), then retry the original call ONCE. Don't hunt for an auth tool your harness doesn't expose.
+**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — tell the user to run `agent mcp login outsystems` again in the terminal, then retry the original call ONCE in the agent. Don't hunt for an auth tool your harness doesn't expose.
 
 **If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
 
