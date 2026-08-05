@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for three AI assistant harnesses — Claude Code (via a plugin), Kiro (via a Power), and GitHub Copilot (via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `kiro/`, `copilot/`, and `skills/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Kiro (via a Power), GitHub Copilot (via mcp.json), and Cursor (via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ git clone https://github.com/OutSystems/outsystems-mcp.git
 cd outsystems-mcp
 ```
 
-There is nothing to install or build. The files under `.claude-plugin/`, `kiro/`, `copilot/`, and `skills/` are the source of truth.
+There is nothing to install or build. The files under `.claude-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/` are the source of truth.
 
 ## Repository Structure
 
@@ -33,6 +33,9 @@ There is nothing to install or build. The files under `.claude-plugin/`, `kiro/`
 copilot/
   mcp.json                # Copilot MCP server configuration
   skill.md                # Agent guidance for Copilot
+cursor/
+  mcp.json                # Cursor MCP server configuration
+  skill.md                # Agent guidance for Cursor
 kiro/
   outsystems/
     POWER.md              # User-facing Kiro Power manifest (onboarding + troubleshooting)
@@ -42,7 +45,7 @@ kiro/
 skills/
   outsystems/
     SKILL.md              # Agent-facing skill loaded by the Claude Code plugin
-SKILL.md                  # Generic skill content for non-Claude-Code / non-Kiro / non-Copilot harnesses
+SKILL.md                  # Generic skill content for non-Claude-Code / non-Kiro / non-Copilot / non-Cursor harnesses
 README.md                 # Install instructions for each supported harness
 ```
 
@@ -100,6 +103,10 @@ Point a local registry file at your checkout (Option A in `kiro/outsystems/POWER
 ### GitHub Copilot (VS Code, CLI, or Visual Studio)
 
 Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for VS Code / Visual Studio user config or Copilot CLI config), restart the application or reload the MCP servers, and run an OutSystems-related prompt end-to-end. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app.
+
+### Cursor
+
+Point your local Cursor installation at the `cursor/mcp.json` file (for user or workspace config in `.cursor/settings.json` or `.vscode/mcp.json`), restart Cursor or reload the MCP servers, and run an OutSystems-related prompt end-to-end. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursorrules` is properly loaded and the conventions are applied.
 
 ### Generic harnesses
 

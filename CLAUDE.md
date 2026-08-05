@@ -14,6 +14,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
 | Copilot in Visual Studio | `copilot/skill.md` | manual download to `.github/copilot-instructions.md` | `<SolutionDir>\.mcp.json`, or `%USERPROFILE%\.mcp.json` | `servers` |
+| Cursor CLI | `cursor/skill.md` | manual copy to `.cursorrules` | `~/.cursor/settings.json` or `.vscode/mcp.json` | `servers` |
 | M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
 | Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
 
@@ -36,29 +37,30 @@ Harnesses differ in ways that break otherwise-correct changes: the config key (`
 
 ## Skill docs must stay in lockstep across hosts
 
-This repo ships **four parallel skill documents**:
+This repo ships **five parallel skill documents**:
 
 - `skills/outsystems/SKILL.md` is the Claude Code marketplace skill, consumed when a user runs `claude plugin install outsystems@outsystems`.
 - `kiro/outsystems/steering/skill.md` is the Kiro Power steering doc, consumed by Kiro.
 - `copilot/skill.md` is the GitHub Copilot skill doc, consumed by GitHub Copilot (VS Code, CLI, or Visual Studio).
+- `cursor/skill.md` is the Cursor skill doc, consumed by Cursor CLI.
 - `SKILL.md` at the repo root is the top-level fallback skill doc, consumed by hosts that look at the repo root or by anyone reading the repo on GitHub.
 
-All four carry an identical `## Rules` section, and broadly the same `## Tools at a glance`, `## Caveats`, and `## Workflows` sections. **Any behavioral change to one MUST be applied to all four.** Updating only one creates a host-specific protection gap. For example, a confirm-before-destructive rule added to `skills/outsystems/SKILL.md` alone protects Claude Code users but leaves Kiro Power and Copilot users with no protection.
+All five carry an identical `## Rules` section, and broadly the same `## Tools at a glance`, `## Caveats`, and `## Workflows` sections. **Any behavioral change to one MUST be applied to all five.** Updating only one creates a host-specific protection gap. For example, a confirm-before-destructive rule added to `skills/outsystems/SKILL.md` alone protects Claude Code users but leaves Kiro Power, Copilot, and Cursor users with no protection.
 
 The common failure mode is to edit only `skills/outsystems/SKILL.md` because the marketplace install path points there. Don't.
 
 ### Check before opening a PR
 
-After any skill-doc change, grep for a distinctive phrase from the change across all four files and confirm the count matches:
+After any skill-doc change, grep for a distinctive phrase from the change across all five files and confirm the count matches:
 
 ```bash
 PHRASE="<a distinctive substring from your change>"
-for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/skill.md SKILL.md; do
+for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/skill.md cursor/skill.md SKILL.md; do
   printf '%s  %s\n' "$(grep -c "$PHRASE" "$f")" "$f"
 done
 ```
 
-All four counts must be equal. If they aren't, the change is incomplete and the PR will create a host-specific drift.
+All five counts must be equal. If they aren't, the change is incomplete and the PR will create a host-specific drift.
 
 ### Exception: setup / installation flows
 

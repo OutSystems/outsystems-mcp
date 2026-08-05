@@ -1,0 +1,10 @@
+{
+  "//": "Canonical OutSystems MCP config for Cursor. Source of truth for all surfaces. Replace <my-tenant> with the tenant hostname (e.g. mycompany.outsystems.dev) at install time. Cursor uses the `servers` key for MCP configuration.",
+  "//oauth": "No oauth block is needed: the OutSystems auth server supports OAuth discovery + Dynamic Client Registration, so Cursor registers its own client and runs the browser sign-in automatically on first connection.",
+  "servers": {
+    "outsystems": {
+      "type": "http",
+      "url": "https://<my-tenant>/mcp"
+    }
+  }
+}

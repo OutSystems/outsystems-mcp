@@ -151,6 +151,21 @@ Step 4: tell me to open the Tools picker, and ENABLE the `outsystems` tools — 
 Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
 ```
 
+## Install - Cursor CLI
+
+Paste into Cursor:
+
+```
+Install the OutSystems MCP server in Cursor.
+Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+Step 2: open my Cursor MCP config (user settings: `~/.cursor/settings.json` on macOS/Linux or `%APPDATA%\Cursor\settings.json` on Windows, or workspace settings: `.vscode/mcp.json`). Read it first and preserve existing entries, then add under the top-level `servers` object the canonical `servers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/mcp.json), substituting my tenant:
+{"outsystems": {"type": "http", "url": "https://<my-tenant>/mcp"}}
+Do NOT add an `oauth.clientId` — the server supports Dynamic Client Registration.
+Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skill.md and save its exact bytes to `.cursorrules` in my workspace. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Step 4: tell me to reload Cursor or restart it if needed so it picks up the updated config.
+Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
+```
+
 ## Install - M365 Copilot (web browser)
 
 Currently, this assistant does not support custom MCP servers.
