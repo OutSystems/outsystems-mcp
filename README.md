@@ -172,7 +172,7 @@ Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is work
 > **Team/Enterprise plans only:** Requires team admin to import plugin to Team Marketplace.
 
 **Team Admin:** Import the plugin to your Marketplace:
-1. Dashboard → **Plugins** → **Team Marketplaces** → **Import from Repo**
+1. Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
 2. Enter: `https://github.com/OutSystems/outsystems-mcp`
 4. Review the `outsystems` plugin and save (Default On / Required as needed).
 

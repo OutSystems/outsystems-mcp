@@ -122,16 +122,18 @@ Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for
 
 1. For a Team/Enterprise plan, team admin imports the plugin to the Team Marketplace:
    - Temporarily set your branch as the default branch (or use the PR merge branch if available)
-   - Dashboard → **Plugins** → **Team Marketplaces** → **Import from Repo**
+   - Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
    - Repo: `OutSystems/outsystems-mcp`, Branch: your test branch
+   - Review the `outsystems` plugin and save (Default On / Required as needed)
 2. Individual user opens Cursor and asks anything OutSystems-related
 3. Agent prompts for tenant hostname, configures `~/.cursor/mcp.json`, and completes OAuth
 4. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app
 
-**Version alignment:** Before testing the app plugin, ensure both plugin versions are in sync:
+**Version alignment:** Before testing the app plugin, ensure all plugin versions are in sync:
 - `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
-- (These should match `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`)
+- `.claude-plugin/plugin.json` → `version`
+- `.claude-plugin/marketplace.json` → `plugins[0].version`
 
 ### Cursor CLI
 

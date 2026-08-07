@@ -9,12 +9,9 @@ This directory ships the OutSystems MCP plugin for Cursor, available for both Cu
 If your organization uses a Cursor Team or Enterprise plan, a **team admin** must install the plugin to your team's Marketplace first.
 
 **Team Admin Installation:**
-1. Open Dashboard → **Plugins**
-2. Click **Team Marketplaces**
-3. Click **Import from Repo**
-4. Enter: `https://github.com/OutSystems/outsystems-mcp`
-5. Select branch: `main` (or the branch you're testing)
-6. Complete the import
+1. Open Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
+2. Enter: `https://github.com/OutSystems/outsystems-mcp`
+3. Review the `outsystems` plugin and save (Default On / Required as needed)
 
 **Individual User Setup (after admin installs plugin):**
 1. Open Cursor
@@ -34,7 +31,7 @@ Cursor CLI works on all plans and provides MCP management via terminal commands.
 
 **Setup Steps:**
 
-1. **Create MCP config** at `~/.cursor/mcp.json`:
+1. **Create MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project):
    ```json
    {
      "mcpServers": {
@@ -46,14 +43,19 @@ Cursor CLI works on all plans and provides MCP management via terminal commands.
    ```
    Replace `<my-tenant>` with your OutSystems tenant hostname (e.g., `mycompany.outsystems.dev`).
 
-2. **Verify and authenticate**:
+2. **Install conventions file** (optional but recommended):
+   - Fetch: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md
+   - Save to `.cursorrules` in your workspace root
+   - This provides behavioral guidelines for the agent
+
+3. **Verify and authenticate**:
    ```bash
    agent mcp list                  # See registered servers
    agent mcp enable outsystems     # Approve if it shows "needs approval"
    agent mcp login outsystems      # OAuth sign-in (opens browser)
    ```
 
-3. **Test in agent**:
+4. **Test in agent**:
    ```bash
    agent "list 10 of my outsystems apps"
    ```
