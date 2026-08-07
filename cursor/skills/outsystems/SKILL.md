@@ -6,43 +6,62 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 ## First use / setup
 
-The OutSystems MCP server is registered through Cursor's MCP configuration — it doesn't ship a config, so the tenant URL is written into the config file. Do this once; the edit is idempotent for re-runs against a different tenant.
+The OutSystems MCP server registration happens in two stages:
 
-Trigger conditions (any of):
-- The user asks for anything OutSystems-related AND no `outsystems` MCP server is registered for the current surface.
-- A call returns `tenant not configured` / connection errors.
-- The user explicitly asks to switch tenants (e.g. "point this at `<other-tenant>`").
+1. **Team admin adds the plugin** (via Dashboard → Plugins → Team Marketplaces → Import from Repo)
+2. **Individual user completes setup** via agent prompts in Cursor app or CLI
 
-Steps:
+### For Cursor App Users (Plugin Auto-Setup)
+
+When a user opens Cursor with this plugin installed:
 
 1. **Ask the user for their OutSystems tenant hostname.** Prompt verbatim:
    > "Which OutSystems tenant should I connect to? It's the host portion of your OutSystems URL, typically something like `mycompany.outsystems.dev`."
 2. **Normalize, then validate.** Accept whatever the user gives you (URL, hostname, hostname-with-path). Strip the scheme (`https://`, `http://`), any leading `www.`, trailing slash, and any path or query — keep only the host. The result must match `^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`. Only ask again if the normalized value is still implausible (empty, contains whitespace, or clearly isn't a hostname). The tenant slug is whatever the user chose; do not assume a fixed pattern.
 3. **Construct the URL**: `https://<TENANT>/mcp`.
-4. **Write it into the right config for the current surface.** Read first, preserve every other entry, write back — never clobber siblings. The canonical shape lives in the repo at `cursor/mcp.json`; copy the entry to the destination below:
-   - **Cursor CLI** → `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json` (project config, takes precedence). Top-level key **`mcpServers`** (not `servers`):
-     ```
-     {"outsystems": {"url": "<URL>"}}
-     ```
-     Omit `"type": "http"` — Cursor CLI expects only the URL. No `oauth` block is needed: the server supports OAuth discovery + Dynamic Client Registration via `agent mcp login outsystems`. (A 404 on `/authorize` or a "manually provide a client registration" prompt means the tenant hostname is wrong or its OAuth discovery is misconfigured — re-check the tenant, don't pin a clientId.)
-5. Verify the server appears and enable/authenticate it:
-   - Run `agent mcp list` to see registered servers.
-   - If the server shows "needs approval", run `agent mcp enable outsystems`.
-   - Run `agent mcp login outsystems` to trigger OAuth sign-in (opens the browser).
+4. **Register the server** by writing to `~/.cursor/mcp.json`. Read first, preserve every other entry, write back — never clobber siblings. Format:
+   ```json
+   {
+     "mcpServers": {
+       "outsystems": {
+         "url": "https://<TENANT>/mcp"
+       }
+     }
+   }
+   ```
+   Key: `mcpServers` (not `servers`). No `type` field needed for HTTP.
+5. **Trigger authentication**: Tell the user that Cursor will prompt for OAuth sign-in the first time they use an OutSystems tool. They complete the sign-in in the browser.
 6. **Retry the user's original request** once authentication completes.
+
+### For Cursor CLI Users (Manual Config)
+
+For CLI-only setups (no Cursor app):
+
+1. **Ask the user for their OutSystems tenant hostname** (same prompt as above).
+2. **Normalize and validate** (same as above).
+3. **Write to `~/.cursor/mcp.json` or `.cursor/mcp.json`** (global or project config, same format as above).
+4. **Run CLI commands to verify and authenticate**:
+   - `agent mcp list` — see registered servers
+   - `agent mcp enable outsystems` — if it shows "needs approval"
+   - `agent mcp login outsystems` — opens browser for OAuth sign-in
+5. **Retry the user's original request** once authentication completes.
+
+Trigger conditions (any of):
+- The user asks for anything OutSystems-related AND no `outsystems` MCP server is registered.
+- A call returns `tenant not configured` / connection errors.
+- The user explicitly asks to switch tenants (e.g. "point this at `<other-tenant>`").
 
 ## Authenticating
 
-The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.** How you sign in depends on the harness:
+The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.**
 
-- **Cursor CLI** authentication runs via terminal commands (not inside the agent conversation):
-  - `agent mcp login outsystems` — opens the browser for OAuth sign-in. After the user completes sign-in, the token is cached locally.
-  - If the server shows `"needs approval"` on `agent mcp list`, run `agent mcp enable outsystems` first, then retry login.
-  - Once authenticated, the tools are ready for use in your agent prompts.
+**Cursor App:** OAuth runs through the IDE's browser UI on the first OutSystems tool call. Just make the call; the client prompts the user to sign in.
 
-**Lazy.** Authenticate via `agent mcp login outsystems` before making your first OutSystems tool call. The real tools appear once the user has authorized — wait for that, then proceed.
+**Cursor CLI:** Run `agent mcp login outsystems` in a terminal, which opens the browser for sign-in. After completing it, the token is cached locally.
 
-**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — tell the user to run `agent mcp login outsystems` again in the terminal, then retry the original call ONCE in the agent. Don't hunt for an auth tool your harness doesn't expose.
+**Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI or via CLI commands; you won't receive an authorization URL to relay.
+
+**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — re-trigger its sign-in (your client re-prompts on the next call, or re-run `agent mcp login outsystems` in CLI), then retry the original call ONCE.
 
 **If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
 
@@ -141,9 +160,8 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 
 **Publish a new external library:**
 1. Build a .NET 10 lib with `[OSInterface(Name = "<UniqueName>")]` (reusing a name produces a new revision, not a fresh asset). `dotnet publish -c Release`, zip the `.dll` + `.deps.json` at the zip root (no nested folder). Base64-encode the zip.
-2. Upload the library with `zip_b64`; it returns an operation key.
-3. Poll the external-library status until `ReadyForReview`. On validation failure, pull the operation logs.
-4. Publish the operation with that same operation key, then poll the status until `Published`.
+2. Upload the library with `zip_b64` and `auto_publish: true`; it returns an operation key.
+3. Poll the external-library status until `Published`. On validation failure, pull the operation logs.
 
 **Reference an external library from an app:**
 - Just ask mentor: start a run with the `app_key` and a prompt like "Use the <ActionName> action from <LibraryName> in <screen edit>.", then poll the run as usual.
@@ -220,7 +238,7 @@ If any invariant fails, do NOT fire — silence is correct, regardless of how we
 
 The five valid values for `agent_observation` (listed in disambiguation-precedence order — first-match wins when a situation could match multiple):
 - `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path. **Threshold**: reserve for shortcuts that generalize to the task PATTERN — a step you took would be unnecessary for anyone doing this KIND of task, given tools that already exist. Do NOT fire for execution-only variance (a call you happened to make more times than needed for this specific input, an ordering that was fine but not optimal). If the shortcut depends on knowing this particular input's shape or size, it's execution detail, not composition insight — skip. **Tie-break vs `unexpected_shape`**: if any step you took returned only data already present in a prior step's output (i.e., that step was redundant in retrospect), this fires — even if the redundant step's response also had a shape quirk. "Missing expected fields" on the redundant step is a symptom; the higher-order insight is that the step wasn't needed.
-- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different tool ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same.
+- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different one ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same.
 - `repeated_clarification` — the same user intent required 3+ back-and-forth turns of ambiguous user replies before you could act (or you gave up because ambiguity persisted).
 - `unexpected_shape` — a tool response was well-formed but lacked expected fields or had an unexpected structure that made it hard to chain into the next call. NOT this if the "missing field" happened on a step that turned out to be redundant post-success — that's `shorter-path-available` (see tie-break above).
 - `empty_results` — a tool returned zero results in a case where you had strong reason to expect data. The bar is "surprising empty return", not "any empty return". Searching for a plausible-sounding thing that legitimately doesn't exist is NOT this; searching for something the user just clearly referenced and getting nothing IS.

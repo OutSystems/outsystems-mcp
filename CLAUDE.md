@@ -14,7 +14,8 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
 | Copilot in Visual Studio | `copilot/skill.md` | manual download to `.github/copilot-instructions.md` | `<SolutionDir>\.mcp.json`, or `%USERPROFILE%\.mcp.json` | `servers` |
-| Cursor CLI | `cursor/skill.md` | manual copy to `.cursorrules` | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) | `mcpServers` |
+| Cursor App | `cursor/skills/outsystems/SKILL.md` | automatic, via `.cursor-plugin/plugin.json` | Team Marketplace install (Team/Enterprise plan required) | n/a |
+| Cursor CLI | `cursor/skills/outsystems/SKILL.md` | manual copy to `.cursorrules` | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) | `mcpServers` |
 | M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
 | Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
 
@@ -22,7 +23,7 @@ Two traps the table encodes:
 
 - **`servers` vs `mcpServers`.** VS Code and Visual Studio read `servers`; Copilot CLI, Kiro, Claude Desktop, and Cursor CLI read `mcpServers`. `copilot/mcp.json` carries both keys so each surface copies the one it needs. Writing the wrong key fails silently: the file still parses and no server appears. (Cursor also has a `.vscode/mcp.json` (IDE-only) that uses `servers`, but the CLI ignores it.)
 - **Claude Desktop receives no skill doc.** Its install path wires up the MCP server and nothing else, so Desktop users get the tools without the conventions, the confirm-before-destructive rule included. Every behavioral rule below reaches every harness except that one.
-- **Cursor has dual config locations.** The CLI reads `.cursor/mcp.json` or `~/.cursor/mcp.json` with the `mcpServers` key. The IDE reads `.vscode/mcp.json` with the `servers` key. These are separate configs; CLI and IDE don't share MCP server registration.
+- **Cursor has dual paths: plugin-based (app) and file-based (CLI).** Cursor App users get the plugin from their Team Marketplace (requires Team/Enterprise plan + team admin approval). Each user then configures via agent setup, which writes `~/.cursor/mcp.json`. Cursor CLI users manually create `~/.cursor/mcp.json` or `.cursor/mcp.json` and use `agent mcp` commands. Both paths use `mcpServers` key; both skill docs are identical and ship via the plugin manifest.
 
 ### Validate every change against every supported harness
 
@@ -77,9 +78,14 @@ Naming note: slash-command filenames become the command name a user types. Claud
 
 ### Manifest version lockstep
 
-Two files declare the plugin version and they must stay in sync on every bump:
+Three sets of files declare plugin versions and they must stay in sync on every bump:
 
+**Claude:**
 - `.claude-plugin/plugin.json` -> `version`
 - `.claude-plugin/marketplace.json` -> `plugins[0].version`
 
-`claude plugin update outsystems@outsystems` keys off `marketplace.json`'s version. Forgetting to bump it means users already on the prior version see "already at the latest" and never pull the new content. Always bump both in the same commit.
+**Cursor:**
+- `cursor/.cursor-plugin/plugin.json` -> `version`
+- `.cursor-plugin/marketplace.json` -> `plugins[0].version`
+
+`claude plugin update outsystems@outsystems` keys off `.claude-plugin/marketplace.json`'s version. Cursor plugin updates via Team Marketplace also key off `.cursor-plugin/marketplace.json`. Forgetting to bump these means users already on the prior version see "already at the latest" and never pull the new content. Always bump all four files (Claude + Cursor pairs) in the same commit, keeping both Claude and Cursor versions aligned.
