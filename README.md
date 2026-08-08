@@ -170,11 +170,16 @@ Step 4: trigger authentication. If the harness synthesizes per-server `authentic
 Step 5: depending on the harness, the new MCP server may not be visible until you reload its MCP config or restart. If the harness has a CLI to list registered MCP servers (similar to `claude mcp list`), run it to check whether `outsystems` is visible — if not, tell me to restart the harness. Once the tools appear, ask me anything OutSystems-related to confirm the install is complete.
 ```
 
+## Note on the first sign-in
+
+On the first OAuth sign-in from any harness, expect one extra screen after the usual identity-provider login: a **one-time consent dialog** from your tenant's IdP asking you to grant offline access to the OutSystems MCP client. This is normal; approve it once and every later sign-in on the same browser profile skips it. It is your tenant IdP asking, not this repo or Anthropic. It exists because the MCP server asks for the `offline_access` OAuth scope, which lets your sign-in survive an SSO-session boundary instead of dying with it, and IdPs typically show a consent screen the first time a client requests that scope. There is no repo-side setting to suppress the dialog.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
 | :-- | :-- |
 | Tool calls fail with `403` and `tenant_not_allowed` | Your tenant is not yet enabled for the MCP server. This is a server-side allowlist and no amount of reinstalling changes it. Ask your OutSystems contact to have the tenant enabled, or open an issue here with the tenant hostname. |
+| An unfamiliar "grant offline access" dialog appears on first sign-in | Expected. See [Note on the first sign-in](#note-on-the-first-sign-in) above. |
 | The `authenticate` tool isn't loaded (Claude Code) | The MCP server isn't registered, or the session started before it was. Run `claude mcp list` and confirm `outsystems` appears. If it does, restart Claude Code. If it doesn't, re-run Step 4 of the Claude Code recipe. |
 | Auth fails with `OAuth callback port <port> is already in use ...` (Claude Code) | An earlier setup step pinned a fixed callback port, and the pin sits in your own config, so updating the plugin does not clear it. Run `claude mcp get outsystems` and note the reported URL, which you need to re-add. If it reports a `callback_port`, unpin it in the reset below. If it does not, the pin is not in your MCP config: check for a callback-port override in your environment, then for another process holding the port with `lsof -nP -iTCP:<port> -sTCP:LISTEN`, or `netstat -ano \| findstr :<port>` on Windows. |
 | Auth never triggers in a non-interactive session | The OAuth flow needs a browser and a loopback callback, so it cannot complete in a headless or piped session. Authenticate once in an interactive session first; the token is reused afterwards. |
