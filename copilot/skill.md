@@ -45,7 +45,7 @@ The remote MCP server is OAuth-protected with **standard OAuth**: an unauthentic
 
 - **GitHub Copilot / VS Code** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
 - **Visual Studio** does not auto-open the browser on first call: tell the user to open the Tools picker and ENABLE the `outsystems` tools, and complete the browser sign-in. After that, tool calls proceed as normal.
-- **Copilot CLI** runs the OAuth flow on the first tool call (opens the system browser and listens on an ephemeral `localhost` port for the callback). A browser must be reachable on the same machine.
+- **Copilot CLI** runs the OAuth flow on the first tool call (opens the system browser and listens on an ephemeral `localhost` port for the callback). A browser must be reachable on the same machine. If the browser shows "site can't be reached" at the callback URL (e.g., a VM with IPv4/IPv6 mismatch), **do not wait for timeout** — the sign-in succeeded on the tenant side. Ask the user to copy the full callback URL from the address bar; you may be able to extract the authorization code or guide them to adjust the address (e.g., change `127.0.0.1` to `[::1]`). Act quickly, as the code is short-lived.
 
 **Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
 

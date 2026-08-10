@@ -62,11 +62,13 @@ The remote MCP server is OAuth-protected with **standard OAuth** (an unauthentic
 
 On the first OutSystems tool call in a session, Cursor detects the `401` and runs the OAuth sign-in through its own browser (opens the browser, captures the callback). Make the call, then ask the user to complete Cursor's sign-in prompt; the real tools become usable once they authorize.
 
-**Needs a local browser.** Cursor opens the system browser and listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Cursor. On a remote/SSH session with no local browser, run Cursor where a browser can reach `localhost` and retry — there is no "copy the callback URL" fallback in Cursor, and the agent never receives an authorization URL to relay.
+**Needs a local browser.** Cursor opens the system browser and listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Cursor. On a remote/SSH session with no local browser, run Cursor where a browser can reach `localhost` and retry.
+
+**If the browser shows "site can't be reached" at the callback URL:** This happens when Cursor's callback listener and the browser's redirect use different network addresses (e.g., IPv4 vs IPv6 mismatch in a VM). **Do not wait for the timeout** — the sign-in on the tenant side has already succeeded. Instead: ask the user to copy the full URL from the address bar (it will contain `callback?state=...&code=...`). With that URL, you can extract the authorization code and relay it back to Cursor, or guide the user to adjust the address (e.g., change `127.0.0.1` to `[::1]` if the port is correct but the loopback family is wrong). The authorization code in the URL is short-lived, so act quickly.
 
 **Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): Cursor's session lapsed — ask the user to re-authorize via Cursor's browser UI, then retry the original call ONCE.
 
-**If sign-in fails** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
+**If sign-in fails:** Check the browser first. If it shows "site can't be reached" at the callback URL (e.g., `http://127.0.0.1:8787/callback?...`), see the "site can't be reached" guidance above—this is a local network issue, not a server fault, and often recoverable by asking the user for the URL. For other failures (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
 
 ## Tools at a glance
 

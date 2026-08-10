@@ -37,7 +37,7 @@ OAuth-protected. The harness exposes two deferred tools; the agent drives the fl
 **Lazy.** Before the first OutSystems tool call in a session, call `mcp__outsystems__authenticate` and share the returned URL with the user. Then:
 
 - **Local session** (browser can reach `http://localhost:<port>/callback`): the server's real tools appear automatically — wait for the user's confirmation, then proceed.
-- **Remote session** (callback page fails to load, e.g. SSH / devcontainer): have the user copy the full URL from their browser's address bar (`http://localhost:<port>/callback?code=...&state=...`) and call `mcp__outsystems__complete_authentication { callback_url: "<that URL>" }`.
+- **Remote session** (callback page fails to load, e.g. SSH / devcontainer, or "site can't be reached" in a VM): **do not wait for timeout** — tenant-side sign-in has already succeeded. Have the user copy the full URL from their browser's address bar (`http://localhost:<port>/callback?code=...&state=...`) and call `mcp__outsystems__complete_authentication { callback_url: "<that URL>" }`. If the address shows `127.0.0.1` but the error persists, guide them to try changing it to `[::1]` (IPv4 to IPv6 loopback) — this fixes mismatches in VMs. The code is short-lived, so act immediately.
 
 **Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): call `mcp__outsystems__authenticate` again, then retry the original call ONCE.
 

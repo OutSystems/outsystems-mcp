@@ -40,7 +40,9 @@ The remote MCP server is OAuth-protected with **standard OAuth** (an unauthentic
 
 On the first OutSystems tool call in a session, Kiro detects the `401` and runs the OAuth sign-in through its own MCP UI (opens the browser, captures the `localhost` callback). Make the call, then ask the user to complete Kiro's sign-in prompt; the real tools become usable once they authorize.
 
-**Needs a local browser.** Kiro opens the system browser and listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Kiro. On a remote/SSH session with no local browser, run Kiro where a browser can reach `localhost` and retry — there is no "copy the callback URL" fallback in Kiro, and the agent never receives an authorization URL to relay.
+**Needs a local browser.** Kiro opens the system browser and listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Kiro. On a remote/SSH session with no local browser, run Kiro where a browser can reach `localhost` and retry.
+
+**If the browser shows "site can't be reached" at the callback URL:** This happens when Kiro's callback listener and the browser's redirect use different network addresses (e.g., IPv4 vs IPv6 mismatch in a VM). **Do not wait for the timeout** — the sign-in on the tenant side has already succeeded. Instead: ask the user to copy the full URL from the address bar (it will contain `callback?state=...&code=...`). With that URL, you may be able to extract information needed or guide the user to adjust the address (e.g., change `127.0.0.1` to `[::1]` if the port is correct but the loopback family is wrong). The authorization code in the URL is short-lived, so act quickly.
 
 **Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): Kiro's session lapsed — ask the user to re-authorize via Kiro's MCP UI, then retry the original call ONCE.
 

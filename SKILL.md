@@ -8,8 +8,8 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.** How you sign in depends on the harness:
 
-- **GitHub Copilot / VS Code (and most other MCP clients)** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
-- **Kiro** drives the sign-in through its own MCP UI — same as the IDE clients above, no `authenticate` tool.
+- **GitHub Copilot / VS Code (and most other MCP clients)** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there. If the browser shows "site can't be reached" at the callback URL (e.g., in a VM), **don't wait for timeout** — tenant-side sign-in succeeded. Ask the user for the full callback URL from the address bar; you may extract the authorization code or guide them to adjust the address (e.g., `127.0.0.1` to `[::1]`).
+- **Kiro** drives the sign-in through its own MCP UI — same as the IDE clients above, no `authenticate` tool. Same callback guidance applies if the connection is refused.
 
 **Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
 
