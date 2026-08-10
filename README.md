@@ -162,7 +162,7 @@ Step 2: create or edit `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json
 {"outsystems": {"url": "https://<my-tenant>/mcp"}}
 Important: use `mcpServers` as the key (not `servers`), and omit `"type": "http"` — Cursor CLI expects this exact format.
 Ignore any other mcp config and prefer project config.
-Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/skill.md and save its exact bytes to `.cursorrules` in my workspace root. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes to `.cursorrules` in my workspace root. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
 Step 4: in a terminal, run: `agent mcp list` (verify outsystems appears), then `agent mcp enable outsystems` if it shows "needs approval", then `agent mcp login outsystems` (opens browser for OAuth sign-in; complete it there).
 Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is working.
 ```
@@ -174,7 +174,7 @@ Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is work
 **Team Admin:** Import the plugin to your Marketplace:
 1. Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
 2. Enter: `https://github.com/OutSystems/outsystems-mcp`
-4. Review the `outsystems` plugin and save (Default On / Required as needed).
+3. Review the `outsystems` plugin and save (Default On / Required as needed).
 
 **Individual User (after admin installs):** Open Cursor and ask anything OutSystems-related. The agent prompts for your tenant hostname and completes setup automatically.
 

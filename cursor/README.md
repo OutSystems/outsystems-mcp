@@ -63,8 +63,9 @@ Cursor CLI works on all plans and provides MCP management via terminal commands.
 ## Version Alignment
 
 Cursor and Claude plugin versions must stay in sync:
-- `.claude-plugin/plugin.json` → `version`
-- `.cursor-plugin/plugin.json` → `version`
+- `.claude-plugin/plugin.json` -> `version`
+- `.claude-plugin/marketplace.json` -> `plugins[0].version`
+- `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
 
 Update all three together in the same commit when bumping the version.

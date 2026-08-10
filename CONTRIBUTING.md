@@ -56,7 +56,7 @@ SKILL.md                  # Generic skill content for other harnesses
 README.md                 # Install instructions for each supported harness
 ```
 
-All six skill documents overlap in intent (they all describe the same MCP tools and conventions):
+All five skill documents overlap in intent (they all describe the same MCP tools and conventions):
 - `skills/outsystems/SKILL.md` (Claude Code)
 - `cursor/skills/outsystems/SKILL.md` (Cursor)
 - `kiro/outsystems/steering/skill.md` (Kiro)
