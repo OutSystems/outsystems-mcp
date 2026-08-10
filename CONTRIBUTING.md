@@ -39,6 +39,7 @@ copilot/
 cursor/
   .cursor-plugin/
     plugin.json           # Cursor plugin manifest (name, version, skills dir)
+  mcp.json                # Cursor CLI MCP server configuration
   README.md               # Cursor install instructions (plugin + CLI)
   skills/
     outsystems/

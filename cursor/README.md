@@ -68,7 +68,7 @@ Cursor and Claude plugin versions must stay in sync:
 - `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
 
-Update all three together in the same commit when bumping the version.
+Update all four together in the same commit when bumping the version.
 
 ## Skill Docs Lockstep
 
