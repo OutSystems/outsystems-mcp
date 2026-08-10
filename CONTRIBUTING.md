@@ -142,7 +142,7 @@ Point your local Cursor CLI at the `cursor/mcp.json` file (copy to `~/.cursor/mc
 1. `agent mcp list` to verify `outsystems` is registered
 2. `agent mcp enable outsystems` if it shows "needs approval"
 3. `agent mcp login outsystems` to trigger OAuth sign-in
-4. Run an OutSystems-related prompt end-to-end in a new agent session. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursorrules` is properly loaded and the conventions are applied.
+4. Run an OutSystems-related prompt end-to-end in a new agent session. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursor/rules/outsystems.md` (or `AGENTS.md`) is properly loaded and the conventions are applied.
 
 ### Generic harnesses
 

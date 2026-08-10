@@ -45,7 +45,7 @@ Cursor CLI works on all plans and provides MCP management via terminal commands.
 
 2. **Install conventions file** (optional but recommended):
    - Fetch: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md
-   - Save to `.cursorrules` in your workspace root
+   - Save to `.cursor/rules/outsystems.md` in your workspace root (or `AGENTS.md` if your project uses that)
    - This provides behavioral guidelines for the agent
 
 3. **Verify and authenticate**:
