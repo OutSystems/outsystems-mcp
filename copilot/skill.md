@@ -1,8 +1,3 @@
----
-name: outsystems
-description: "OutSystems over MCP. Edit apps, publish, deploy, search tenant elements, manage external libraries. Use for ANY OutSystems task."
----
-
 # OutSystems - Remote MCP
 
 You are connected to OutSystems over the MCP HTTP transport. OutSystems is a cloud-native low-code platform where apps are built from OML (OutSystems Model Language), a binary format describing entities, screens, actions, and logic. Every tool call carries the harness's validated OAuth bearer; tenant + user identity are derived from the JWT, not from arguments.
@@ -45,7 +40,7 @@ The remote MCP server is OAuth-protected with **standard OAuth**: an unauthentic
 
 - **GitHub Copilot / VS Code** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
 - **Visual Studio** does not auto-open the browser on first call: tell the user to open the Tools picker and ENABLE the `outsystems` tools, and complete the browser sign-in. After that, tool calls proceed as normal.
-- **Copilot CLI** runs the OAuth flow on the first tool call (opens the system browser and listens on an ephemeral `localhost` port for the callback). A browser must be reachable on the same machine. If the browser shows "site can't be reached" at the callback URL (e.g., a VM with IPv4/IPv6 mismatch), **do not wait for timeout** — the sign-in succeeded on the tenant side. Ask the user to copy the full callback URL from the address bar; you may be able to extract the authorization code or guide them to adjust the address (e.g., change `127.0.0.1` to `[::1]`). Act quickly, as the code is short-lived.
+- **Copilot CLI** runs the OAuth flow on the first tool call (opens the system browser and listens on an ephemeral `localhost` port for the callback). A browser must be reachable on the same machine. If the browser shows "site can't be reached" at the callback URL (typically an IPv4/IPv6 loopback mismatch in a VM): **do not wait for timeout, and tell the user immediately** — tenant-side sign-in already succeeded. Ask the user for the full URL from the address bar. Complete the callback yourself via the terminal: find the port from the URL and run `lsof -nP -iTCP -sTCP:LISTEN | grep LISTEN` to confirm the listener. Re-send the callback with `curl "http://[::1]:PORT/callback?state=...&code=..."`, swapping the host to `[::1]` if the URL showed `127.0.0.1`. This delivers the code to Copilot CLI's loopback listener, not a tool call. Do not also ask the user to retry in the browser. **Expect the code to be spent:** the refused connection tears down the auth session. If you get "Authorization session ended", have the user start fresh with the corrected address before clicking through. Treat authorization codes as credentials.
 
 **Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
 
