@@ -14,13 +14,16 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
 | Copilot in Visual Studio | `copilot/skill.md` | manual download to `.github/copilot-instructions.md` | `<SolutionDir>\.mcp.json`, or `%USERPROFILE%\.mcp.json` | `servers` |
+| Cursor App | `cursor/skills/outsystems/SKILL.md` | automatic, via `.cursor-plugin/plugin.json` | Team Marketplace install (Team/Enterprise plan required) | `mcpServers` |
+| Cursor CLI | `cursor/skills/outsystems/SKILL.md` | manual copy to `.cursor/rules/outsystems.md` | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) | `mcpServers` |
 | M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
 | Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
 
 Two traps the table encodes:
 
-- **`servers` vs `mcpServers`.** VS Code and Visual Studio read `servers`; Copilot CLI, Kiro, and Claude Desktop read `mcpServers`. `copilot/mcp.json` carries both keys so each surface copies the one it needs. Writing the wrong key fails silently: the file still parses and no server appears.
+- **`servers` vs `mcpServers`.** VS Code and Visual Studio read `servers`; Copilot CLI, Kiro, Claude Desktop, and Cursor CLI read `mcpServers`. `copilot/mcp.json` carries both keys so each surface copies the one it needs. Writing the wrong key fails silently: the file still parses and no server appears. (Cursor also has a `.vscode/mcp.json` (IDE-only) that uses `servers`, but the CLI ignores it.)
 - **Claude Desktop receives no skill doc.** Its install path wires up the MCP server and nothing else, so Desktop users get the tools without the conventions, the confirm-before-destructive rule included. Every behavioral rule below reaches every harness except that one.
+- **Cursor has dual paths: plugin-based (app) and file-based (CLI).** Cursor App users get the plugin from their Team Marketplace (requires Team/Enterprise plan + team admin approval). Each user then configures via agent setup, which writes `~/.cursor/mcp.json`. Cursor CLI users manually create `~/.cursor/mcp.json` or `.cursor/mcp.json` and use `agent mcp` commands. Both paths use `mcpServers` key; both skill docs are identical and ship via the plugin manifest.
 
 ### Validate every change against every supported harness
 
@@ -36,29 +39,30 @@ Harnesses differ in ways that break otherwise-correct changes: the config key (`
 
 ## Skill docs must stay in lockstep across hosts
 
-This repo ships **four parallel skill documents**:
+This repo ships **five parallel skill documents**:
 
 - `skills/outsystems/SKILL.md` is the Claude Code marketplace skill, consumed when a user runs `claude plugin install outsystems@outsystems`.
 - `kiro/outsystems/steering/skill.md` is the Kiro Power steering doc, consumed by Kiro.
 - `copilot/skill.md` is the GitHub Copilot skill doc, consumed by GitHub Copilot (VS Code, CLI, or Visual Studio).
+- `cursor/skills/outsystems/SKILL.md` is the Cursor skill doc, consumed by Cursor CLI.
 - `SKILL.md` at the repo root is the top-level fallback skill doc, consumed by hosts that look at the repo root or by anyone reading the repo on GitHub.
 
-All four carry an identical `## Rules` section, and broadly the same `## Tools at a glance`, `## Caveats`, and `## Workflows` sections. **Any behavioral change to one MUST be applied to all four.** Updating only one creates a host-specific protection gap. For example, a confirm-before-destructive rule added to `skills/outsystems/SKILL.md` alone protects Claude Code users but leaves Kiro Power and Copilot users with no protection.
+All five carry an identical `## Rules` section, and broadly the same `## Tools at a glance`, `## Caveats`, and `## Workflows` sections. **Any behavioral change to one MUST be applied to all five.** Updating only one creates a host-specific protection gap. For example, a confirm-before-destructive rule added to `skills/outsystems/SKILL.md` alone protects Claude Code users but leaves Kiro Power, Copilot, and Cursor users with no protection.
 
 The common failure mode is to edit only `skills/outsystems/SKILL.md` because the marketplace install path points there. Don't.
 
 ### Check before opening a PR
 
-After any skill-doc change, grep for a distinctive phrase from the change across all four files and confirm the count matches:
+After any skill-doc change, grep for a distinctive phrase from the change across all five files and confirm the count matches:
 
 ```bash
 PHRASE="<a distinctive substring from your change>"
-for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/skill.md SKILL.md; do
+for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/skill.md cursor/skills/outsystems/SKILL.md SKILL.md; do
   printf '%s  %s\n' "$(grep -c "$PHRASE" "$f")" "$f"
 done
 ```
 
-All four counts must be equal. If they aren't, the change is incomplete and the PR will create a host-specific drift.
+All five counts must be equal. If they aren't, the change is incomplete and the PR will create a host-specific drift.
 
 ### Exception: setup / installation flows
 
@@ -66,17 +70,22 @@ Setup steps legitimately diverge between the harnesses (Claude Code uses `claude
 
 ### Exception: host-specific affordances
 
-Host-specific UI surfaces (typed shortcuts, hotkeys) live only in the doc for the host that has them. The Claude Code marketplace plugin ships slash commands under `commands/` (declared in `.claude-plugin/plugin.json`'s `commands` key); Kiro Powers do not have an equivalent. So mentions of `/outsystems-feedback` and similar slash-command trigger phrases belong only in `skills/outsystems/SKILL.md`, not in `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, or root `SKILL.md`. The underlying *behavior* (what the agent does on the trigger) still has to lockstep across all four docs.
+Host-specific UI surfaces (typed shortcuts, hotkeys) live only in the doc for the host that has them. The Claude Code marketplace plugin ships slash commands under `commands/` (declared in `.claude-plugin/plugin.json`'s `commands` key); Kiro Powers do not have an equivalent. So mentions of `/outsystems-feedback` and similar slash-command trigger phrases belong only in `skills/outsystems/SKILL.md`, not in `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, or root `SKILL.md`. The underlying *behavior* (what the agent does on the trigger) still has to lockstep across all five docs.
 
 Naming note: slash-command filenames become the command name a user types. Claude Code ships a built-in `/feedback` that routes to Anthropic's issue tracker, so a plugin file named `commands/feedback.md` is shadowed by the host and never fires. Every plugin slash MUST be prefixed with `outsystems-` (`commands/outsystems-feedback.md` → `/outsystems-feedback`) so the host-vs-plugin collision surface is closed by the file name alone.
 
-`commands/` is a Claude-Code-plugin-only directory. There is no Kiro analog, no Copilot analog, and no root analog; do not create one. Behavioral guidance about a command's effect still lands in all four skill docs per the main lockstep rule.
+`commands/` is a Claude-Code-plugin-only directory. There is no Kiro analog, no Copilot analog, no Cursor analog, and no root analog; do not create one. Behavioral guidance about a command's effect still lands in all five skill docs per the main lockstep rule.
 
 ### Manifest version lockstep
 
-Two files declare the plugin version and they must stay in sync on every bump:
+Three sets of files declare plugin versions and they must stay in sync on every bump:
 
+**Claude:**
 - `.claude-plugin/plugin.json` -> `version`
 - `.claude-plugin/marketplace.json` -> `plugins[0].version`
 
-`claude plugin update outsystems@outsystems` keys off `marketplace.json`'s version. Forgetting to bump it means users already on the prior version see "already at the latest" and never pull the new content. Always bump both in the same commit.
+**Cursor:**
+- `cursor/.cursor-plugin/plugin.json` -> `version`
+- `.cursor-plugin/marketplace.json` -> `plugins[0].version`
+
+`claude plugin update outsystems@outsystems` keys off `.claude-plugin/marketplace.json`'s version. Cursor plugin updates via Team Marketplace also key off `.cursor-plugin/marketplace.json`. Forgetting to bump these means users already on the prior version see "already at the latest" and never pull the new content. Always bump all four files (Claude + Cursor pairs) in the same commit, keeping both Claude and Cursor versions aligned.

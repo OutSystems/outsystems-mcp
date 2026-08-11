@@ -1,7 +1,7 @@
 {
   "name": "outsystems",
   "metadata": {
-    "description": "OutSystems MCP plugin for Claude Code"
+    "description": "OutSystems MCP plugin for Cursor"
   },
   "owner": {
     "name": "OutSystems AI Platform"
@@ -14,7 +14,7 @@
       "author": {
         "name": "OutSystems AI Platform"
       },
-      "source": "./"
+      "source": "cursor/"
     }
   ]
 }

@@ -5,6 +5,5 @@
   "author": {
     "name": "OutSystems AI Platform"
   },
-  "skills": "./skills/",
-  "commands": "./commands/"
+  "skills": "./skills/"
 }

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for three AI assistant harnesses — Claude Code (via a plugin), Kiro (via a Power), and GitHub Copilot (via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `kiro/`, `copilot/`, and `skills/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
@@ -11,6 +11,7 @@ This is a distribution-only repository. It packages the OutSystems MCP integrati
   - **Claude Code** (any recent version) for plugin/skill changes.
   - **Kiro 0.11.133 or newer** for Power changes.
   - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
+  - **Cursor App** (Team/Enterprise plan with team admin access) OR **Cursor CLI** (all plans) for Cursor changes.
 - An OutSystems tenant you can authenticate against (e.g. `mycompany.outsystems.dev`) for end-to-end verification.
 
 ## Getting Started
@@ -22,7 +23,7 @@ git clone https://github.com/OutSystems/outsystems-mcp.git
 cd outsystems-mcp
 ```
 
-There is nothing to install or build. The files under `.claude-plugin/`, `kiro/`, `copilot/`, and `skills/` are the source of truth.
+There is nothing to install or build. The files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/` are the source of truth.
 
 ## Repository Structure
 
@@ -30,9 +31,19 @@ There is nothing to install or build. The files under `.claude-plugin/`, `kiro/`
 .claude-plugin/
   marketplace.json        # Claude Code marketplace manifest (lists the plugin)
   plugin.json             # Claude Code plugin manifest (name, version, skills dir)
+.cursor-plugin/
+  marketplace.json        # Cursor marketplace manifest (lists the plugin)
 copilot/
   mcp.json                # Copilot MCP server configuration
   skill.md                # Agent guidance for Copilot
+cursor/
+  .cursor-plugin/
+    plugin.json           # Cursor plugin manifest (name, version, skills dir)
+  mcp.json                # Cursor CLI MCP server configuration
+  README.md               # Cursor install instructions (plugin + CLI)
+  skills/
+    outsystems/
+      SKILL.md            # Agent guidance loaded by Cursor plugin
 kiro/
   outsystems/
     POWER.md              # User-facing Kiro Power manifest (onboarding + troubleshooting)
@@ -42,11 +53,18 @@ kiro/
 skills/
   outsystems/
     SKILL.md              # Agent-facing skill loaded by the Claude Code plugin
-SKILL.md                  # Generic skill content for non-Claude-Code / non-Kiro / non-Copilot harnesses
+SKILL.md                  # Generic skill content for other harnesses
 README.md                 # Install instructions for each supported harness
 ```
 
-`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, and the root `SKILL.md` overlap heavily in intent (they all describe the same MCP tools and conventions). Keep them aligned when changing tool semantics, but each is tailored to its harness — don't blindly copy edits across them.
+All five skill documents overlap in intent (they all describe the same MCP tools and conventions):
+- `skills/outsystems/SKILL.md` (Claude Code)
+- `cursor/skills/outsystems/SKILL.md` (Cursor)
+- `kiro/outsystems/steering/skill.md` (Kiro)
+- `copilot/skill.md` (GitHub Copilot)
+- `SKILL.md` (root, generic)
+
+Keep them aligned when changing tool semantics. See CLAUDE.md for the lockstep grep check to verify alignment before opening a PR.
 
 ## Development Workflow
 
@@ -101,9 +119,34 @@ Point a local registry file at your checkout (Option A in `kiro/outsystems/POWER
 
 Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for VS Code / Visual Studio user config or Copilot CLI config), restart the application or reload the MCP servers, and run an OutSystems-related prompt end-to-end. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app.
 
+### Cursor App (Plugin)
+
+1. For a Team/Enterprise plan, team admin imports the plugin to the Team Marketplace:
+   - Temporarily set your branch as the default branch (or use the PR merge branch if available)
+   - Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
+   - Repo: `OutSystems/outsystems-mcp`, Branch: your test branch
+   - Review the `outsystems` plugin and save (Default On / Required as needed)
+2. Individual user opens Cursor and asks anything OutSystems-related
+3. Agent prompts for tenant hostname, configures `~/.cursor/mcp.json`, and completes OAuth
+4. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app
+
+**Version alignment:** Before testing the app plugin, ensure all plugin versions are in sync:
+- `cursor/.cursor-plugin/plugin.json` → `version`
+- `.cursor-plugin/marketplace.json` → `plugins[0].version`
+- `.claude-plugin/plugin.json` → `version`
+- `.claude-plugin/marketplace.json` → `plugins[0].version`
+
+### Cursor CLI
+
+Point your local Cursor CLI at the `cursor/mcp.json` file (copy to `~/.cursor/mcp.json` global config or `.cursor/mcp.json` project config, using the `mcpServers` key without `type` field). Run:
+1. `agent mcp list` to verify `outsystems` is registered
+2. `agent mcp enable outsystems` if it shows "needs approval"
+3. `agent mcp login outsystems` to trigger OAuth sign-in
+4. Run an OutSystems-related prompt end-to-end in a new agent session. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursor/rules/outsystems.md` (or `AGENTS.md`) is properly loaded and the conventions are applied.
+
 ### Generic harnesses
 
-For changes to the root `SKILL.md`, fetch it the way the install snippet does (`curl https://raw.githubusercontent.com/...`) and confirm it parses as plain markdown and doesn't reference Claude-Code-specific, Kiro-specific, or Copilot-specific affordances.
+For changes to the root `SKILL.md`, fetch it the way the install snippet does (`curl https://raw.githubusercontent.com/...`) and confirm it parses as plain markdown and doesn't reference Claude-Code-specific, Kiro-specific, Copilot-specific, or Cursor-specific affordances.
 
 ## Code Standards
 

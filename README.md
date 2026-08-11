@@ -151,13 +151,42 @@ Step 4: tell me to open the Tools picker, and ENABLE the `outsystems` tools — 
 Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
 ```
 
+## Install - Cursor CLI
+
+Paste into Cursor agent:
+
+```
+Install the OutSystems MCP server in Cursor CLI.
+Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+Step 2: create or edit `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json` (project config, takes precedence). Read it first and preserve existing entries, then add under the top-level `mcpServers` object (NOT `servers`) the canonical `mcpServers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/mcp.json), substituting my tenant for `<my-tenant>`:
+{"outsystems": {"url": "https://<my-tenant>/mcp"}}
+Important: use `mcpServers` as the key (not `servers`), and omit `"type": "http"` — Cursor CLI expects this exact format.
+Ignore any other mcp config and prefer project config.
+Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes to `.cursor/rules/outsystems.md` in my workspace root (or `AGENTS.md` if my project uses that). Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Step 4: in a terminal, run: `agent mcp list` (verify outsystems appears), then `agent mcp enable outsystems` if it shows "needs approval", then `agent mcp login outsystems` (opens browser for OAuth sign-in; complete it there).
+Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is working.
+```
+
+## Install - Cursor App (Plugin)
+
+> **Team/Enterprise plans only:** Requires team admin to import plugin to Team Marketplace.
+
+**Team Admin:** Import the plugin to your Marketplace:
+1. Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
+2. Enter: `https://github.com/OutSystems/outsystems-mcp`
+3. Review the `outsystems` plugin and save (Default On / Required as needed).
+
+**Individual User (after admin installs):** Open Cursor and ask anything OutSystems-related. The agent prompts for your tenant hostname and completes setup automatically.
+
+See [cursor/README.md](cursor/README.md) for detailed setup instructions and version alignment requirements.
+
 ## Install - M365 Copilot (web browser)
 
 Currently, this assistant does not support custom MCP servers.
 
 ## Install - other AI assistants (best effort)
 
-For other agentic harnesses (Codex CLI, Cursor, Continue, Cline, Aider, etc.), this is a best-effort install path — the MCP server is a stock streamable-HTTP MCP endpoint with OAuth + Dynamic Client Registration, so most harnesses should be able to wire it up, but we don't validate the flow ourselves. If something breaks, file an issue with the symptoms.
+For other agentic harnesses (Codex CLI, Continue, Cline, Aider, etc.), this is a best-effort install path — the MCP server is a stock streamable-HTTP MCP endpoint with OAuth + Dynamic Client Registration, so most harnesses should be able to wire it up, but we don't validate the flow ourselves. If something breaks, file an issue with the symptoms.
 
 Paste into your harness:
 
@@ -165,7 +194,7 @@ Paste into your harness:
 Install the OutSystems MCP server.
 Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
 Step 2: register `outsystems` as an MCP server in this harness's configuration, pointing at `https://<my-tenant>/mcp` over the streamable HTTP transport. Use whatever wiring the harness prefers — a CLI command (similar to Claude Code's `claude mcp add`), a settings UI, or hand-editing the harness's MCP config file. The server requires OAuth and supports Dynamic Client Registration, so no shared `client_id` setup is needed, and do not pin a fixed callback port: let the harness pick its own loopback port.
-Step 3: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and inject its contents into this harness's instructions/rules/system-prompt mechanism (e.g. `AGENTS.md` for Codex CLI, `.cursorrules` for Cursor, the system prompt config for Continue, etc.). The skill covers conventions (OML stays server-side, polling shape for long-running tools, error category enums, mentor session round-trip) that the tool descriptions alone don't fully convey.
+Step 3: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and inject its contents into this harness's instructions/rules/system-prompt mechanism (e.g. the system prompt rules file in Cline, a repo instruction file consumed by Aider, the system prompt config for Continue, etc.). The skill covers conventions (OML stays server-side, polling shape for long-running tools, error category enums, mentor session round-trip) that the tool descriptions alone don't fully convey.
 Step 4: trigger authentication. If the harness synthesizes per-server `authenticate` / `complete_authentication` tools after registration (as Claude Code does — they're a client convenience, not server tools), call those (lazy on first tool call). Otherwise let the harness's built-in MCP auth UI handle the OAuth handshake.
 Step 5: depending on the harness, the new MCP server may not be visible until you reload its MCP config or restart. If the harness has a CLI to list registered MCP servers (similar to `claude mcp list`), run it to check whether `outsystems` is visible — if not, tell me to restart the harness. Once the tools appear, ask me anything OutSystems-related to confirm the install is complete.
 ```

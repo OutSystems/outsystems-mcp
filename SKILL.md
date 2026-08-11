@@ -10,6 +10,9 @@ The remote MCP server is OAuth-protected with **standard OAuth**: an unauthentic
 
 - **GitHub Copilot / VS Code (and most other MCP clients)** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
 - **Kiro** drives the sign-in through its own MCP UI — same as the IDE clients above, no `authenticate` tool.
+- **CLI-based clients** (Cursor CLI, Copilot CLI) open the system browser and listen on `localhost` for the callback, allowing shell-based recovery if needed.
+
+**If the browser shows "site can't be reached" at the callback URL:** The sign-in succeeded on the tenant side — only the callback connection failed, typically an IPv4/IPv6 loopback mismatch in a VM. **Do not make the user wait for timeout; tell them immediately.** Ask for the full callback URL from the address bar. Recovery depends on your harness: some clients can replay the callback via shell commands; others require the user to adjust the address in their browser. See your harness's specific Authenticating section for the exact steps. Treat authorization codes as credentials — code is single-use and short-lived.
 
 **Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
 

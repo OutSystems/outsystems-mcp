@@ -1,3 +1,8 @@
+---
+name: outsystems
+description: "OutSystems over MCP. Edit apps, publish, deploy, search tenant elements, manage external libraries. Use for ANY OutSystems task."
+---
+
 # OutSystems - Remote MCP
 
 You are connected to OutSystems over the MCP HTTP transport. OutSystems is a cloud-native low-code platform where apps are built from OML (OutSystems Model Language), a binary format describing entities, screens, actions, and logic. Every tool call carries the harness's validated OAuth bearer; tenant + user identity are derived from the JWT, not from arguments.
@@ -6,47 +11,64 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 ## First use / setup
 
-The OutSystems MCP server is registered through Copilot's MCP configuration — it doesn't ship a config, so the tenant URL is written into the config file for whichever surface you're on. Do this once; the edit is idempotent for re-runs against a different tenant.
+The OutSystems MCP server registration happens in two stages:
 
-Trigger conditions (any of):
-- The user asks for anything OutSystems-related AND no `outsystems` MCP server is registered for the current surface.
-- A call returns `tenant not configured` / connection errors.
-- The user explicitly asks to switch tenants (e.g. "point this at `<other-tenant>`").
+1. **Team admin adds the plugin** (via Dashboard → Plugins → Team Marketplaces → Import from Repo)
+2. **Individual user completes setup** via agent prompts in Cursor app or CLI
 
-Steps:
+### For Cursor App Users (Plugin Auto-Setup)
+
+When a user opens Cursor with this plugin installed:
 
 1. **Ask the user for their OutSystems tenant hostname.** Prompt verbatim:
    > "Which OutSystems tenant should I connect to? It's the host portion of your OutSystems URL, typically something like `mycompany.outsystems.dev`."
 2. **Normalize, then validate.** Accept whatever the user gives you (URL, hostname, hostname-with-path). Strip the scheme (`https://`, `http://`), any leading `www.`, trailing slash, and any path or query — keep only the host. The result must match `^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`. Only ask again if the normalized value is still implausible (empty, contains whitespace, or clearly isn't a hostname). The tenant slug is whatever the user chose; do not assume a fixed pattern.
 3. **Construct the URL**: `https://<TENANT>/mcp`.
-4. **Write it into the right config for the current surface.** Read first, preserve every other entry, write back — never clobber siblings. The canonical shape lives in the repo at `copilot/mcp.json` (both keys); copy the matching key to the destination below:
-   - **VS Code** → `.vscode/mcp.json` (workspace) or the user config behind `MCP: Open User Configuration`. Top-level key **`servers`**:
-     ```
-     {"outsystems": {"type": "http", "url": "<URL>"}}
-     ```
-     No `oauth` block is needed: the server supports Dynamic Client Registration, so VS Code registers its own client and opens the browser sign-in automatically. (A 404 on `/authorize` or a "manually provide a client registration" prompt means the tenant hostname is wrong or its OAuth discovery is misconfigured — re-check the tenant, don't pin a clientId.)
-   - **Visual Studio** → `.mcp.json` in the solution dir (`<SolutionDir>\.mcp.json`) or global `%USERPROFILE%\.mcp.json`. Top-level key **`servers`**, same entry as above.
-   - **Copilot CLI** → `~/.copilot/mcp-config.json`. Top-level key **`mcpServers`**:
-     ```
-     {"outsystems": {"type": "http", "url": "<URL>", "tools": ["*"]}}
-     ```
-     Or run: `copilot mcp add --transport http outsystems <URL>`.
-5. After the edit, the surface picks up the server (VS Code/VS re-query on save; for an already-running Copilot CLI session, tell the user to run `/mcp reload` to load the updated config). The OAuth flow runs on the first OutSystems tool call — see Authenticating.
+4. **Register the server** by writing to `~/.cursor/mcp.json`. Read first, preserve every other entry, write back — never clobber siblings. Format:
+   ```json
+   {
+     "mcpServers": {
+       "outsystems": {
+         "url": "https://<TENANT>/mcp"
+       }
+     }
+   }
+   ```
+   Key: `mcpServers` (not `servers`). No `type` field needed for HTTP.
+5. **Trigger authentication**: Tell the user that Cursor will prompt for OAuth sign-in the first time they use an OutSystems tool. They complete the sign-in in the browser.
 6. **Retry the user's original request** once authentication completes.
+
+### For Cursor CLI Users (Manual Config)
+
+For CLI-only setups (no Cursor app):
+
+1. **Ask the user for their OutSystems tenant hostname** (same prompt as above).
+2. **Normalize and validate** (same as above).
+3. **Write to `~/.cursor/mcp.json` or `.cursor/mcp.json`** (global or project config, same format as above).
+4. **Run CLI commands to verify and authenticate**:
+   - `agent mcp list` — see registered servers
+   - `agent mcp enable outsystems` — if it shows "needs approval"
+   - `agent mcp login outsystems` — opens browser for OAuth sign-in
+5. **Retry the user's original request** once authentication completes.
+
+Trigger conditions (any of):
+- The user asks for anything OutSystems-related AND no `outsystems` MCP server is registered.
+- A call returns `tenant not configured` / connection errors.
+- The user explicitly asks to switch tenants (e.g. "point this at `<other-tenant>`").
 
 ## Authenticating
 
-The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.** How you sign in depends on the harness:
+The remote MCP server is OAuth-protected with **standard OAuth** (an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + DCR: `/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by Cursor, not by an OutSystems tool — the server exposes no `authenticate` tool, and there is no agent-callable auth tool in Cursor.**
 
-- **GitHub Copilot / VS Code** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
-- **Visual Studio** does not auto-open the browser on first call: tell the user to open the Tools picker and ENABLE the `outsystems` tools, and complete the browser sign-in. After that, tool calls proceed as normal.
-- **Copilot CLI** runs the OAuth flow on the first tool call (opens the system browser and listens on an ephemeral `localhost` port for the callback). A browser must be reachable on the same machine. If the browser shows "site can't be reached" at the callback URL (typically an IPv4/IPv6 loopback mismatch in a VM): **do not wait for timeout, and tell the user immediately** — tenant-side sign-in already succeeded. Ask the user for the full URL from the address bar. Complete the callback yourself via the terminal: find the port from the URL and run `lsof -nP -iTCP -sTCP:LISTEN | grep LISTEN` to confirm the listener. Re-send the callback with `curl "http://[::1]:PORT/callback?state=...&code=..."`, swapping the host to `[::1]` if the URL showed `127.0.0.1`. This delivers the code to Copilot CLI's loopback listener, not a tool call. Do not also ask the user to retry in the browser. **Expect the code to be spent:** the refused connection tears down the auth session. If you get "Authorization session ended", have the user start fresh with the corrected address before clicking through. Treat authorization codes as credentials.
+On the first OutSystems tool call in a session, Cursor detects the `401` and runs the OAuth sign-in through its own browser (opens the browser, captures the callback). Make the call, then ask the user to complete Cursor's sign-in prompt; the real tools become usable once they authorize.
 
-**Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
+**Needs a local browser.** Cursor opens the system browser and listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Cursor. On a remote/SSH session with no local browser, run Cursor where a browser can reach `localhost` and retry.
 
-**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — re-trigger its sign-in (your client re-prompts on the next call), then retry the original call ONCE. Don't hunt for an auth tool your harness doesn't expose.
+**If the browser shows "site can't be reached" at the callback URL:** The sign-in already succeeded on the tenant side — the identity provider issued the code and redirected. Only the last local hop failed: Cursor's callback listener and the browser's redirect resolved to different addresses, typically an IPv4/IPv6 loopback mismatch in a VM, where the listener is on `[::1]:PORT` and the redirect went to `127.0.0.1:PORT`. **Do not wait for the timeout, and tell the user so immediately** — they don't need to sit through the two-minute failure. Ask the user for the full URL from the address bar (it contains `callback?state=...&code=...`), then **complete the callback yourself via the terminal**: find the port Cursor is listening on with `lsof -nP -iTCP -sTCP:LISTEN | grep LISTEN` and look for the port in the URL. Re-send the identical callback to Cursor's listener with `curl "http://[::1]:PORT/callback?state=...&code=..."`, swapping the host to `[::1]` if the address bar showed `127.0.0.1`. This hand-off is not an auth tool call; it simply delivers the code to Cursor's loopback listener where the redirect was meant to land. The code is single-use, so do not also ask the user to retry in the browser — one of you, not both. **Expect the attempt to be dead already:** the refused connection tears down the authorization session, so you'll likely get "Authorization session ended" and that code is spent. If so, ask the user to start a fresh sign-in and tell them the corrected address (`[::1]` instead of `127.0.0.1`) to use *before* they click through. Treat authorization codes as credentials either way.
 
-**If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
+**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): Cursor's session lapsed — ask the user to re-authorize via Cursor's sign-in prompt (app) or by re-running `agent mcp login outsystems` (CLI), then retry the original call ONCE.
+
+**If sign-in fails:** Check the browser first. If it shows "site can't be reached" at the callback URL (e.g., `http://127.0.0.1:8787/callback?...`), see the "site can't be reached" guidance above—this is a local network issue, not a server fault, and often recoverable by asking the user for the URL. For other failures (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
 
 ## Tools at a glance
 
@@ -211,40 +233,42 @@ Scope rules for the offer:
 - Skip the offer when you already have the id in scope from a mentor tool call earlier in this conversation — attach it directly and confirm in the reply which id you attached.
 - Do NOT invent or guess ids. If the user replies with a value that isn't shaped like an id (e.g., not a UUID for `mentor_session_id`), tell them and skip the field rather than pass junk.
 
-**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when a situation clearly matches one of the five defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
+**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when a situation clearly matches one of the six defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
 
 **Scope.** `agent_observation` reports on how OutSystems tools composed to fulfill a specific user request in the current turn. An OutSystems tool is any tool from the connected OutSystems MCP server — the ones that let you inspect and change tenant state. Three invariants must all hold before you fire:
 
 1. **The current user turn contains a task that needs OutSystems tools.** Conversational messages ("thanks", "that's all", "sounds good") are not tasks — no tool composition happened for them, so there is nothing to observe.
 2. **You actually called at least one OutSystems tool to fulfill it.** The observation must have a real tool call as its subject. If the turn ran no OutSystems tool, there is no subject.
-3. **The subject is a tool interaction, not your own working-out.** Reading guidance, deciding which tool to pick, checking documentation, or otherwise figuring out an approach is not part of the tool composition — the composition is only the tools that actually ran against the OutSystems server. If your draft rationale describes a decision, a lookup, or a step in your reasoning rather than a tool that ran, you have no subject to observe on.
+3. **The subject is a tool interaction, not your own working-out.** Reading guidance, deciding which tool to pick, checking documentation, or otherwise figuring out an approach is not part of the tool composition — the composition is only the tools that actually ran against the OutSystems server. If your draft rationale describes a decision, a lookup, or a step in your reasoning rather than a tool that ran, you have no subject to observe on. Exception: a value the tool reports in its own terminal payload (e.g. Mentor's `internal_retry_count`) is part of that tool's interaction, not your working-out — you called the tool, and what it reports back is what you're observing on. See `builder_retry_friction` below.
 
 If any invariant fails, do NOT fire — silence is correct, regardless of how well a categorical seems to fit.
 
-The five valid values for `agent_observation` (listed in disambiguation-precedence order — first-match wins when a situation could match multiple):
+The six valid values for `agent_observation` (listed in disambiguation-precedence order — first-match wins when a situation could match multiple):
 - `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path. **Threshold**: reserve for shortcuts that generalize to the task PATTERN — a step you took would be unnecessary for anyone doing this KIND of task, given tools that already exist. Do NOT fire for execution-only variance (a call you happened to make more times than needed for this specific input, an ordering that was fine but not optimal). If the shortcut depends on knowing this particular input's shape or size, it's execution detail, not composition insight — skip. **Tie-break vs `unexpected_shape`**: if any step you took returned only data already present in a prior step's output (i.e., that step was redundant in retrospect), this fires — even if the redundant step's response also had a shape quirk. "Missing expected fields" on the redundant step is a symptom; the higher-order insight is that the step wasn't needed.
-- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different tool ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same.
+- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different tool ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same. **Tie-break vs `builder_retry_friction`**: this is about YOUR OWN outer tool choice (you picked the wrong `context_search`/`app_list`/etc., or the wrong resource entirely). If your own tool picks were correct and the friction happened *inside* a single successful `mentor_start`/`mentor_get_run` turn, that's `builder_retry_friction`, not this.
+- `builder_retry_friction` — a single Mentor turn (`mentor_start` or a `mentor_get_run` poll reaching terminal) reports `internal_retry_count >= 3` in its terminal `result`, regardless of whether the turn ultimately succeeded. Fires once per terminal Mentor result that crosses the threshold; a `succeeded` status with `validation.error_count: 0` does NOT mean skip — a clean final state can still carry a nonzero count worth reporting. Do NOT fire below the threshold and do NOT fire per-retry — one observation per terminal result, using the final count.
 - `repeated_clarification` — the same user intent required 3+ back-and-forth turns of ambiguous user replies before you could act (or you gave up because ambiguity persisted).
 - `unexpected_shape` — a tool response was well-formed but lacked expected fields or had an unexpected structure that made it hard to chain into the next call. NOT this if the "missing field" happened on a step that turned out to be redundant post-success — that's `shorter-path-available` (see tie-break above).
 - `empty_results` — a tool returned zero results in a case where you had strong reason to expect data. The bar is "surprising empty return", not "any empty return". Searching for a plausible-sounding thing that legitimately doesn't exist is NOT this; searching for something the user just clearly referenced and getting nothing IS.
 
-**Never invent a value.** These 5 are the entire enum. If none clearly fits, do NOT fire — silence is safer than a made-up categorical.
+**Never invent a value.** These 6 are the entire enum. If none clearly fits, do NOT fire — silence is safer than a made-up categorical.
 
 Use:
 - `name`: `"agent_observation"`
-- `value`: one of the 5 exactly, per the enum above. Rejecting silence is not a valid choice.
-- `rationale`: one sentence describing the situation **in your own words**, after applying the redaction rule. Do NOT quote or paraphrase the user's message. Describe what went wrong (or, for `shorter-path-available`, the shortcut you spotted plus the attempts you made before landing the working path). Cap at 4096 bytes.
-- `mentor_session_id`: only when the observation is about a mentor turn, and only if you have a UUID.
+- `value`: one of the 6 exactly, per the enum above. Rejecting silence is not a valid choice.
+- `rationale`: one sentence describing the situation **in your own words**, after applying the redaction rule. Do NOT quote or paraphrase the user's message. Describe what went wrong (or, for `shorter-path-available`, the shortcut you spotted plus the attempts you made before landing the working path; for `builder_retry_friction`, the `internal_retry_count` value). Cap at 4096 bytes.
+- `mentor_session_id`: only when the observation is about a mentor turn (always true for `builder_retry_friction`), and only if you have a UUID.
 - `agent_context`: OPTIONAL structured recap of what you were doing when you constructed this observation. JSON-encoded string, ≤2048 bytes. Same shape and secrets rules as user-initiated.
 
-**When to fire.** When any of the five categoricals above clearly matches the just-completed tool interaction, fire it. One row is cheap; silence when a categorical actually applies costs the team a real signal. Do NOT wait for the user to grant permission — the SKILL is the permission. Fire at most one `agent_observation` per user turn.
+**When to fire.** When any of the six categoricals above clearly matches the just-completed tool interaction, fire it. One row is cheap; silence when a categorical actually applies costs the team a real signal. Do NOT wait for the user to grant permission — the SKILL is the permission. Fire at most one `agent_observation` per user turn.
 
-**When to skip.** Only when NONE of the five categoricals clearly matches AND all three scope invariants hold. If your draft rationale sentence would be about the agent's own workflow rather than a specific OutSystems tool call, skip. If the situation is genuinely borderline and you would have to argue with yourself that it is noteworthy, skip. `shorter-path-available` in particular should stay low-frequency — fires per successful multi-step task, not per turn; never on a one-step task that already took the direct path.
+**When to skip.** Only when NONE of the six categoricals clearly matches AND all three scope invariants hold. If your draft rationale sentence would be about the agent's own workflow rather than a specific OutSystems tool call, skip. If the situation is genuinely borderline and you would have to argue with yourself that it is noteworthy, skip. `shorter-path-available` in particular should stay low-frequency — fires per successful multi-step task, not per turn; never on a one-step task that already took the direct path.
 
 **Positive triggers (fire immediately, do not deliberate)**:
 - Just did a lookup for a concrete resource the user named (an app, a deploy, a session) and it returned empty → fire `empty_results`.
 - Just called a tool, it errored or returned an unusable shape, you had to fall back to a different tool to make progress → fire `wrong_path`.
 - The user's last message corrected your tool choice ("no, use X instead") after you had already picked one → fire `wrong_path`.
+- A `mentor_start`/`mentor_get_run` call just reached a terminal state and its `result` (or `error`) carries `internal_retry_count >= 3` → fire `builder_retry_friction`, whether the run succeeded or failed.
 - A multi-step task just landed successfully AND one of its steps turned out to be structurally unnecessary (given the input the user handed you upfront) → fire `shorter-path-available`.
 - A tool's response is missing fields its description explicitly promised, and you needed those fields to proceed → fire `unexpected_shape`.
 - You are on the 3rd back-and-forth clarification about the same user intent → fire `repeated_clarification`.
