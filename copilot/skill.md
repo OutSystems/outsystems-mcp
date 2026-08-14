@@ -4,15 +4,43 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 **Once authenticated and the server's tools are visible**, read the live `tools/list` before your first non-auth OutSystems operation. This skill names domains, not tools — names, parameters, and defaults can change server-side, and the server is the source of truth. (Authenticating is the one exception: drive the auth flow first, as described below.)
 
+## First use / setup
+
+The OutSystems MCP server is registered through Copilot's MCP configuration — it doesn't ship a config, so the tenant URL is written into the config file for whichever surface you're on. Do this once; the edit is idempotent for re-runs against a different tenant.
+
+Trigger conditions (any of):
+- The user asks for anything OutSystems-related AND no `outsystems` MCP server is registered for the current surface.
+- A call returns `tenant not configured` / connection errors.
+- The user explicitly asks to switch tenants (e.g. "point this at `<other-tenant>`").
+
+Steps:
+
+1. **Ask the user for their OutSystems tenant hostname.** Prompt verbatim:
+   > "Which OutSystems tenant should I connect to? It's the host portion of your OutSystems URL, typically something like `mycompany.outsystems.dev`."
+2. **Normalize, then validate.** Accept whatever the user gives you (URL, hostname, hostname-with-path). Strip the scheme (`https://`, `http://`), any leading `www.`, trailing slash, and any path or query — keep only the host. The result must match `^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`. Only ask again if the normalized value is still implausible (empty, contains whitespace, or clearly isn't a hostname). The tenant slug is whatever the user chose; do not assume a fixed pattern.
+3. **Construct the URL**: `https://<TENANT>/mcp`.
+4. **Write it into the right config for the current surface.** Read first, preserve every other entry, write back — never clobber siblings. The canonical shape lives in the repo at `copilot/mcp.json` (both keys); copy the matching key to the destination below:
+   - **VS Code** → `.vscode/mcp.json` (workspace) or the user config behind `MCP: Open User Configuration`. Top-level key **`servers`**:
+     ```
+     {"outsystems": {"type": "http", "url": "<URL>"}}
+     ```
+     No `oauth` block is needed: the server supports Dynamic Client Registration, so VS Code registers its own client and opens the browser sign-in automatically. (A 404 on `/authorize` or a "manually provide a client registration" prompt means the tenant hostname is wrong or its OAuth discovery is misconfigured — re-check the tenant, don't pin a clientId.)
+   - **Visual Studio** → `.mcp.json` in the solution dir (`<SolutionDir>\.mcp.json`) or global `%USERPROFILE%\.mcp.json`. Top-level key **`servers`**, same entry as above.
+   - **Copilot CLI** → `~/.copilot/mcp-config.json`. Top-level key **`mcpServers`**:
+     ```
+     {"outsystems": {"type": "http", "url": "<URL>", "tools": ["*"]}}
+     ```
+     Or run: `copilot mcp add --transport http outsystems <URL>`.
+5. After the edit, the surface picks up the server (VS Code/VS re-query on save; for an already-running Copilot CLI session, tell the user to run `/mcp reload` to load the updated config). The OAuth flow runs on the first OutSystems tool call — see Authenticating.
+6. **Retry the user's original request** once authentication completes.
+
 ## Authenticating
 
 The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.** How you sign in depends on the harness:
 
-- **GitHub Copilot / VS Code (and most other MCP clients)** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
-- **Kiro** drives the sign-in through its own MCP UI — same as the IDE clients above, no `authenticate` tool.
-- **CLI-based clients** (Cursor CLI, Copilot CLI) open the system browser and listen on `localhost` for the callback, allowing shell-based recovery if needed.
-
-**If the browser shows "site can't be reached" at the callback URL:** The sign-in succeeded on the tenant side — only the callback connection failed, typically an IPv4/IPv6 loopback mismatch in a VM. **Do not make the user wait for timeout; tell them immediately.** Ask for the full callback URL from the address bar. Recovery depends on your harness: some clients can replay the callback via shell commands; others require the user to adjust the address in their browser. See your harness's specific Authenticating section for the exact steps. Treat authorization codes as credentials — code is single-use and short-lived.
+- **GitHub Copilot / VS Code** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
+- **Visual Studio** does not auto-open the browser on first call: tell the user to open the Tools picker and ENABLE the `outsystems` tools, and complete the browser sign-in. After that, tool calls proceed as normal.
+- **Copilot CLI** runs the OAuth flow on the first tool call (opens the system browser and listens on an ephemeral `localhost` port for the callback). A browser must be reachable on the same machine. If the browser shows "site can't be reached" at the callback URL (typically an IPv4/IPv6 loopback mismatch in a VM): **do not wait for timeout, and tell the user immediately** — tenant-side sign-in already succeeded. Ask the user for the full URL from the address bar. Complete the callback yourself via the terminal: find the port from the URL and run `lsof -nP -iTCP -sTCP:LISTEN | grep LISTEN` to confirm the listener. Re-send the callback with `curl "http://[::1]:PORT/callback?state=...&code=..."`, swapping the host to `[::1]` if the URL showed `127.0.0.1`. This delivers the code to Copilot CLI's loopback listener, not a tool call. Do not also ask the user to retry in the browser. **Expect the code to be spent:** the refused connection tears down the auth session. If you get "Authorization session ended", have the user start fresh with the corrected address before clicking through. Treat authorization codes as credentials.
 
 **Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
 
@@ -24,7 +52,7 @@ The remote MCP server is OAuth-protected with **standard OAuth**: an unauthentic
 
 Discover the live catalog from the MCP server's `tools/list`; treat each tool's `description` + `inputSchema` as the source of truth. Don't rely on a hardcoded list — the set can change server-side. The tools group into these domains:
 
-- **Apps** — list and inspect applications, their references, and revision history; create new apps — by default cloned from the kind's standard application template (Web, Mobile, Agent; MobileUI on request), exactly like the ODC Studio new-app wizard, with a blank-shell opt-out (libraries are always created blank).
+- **Apps** — list and inspect applications, their references, and revision history.
 - **Context Service** — seven typed, read-only lookups over a tenant's elements (entities, actions, screens, structures, roles, themes, connections).
 - **Mentor** — server-side OML editing as an async, multi-turn session.
 - **Publish** — compile and publish edited OML to an environment.
@@ -46,7 +74,7 @@ Cross-tool behaviors not expressible in a single per-tool description:
 
 - **Read `tools/list` before your first non-auth call.** This skill names domains; the server names tools. (Auth comes first; see Authenticating.)
 - **Agent-facing tools.** Don't expose raw tool output; extract the relevant fields and present them naturally.
-- **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy sign-in described above; identity comes from the harness-negotiated bearer.
+- **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy authentication step described above; identity comes from the harness-negotiated bearer.
 - **Confirm before tenant-state mutations.** Before invoking any tool that can change tenant state, restate the planned change to the user and wait for explicit confirmation. Skip the prompt only when the user has already authorised this specific change in the current turn. A generic "go ahead with the task" earlier in the conversation is not authorisation for a specific destructive call. The destructive actions are: starting or rolling back a deployment, publishing OML, uploading/publishing/deleting an external library, and creating an app. Read-only and inert local-mutating tools are unaffected: listing or inspecting apps, the context lookups, any status/logs/messages poll, enumerating environments, listing deployments, and the external-library listing, contents, and source-download lookups. A deployment-impact analysis is read-only on the server and exists to inform a deploy decision, so run it *before* you ask for confirmation rather than asking permission to run it. The deletion-impact variant mutates nothing either, but it is deletion-adjacent, so name the asset you are about to analyse and get confirmation first, as for the destructive calls. The host may prompt on either form regardless, since its annotation covers the tool as a whole and cannot see which variant you asked for. Editing in a mentor session changes only the in-memory mentor OML, not deployed tenant assets, so it does not require confirmation. The MCP host's own `destructiveHint` prompt is a backstop, not a substitute: this rule applies on every host regardless of whether the host gates on the hint.
 - **OML stays server-side.** There is no download tool. Inspect an app through its references and the context lookups; edit it through the mentor flow (start a mentor run, then poll it until terminal). The OML lives in the server-side mentor session and never crosses the wire as bytes. When a user asks for the OML on disk, say plainly that the remote MCP transport does not expose a file-to-local-disk download (the server has no local filesystem to write to), and where useful offer the partially answerable portion (e.g. the app's revision history for the latest version number).
 - **Never guess opaque IDs.** If `env_key`, `app_key`, an asset key, or a `mentor_session_*` token is missing and you can't resolve it, ask the user.

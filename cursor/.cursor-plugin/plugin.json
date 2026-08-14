@@ -1,10 +1,9 @@
 {
   "name": "outsystems",
   "description": "Edit, publish, deploy, and search OutSystems apps from your AI assistant.",
-  "version": "0.14.0",
+  "version": "0.13.0",
   "author": {
     "name": "OutSystems AI Platform"
   },
-  "skills": "./skills/",
-  "commands": "./commands/"
+  "skills": "./skills/"
 }

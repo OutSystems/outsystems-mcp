@@ -1,0 +1,17 @@
+{
+  "//": "Canonical OutSystems MCP config for GitHub Copilot. Source of truth for all surfaces. Replace <my-tenant> with the tenant hostname (e.g. mycompany.outsystems.dev) at install time. VS Code and Visual Studio read the `servers` key; Copilot CLI reads `mcpServers`.",
+  "//oauth": "No oauth block is needed on any surface: the OutSystems auth server supports OAuth discovery + Dynamic Client Registration, so VS Code / Visual Studio / the CLI register their own client and run the browser sign-in automatically on first connection.",
+  "servers": {
+    "outsystems": {
+      "type": "http",
+      "url": "https://<my-tenant>/mcp"
+    }
+  },
+  "mcpServers": {
+    "outsystems": {
+      "type": "http",
+      "url": "https://<my-tenant>/mcp",
+      "tools": ["*"]
+    }
+  }
+}
