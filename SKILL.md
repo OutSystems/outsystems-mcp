@@ -24,7 +24,7 @@ The remote MCP server is OAuth-protected with **standard OAuth**: an unauthentic
 
 Discover the live catalog from the MCP server's `tools/list`; treat each tool's `description` + `inputSchema` as the source of truth. Don't rely on a hardcoded list — the set can change server-side. The tools group into these domains:
 
-- **Apps** — list and inspect applications, their references, and revision history.
+- **Apps** — list and inspect applications, their references, and revision history; create new apps — by default cloned from the kind's standard application template (Web, Mobile, Agent; MobileUI on request), exactly like the ODC Studio new-app wizard, with a blank-shell opt-out (libraries are always created blank).
 - **Context Service** — seven typed, read-only lookups over a tenant's elements (entities, actions, screens, structures, roles, themes, connections).
 - **Mentor** — server-side OML editing as an async, multi-turn session.
 - **Publish** — compile and publish edited OML to an environment.
