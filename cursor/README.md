@@ -78,7 +78,7 @@ The Cursor skill doc is included in the plugin and deployed via `cursor/.cursor-
 - `copilot/skill.md` (GitHub Copilot)
 - `SKILL.md` (root, generic)
 
-All five files carry identical `## Rules`, `## Workflows`, and `## Feedback` sections. Any behavioral change to one must be applied to all five.
+All five files carry a `## Rules` section that is identical but for one wording drift in the "Go straight to the task" bullet, and broadly the same `## Tools at a glance`, `### Caveats`, `## Workflows`, and `## Feedback` sections. Any behavioral change to one must be applied to all five, and to `kiro/outsystems/POWER.md`, whose `## Conventions` section carries the same rules for Kiro operators while sitting outside the grep below.
 
 Use the lockstep grep check before opening a PR:
 ```bash
@@ -88,4 +88,4 @@ for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/sk
 done
 ```
 
-All counts must be equal.
+All counts must be equal for a phrase in a lockstepped section. A phrase that also appears in a host-specific setup section legitimately differs; see CLAUDE.md for how to count those.

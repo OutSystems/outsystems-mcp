@@ -13,7 +13,7 @@ This PR is for...
 (prefer animated gif; optional for docs-only changes)
 
 ### Checklist
-* [ ] verified in at least one supported harness (Claude Code, Claude Desktop, Kiro, Copilot, Cursor)
+* [ ] every supported harness accounted for, each one verified, not applicable with the reason, or a recorded gap with a follow-up (every row of the CLAUDE.md harness table)
 * [ ] no internal references leaked (stage hostnames, internal Jira projects, team jargon)
-* [ ] if skill content or behavior changed: kept in sync across `skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and root `SKILL.md`
+* [ ] if skill content or behavior changed: kept in sync across `skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and root `SKILL.md`, plus `kiro/outsystems/POWER.md` where its `## Conventions` carries the same rules
 * [ ] if releasing: version bumped in all four manifests (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`)
