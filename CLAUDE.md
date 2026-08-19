@@ -14,7 +14,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
 | Copilot in Visual Studio | `copilot/skill.md` | manual download to `.github/copilot-instructions.md` | `<SolutionDir>\.mcp.json`, or `%USERPROFILE%\.mcp.json` | `servers` |
-| Cursor App | `cursor/skills/outsystems/SKILL.md` | automatic, via `.cursor-plugin/plugin.json` | Team Marketplace install (Team/Enterprise plan required) | `mcpServers` |
+| Cursor App | `cursor/skills/outsystems/SKILL.md` | automatic, via `cursor/.cursor-plugin/plugin.json` | Team Marketplace install (Team/Enterprise plan required) | `mcpServers` |
 | Cursor CLI | `cursor/skills/outsystems/SKILL.md` | manual copy to `.cursor/rules/outsystems.md` | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) | `mcpServers` |
 | M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
 | Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
@@ -78,7 +78,7 @@ Naming note: slash-command filenames become the command name a user types. Claud
 
 ### Manifest version lockstep
 
-Three sets of files declare plugin versions and they must stay in sync on every bump:
+Two sets of files, four in total, declare plugin versions and they must stay in sync on every bump:
 
 **Claude:**
 - `.claude-plugin/plugin.json` -> `version`
