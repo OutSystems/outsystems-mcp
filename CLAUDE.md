@@ -88,4 +88,4 @@ Two sets of files, four in total, declare plugin versions and they must stay in 
 - `cursor/.cursor-plugin/plugin.json` -> `version`
 - `.cursor-plugin/marketplace.json` -> `plugins[0].version`
 
-`claude plugin update outsystems@outsystems` keys off `.claude-plugin/marketplace.json`'s version. Cursor plugin updates via Team Marketplace also key off `.cursor-plugin/marketplace.json`. Forgetting to bump these means users already on the prior version see "already at the latest" and never pull the new content. Always bump all four files (Claude + Cursor pairs) in the same commit, keeping both Claude and Cursor versions aligned.
+`claude plugin update outsystems@outsystems` compares the version in `.claude-plugin/plugin.json`. Bumping only `.claude-plugin/marketplace.json` does not trigger an update: the user is told "already at the latest version" and never pulls the new content, even after `claude plugin marketplace update`. Cursor's resolution has not been verified, so treat both Cursor manifests as load-bearing. Always bump all four files (Claude + Cursor pairs) in the same commit, keeping both Claude and Cursor versions aligned.

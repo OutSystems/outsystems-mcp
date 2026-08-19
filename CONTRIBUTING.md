@@ -121,7 +121,7 @@ Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for
 
 ### Cursor App (Plugin)
 
-Before you start, confirm `cursor/.cursor-plugin/plugin.json` and `.cursor-plugin/marketplace.json` carry the version you expect and match the Claude pair under [Versioning and Releases](#versioning-and-releases). On a re-import, Cursor keys off `.cursor-plugin/marketplace.json`, so an unbumped version leaves testers on the previously installed content.
+Before you start, confirm `cursor/.cursor-plugin/plugin.json` and `.cursor-plugin/marketplace.json` carry the version you expect and match the Claude pair under [Versioning and Releases](#versioning-and-releases). An unbumped version risks leaving testers on previously installed content rather than on your branch.
 
 1. For a Team/Enterprise plan, team admin imports the plugin to the Team Marketplace:
    - Temporarily set your branch as the default branch (or use the PR merge branch if available)
@@ -162,7 +162,11 @@ Version lives in four places and must stay in sync:
 - `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
 
-Bump all four in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`). The two `marketplace.json` versions drive update detection: `claude plugin update` keys off `.claude-plugin/marketplace.json`, and Cursor's Team Marketplace keys off `.cursor-plugin/marketplace.json`. Leave either behind and users already on the prior version see "already at the latest" and never pull the new content.
+Bump all four in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
+
+For Claude Code, `claude plugin update` compares the version in `.claude-plugin/plugin.json`. Leave that one behind and users are told "already at the latest version" and never pull the new content, even after `claude plugin marketplace update`. The marketplace entry is what a user browses before installing, so keeping it in step matters for what a release advertises rather than for whether the update fires.
+
+Cursor's resolution has not been verified the same way. Bump both Cursor manifests together and do not rely on one covering for the other.
 
 Versioning follows [Semantic Versioning](https://semver.org/):
 
