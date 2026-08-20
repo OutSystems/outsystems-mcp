@@ -22,6 +22,7 @@ There is no CLI to install. There is no OML on disk. OML stays server-side; you 
 - A web browser on the same machine as Kiro (Kiro picks an ephemeral local port for the OAuth callback after Dynamic Client Registration).
 - An OutSystems tenant hostname (e.g. `mycompany.outsystems.dev`).
 - Network access to the OutSystems tenant hostname (e.g. `*.outsystems.dev`).
+- Your tenant enabled for the OutSystems MCP server. This is a server-side allowlist, so if it is not enabled every tool call is rejected with `tenant_not_allowed` however the Power is installed.
 
 ### Installation
 
@@ -128,12 +129,13 @@ Workflows below show MCP tool form. Identity (tenant + user) is derived from the
 - **No local CWD.** The server has no view of the caller's filesystem. When a user asks about local paths, working directories, or CWD-relative artifacts, state the limit plainly and surface the closest server-side data inline (e.g. paste the `env_list` payload back so the user can save it themselves) instead of attempting the operation. Don't silently route a write or a read through a non-MCP tool; the architectural fact has to reach the user.
 - **Operations return immediately.** `deploy_start`, `deploy_rollback`, `deploy_impact`, `publish_start`, `extlib_upload`, `extlib_publish`, `extlib_download_source` all return an operation/publication/analysis id; poll the matching `*_status` tool.
 - **Never invent IDs.** App keys, env keys, build keys, operation keys are opaque. Resolve them via `app_list`, `env_list`, etc., or ask the user.
+- **A `tenant_not_allowed` rejection is a server-side per-tenant allowlist gate, not a lapsed sign-in.** The token is valid, so re-authenticating, re-registering, and removing and re-adding the server all fail identically while risking a working configuration. Confirm with the user which host the server is pointed at, because a right account on the wrong tenant gets this same rejection and is fixed by pointing it at the right one. If the host is right, tell the user to ask their OutSystems contact to have the tenant enabled.
 
 ## Troubleshooting
 
 ### MCP server unreachable
 
-**Symptom:** Kiro reports the `outsystems` server as not configured / not connected, or tools return `tenant not configured` errors.
+**Symptom:** Kiro reports the `outsystems` server as not configured / not connected, or tools return `tenant not configured` errors. A rejection naming `tenant_not_allowed` is a different condition. Use step 2 to check the configured URL is the tenant you mean, because a correctly enabled account pointed at the wrong tenant gets this same rejection. If the host is right, no remaining step changes it: ask your OutSystems contact to have the tenant enabled.
 
 **Solutions:**
 1. Have you completed the first-use tenant prompt? Open Kiro Chat and ask anything OutSystems-related; the agent will notice the missing server entry and walk you through it.
@@ -143,17 +145,17 @@ Workflows below show MCP tool form. Identity (tenant + user) is derived from the
 
 ### OAuth doesn't open / callback fails
 
-**Symptom:** Browser tab doesn't open, OR the browser shows "site can't be reached" / a redirect-uri mismatch on the `localhost:<port>/callback` page.
+**Symptom:** Browser tab doesn't open, OR the browser shows "site can't be reached" / a redirect-uri mismatch on the `localhost:<port>/callback` page. None of this applies to a rejection naming `tenant_not_allowed`, where sign-in already succeeds; see Conventions.
 
 **Solutions:**
 1. **Browser didn't open at all:** re-trigger the sign-in — ask Kiro Chat to retry the OutSystems action (the first tool call re-initiates OAuth), or authenticate the `outsystems` server from Kiro's MCP UI. Kiro owns the OAuth flow.
 2. **Callback page shows "site can't be reached":** Kiro listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Kiro (see Prerequisites). On a remote/SSH session without a local browser, run Kiro where a browser can reach `localhost` and retry.
 3. **DCR or auth-handshake errors:** surface the error message verbatim and file an issue against `OutSystems/outsystems-mcp` with the symptoms.
-4. **Last resort:** remove and re-add the `outsystems` server in Kiro's MCP UI to wipe stale OAuth state, then ask Kiro Chat to redo the first-use steering flow.
+4. **Last resort:** remove and re-add the `outsystems` server in Kiro's MCP UI to wipe stale OAuth state, then ask Kiro Chat to redo the first-use steering flow. Do not do this for a `tenant_not_allowed` rejection: it discards a working configuration without affecting the tenant allowlist.
 
 ### Tool errors
 
-Errors carry a structured category in `data.category` (`AuthError`, `ValidationError`, `UpstreamError`, `InternalError`); upstream errors also include `data.upstream_status`. Use these for retry decisions, not the message text.
+Errors carry a structured category in `data.category` (`AuthError`, `ValidationError`, `UpstreamError`, `InternalError`); upstream errors also include `data.upstream_status`. Use these for retry decisions, not the message text. Two named exceptions: the external-library `Server is busy, retry shortly` case, which is transient and worth retrying, and a rejection naming `tenant_not_allowed`, which no retry or re-setup clears, covered under Conventions.
 
 ## Limitations
 

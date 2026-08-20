@@ -7,12 +7,13 @@ This is a distribution-only repository. It packages the OutSystems MCP integrati
 ## Prerequisites
 
 - Git.
-- At least one of the supported harnesses installed locally, to manually verify changes:
+- At least one of the supported harnesses installed locally. Rows you cannot verify are recorded as gaps with a follow-up per the PR checklist, not skipped silently:
   - **Claude Code** (any recent version) for plugin/skill changes.
+  - **Claude Desktop** for MCP config changes. It receives no skill doc, so skill content does not reach it.
   - **Kiro 0.11.133 or newer** for Power changes.
   - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
   - **Cursor App** (Team/Enterprise plan with team admin access) OR **Cursor CLI** (all plans) for Cursor changes.
-- An OutSystems tenant you can authenticate against (e.g. `mycompany.outsystems.dev`) for end-to-end verification.
+- An OutSystems tenant you can authenticate against (e.g. `mycompany.outsystems.dev`) and that is enabled for the MCP server, for end-to-end verification. Authenticating is not sufficient: a tenant outside the server-side allowlist rejects every tool call.
 
 ## Getting Started
 
@@ -64,7 +65,7 @@ All five skill documents overlap in intent (they all describe the same MCP tools
 - `copilot/skill.md` (GitHub Copilot)
 - `SKILL.md` (root, generic)
 
-Keep them aligned when changing tool semantics. See CLAUDE.md for the lockstep grep check to verify alignment before opening a PR.
+Keep them aligned when changing tool semantics. `kiro/outsystems/POWER.md` carries the same conventions for Kiro operators under `## Conventions`; keep it aligned too. See CLAUDE.md for the lockstep grep check to verify alignment before opening a PR.
 
 ## Development Workflow
 
@@ -91,14 +92,14 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`, `POWER`.
 ### Pull requests
 
 1. Create a branch from `main`.
-2. Make your changes. If you touch tool semantics, update every place that documents them (`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and the root `SKILL.md`) so they stay aligned.
+2. Make your changes. If you touch tool semantics, update every place that documents them (`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and the root `SKILL.md`) so they stay aligned. `kiro/outsystems/POWER.md` carries the same conventions under `## Conventions`; update it too when a rule changes.
 3. Open a PR targeting `main`.
-4. Verify the change in at least one supported harness (see "Testing" below) and describe what you tested in the PR body.
+4. Account for every supported harness in the CLAUDE.md table, each one verified, not applicable with the reason, or a recorded gap with a follow-up, and record the outcomes in the PR body (see "Testing" below).
 5. After review and merge, the version bump goes out as the next release (see [Versioning and Releases](#versioning-and-releases)).
 
 ## Testing
 
-There is no automated test suite. Verify changes manually in the harness(es) you touched.
+There is no automated test suite. Verify changes manually, accounting for every harness in the CLAUDE.md table as step 4 above requires.
 
 ### Claude Code (plugin + skills)
 
@@ -110,6 +111,10 @@ claude plugin install outsystems@outsystems
 ```
 
 Restart Claude Code, register the MCP server with `claude mcp add` (see the `README.md` install snippet), and run an OutSystems-related prompt end-to-end (e.g. `app_list` followed by `mentor_start` → poll → `publish_start`).
+
+### Claude Desktop
+
+Desktop receives the MCP server configuration and no skill doc, so skill-content changes are not applicable to it. Verify only that the server still resolves from `claude_desktop_config.json` under `mcpServers`. Record skill-content changes as not applicable, with that reason.
 
 ### Kiro (Power)
 
@@ -139,6 +144,10 @@ Point your local Cursor CLI at the `cursor/mcp.json` file (copy to `~/.cursor/mc
 2. `agent mcp enable outsystems` if it shows "needs approval"
 3. `agent mcp login outsystems` to trigger OAuth sign-in
 4. Run an OutSystems-related prompt end-to-end in a new agent session. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursor/rules/outsystems.md` (or `AGENTS.md`) is properly loaded and the conventions are applied.
+
+### M365 Copilot
+
+Never applicable, because it does not support custom MCP servers, so neither the server nor the skill content reaches it.
 
 ### Generic harnesses
 

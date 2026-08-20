@@ -47,13 +47,15 @@ This repo ships **five parallel skill documents**:
 - `cursor/skills/outsystems/SKILL.md` is the Cursor skill doc, consumed by Cursor CLI.
 - `SKILL.md` at the repo root is the top-level fallback skill doc, consumed by hosts that look at the repo root or by anyone reading the repo on GitHub.
 
-All five carry an identical `## Rules` section, and broadly the same `## Tools at a glance`, `## Caveats`, and `## Workflows` sections. **Any behavioral change to one MUST be applied to all five.** Updating only one creates a host-specific protection gap. For example, a confirm-before-destructive rule added to `skills/outsystems/SKILL.md` alone protects Claude Code users but leaves Kiro Power, Copilot, and Cursor users with no protection.
+All five carry a `## Rules` section that is identical except for one wording drift in the "Go straight to the task" bullet, where root `SKILL.md` says "lazy sign-in" and the other four say "lazy authentication step", and broadly the same `## Tools at a glance`, `### Caveats`, `## Workflows`, and `## Feedback` sections. **Any behavioral change to one MUST be applied to all five.** Updating only one creates a host-specific protection gap. For example, a confirm-before-destructive rule added to `skills/outsystems/SKILL.md` alone protects Claude Code users but leaves Kiro Power, Copilot, and Cursor users with no protection.
+
+`kiro/outsystems/POWER.md` is a sixth surface, and the grep below covers it only for the shared lead sentence of a rule, not for the rest of a change. It is written for a Kiro operator rather than an agent, so it carries a curated subset rather than a copy: `## Conventions` holds the rules an operator needs to understand, `## Common Workflows` corresponds to `## Workflows`, `## Limitations` to `### Caveats`, `### Tool errors` to the `data.category` rule, and `## Onboarding` and `## Troubleshooting` to `## First use / setup` (which only four docs have) and `## Authenticating`. Only `## Overview` and `## Configuration files` are POWER-only. A behavioral rule lands there when a human debugging Kiro would otherwise be misled, which a rule about diagnosing a failure always is. Keep its lead sentence byte-identical with the five and add it to the grep loop below as a sixth line when the change touches it; the guidance after that sentence legitimately differs in register.
 
 The common failure mode is to edit only `skills/outsystems/SKILL.md` because the marketplace install path points there. Don't.
 
 ### Check before opening a PR
 
-After any skill-doc change, grep for a distinctive phrase from the change across all five files and confirm the count matches:
+After any skill-doc change, grep for two distinctive phrases from the change across all five files and confirm the counts match the expectations below:
 
 ```bash
 PHRASE="<a distinctive substring from your change>"
@@ -62,11 +64,11 @@ for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/sk
 done
 ```
 
-All five counts must be equal. If they aren't, the change is incomplete and the PR will create a host-specific drift.
+All five counts must be equal for a phrase in `## Rules` or in any other lockstepped section. If they aren't, the change is incomplete and the PR will create a host-specific drift. A phrase that also appears in a host-specific setup or install section legitimately differs, per the setup-flow exception below. Pick one phrase unique to the lockstepped text and expect 5/5, and a second unique to the setup clause and expect 4/5 with root `SKILL.md` at 0 because it has no setup section. State both counts in the PR.
 
 ### Exception: setup / installation flows
 
-Setup steps legitimately diverge between the harnesses (Claude Code uses `claude mcp add`, Kiro Power patches `~/.kiro/settings/mcp.json`, GitHub Copilot uses VS Code/Visual Studio settings or Copilot CLI config, the root SKILL.md describes the wire-level tool names without prescribing a host). The lockstep rule applies to `## Rules` and to behavioral guidance, not to host-specific install recipes.
+Setup steps legitimately diverge between the harnesses (Claude Code uses `claude mcp add`, Kiro Power patches `~/.kiro/settings/mcp.json`, GitHub Copilot uses VS Code/Visual Studio settings or Copilot CLI config, the root SKILL.md describes the wire-level tool names without prescribing a host). The lockstep rule applies to `## Rules` and to behavioral guidance outside the setup recipe itself, not to host-specific install recipes.
 
 ### Exception: host-specific affordances
 
