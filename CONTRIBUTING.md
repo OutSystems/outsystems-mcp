@@ -91,10 +91,10 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`, `POWER`.
 ### Pull requests
 
 1. Create a branch from `main`.
-2. Make your changes. If you touch tool semantics, update every place that documents them (`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, and the root `SKILL.md`) so they stay aligned.
+2. Make your changes. If you touch tool semantics, update every place that documents them (`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and the root `SKILL.md`) so they stay aligned.
 3. Open a PR targeting `main`.
 4. Verify the change in at least one supported harness (see "Testing" below) and describe what you tested in the PR body.
-5. After review and merge, the version bump goes out as the next release (see "Releases").
+5. After review and merge, the version bump goes out as the next release (see [Versioning and Releases](#versioning-and-releases)).
 
 ## Testing
 
@@ -121,6 +121,8 @@ Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for
 
 ### Cursor App (Plugin)
 
+Before you start, confirm `cursor/.cursor-plugin/plugin.json` and `.cursor-plugin/marketplace.json` carry the version you expect and match the Claude pair under [Versioning and Releases](#versioning-and-releases). An unbumped version risks leaving testers on previously installed content rather than on your branch.
+
 1. For a Team/Enterprise plan, team admin imports the plugin to the Team Marketplace:
    - Temporarily set your branch as the default branch (or use the PR merge branch if available)
    - Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
@@ -129,12 +131,6 @@ Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for
 2. Individual user opens Cursor and asks anything OutSystems-related
 3. Agent prompts for tenant hostname, configures `~/.cursor/mcp.json`, and completes OAuth
 4. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app
-
-**Version alignment:** Before testing the app plugin, ensure all plugin versions are in sync:
-- `cursor/.cursor-plugin/plugin.json` → `version`
-- `.cursor-plugin/marketplace.json` → `plugins[0].version`
-- `.claude-plugin/plugin.json` → `version`
-- `.claude-plugin/marketplace.json` → `plugins[0].version`
 
 ### Cursor CLI
 
@@ -156,12 +152,21 @@ For changes to the root `SKILL.md`, fetch it the way the install snippet does (`
 
 ## Versioning and Releases
 
-Version lives in two places and must stay in sync:
+Version lives in four places and must stay in sync:
 
-- `.claude-plugin/marketplace.json` → `plugins[0].version`
+**Claude:**
 - `.claude-plugin/plugin.json` → `version`
+- `.claude-plugin/marketplace.json` → `plugins[0].version`
 
-Bump both in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
+**Cursor:**
+- `cursor/.cursor-plugin/plugin.json` → `version`
+- `.cursor-plugin/marketplace.json` → `plugins[0].version`
+
+Bump all four in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
+
+For Claude Code, `claude plugin update` compares the version in `.claude-plugin/plugin.json`. Leave that one behind and users are told "already at the latest version" and never pull the new content, even after `claude plugin marketplace update`. The marketplace entry is what a user browses before installing, so keeping it in step matters for what a release advertises rather than for whether the update fires.
+
+Cursor's resolution has not been verified the same way. Bump both Cursor manifests together and do not rely on one covering for the other.
 
 Versioning follows [Semantic Versioning](https://semver.org/):
 
@@ -169,7 +174,7 @@ Versioning follows [Semantic Versioning](https://semver.org/):
 - **MINOR** — new skill content, new workflows documented, new install path for an additional harness.
 - **PATCH** — fixes and clarifications that don't change how a user installs or invokes the integration.
 
-There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install` / Kiro Power re-fetch.
+There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install`, Cursor Team Marketplace refresh, or Kiro Power re-fetch.
 
 ## License
 
