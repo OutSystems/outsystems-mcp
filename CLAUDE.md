@@ -80,6 +80,8 @@ Naming note: slash-command filenames become the command name a user types. Claud
 
 ### Manifest version lockstep
 
+This section is the single source for the manifest list and the update-resolution rules. CONTRIBUTING.md points here rather than restating them.
+
 Two sets of files, four in total, declare plugin versions and they must stay in sync on every bump:
 
 **Claude:**

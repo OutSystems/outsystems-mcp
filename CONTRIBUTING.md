@@ -126,7 +126,7 @@ Point your local GitHub Copilot installation at the `copilot/mcp.json` file (for
 
 ### Cursor App (Plugin)
 
-Before you start, confirm `cursor/.cursor-plugin/plugin.json` and `.cursor-plugin/marketplace.json` carry the version you expect and match the Claude pair under [Versioning and Releases](#versioning-and-releases). An unbumped version risks leaving testers on previously installed content rather than on your branch.
+Before you start, confirm `cursor/.cursor-plugin/plugin.json` and `.cursor-plugin/marketplace.json` carry the version you expect and match the Claude pair listed under [Manifest version lockstep](CLAUDE.md#manifest-version-lockstep). An unbumped version risks leaving testers on previously installed content rather than on your branch.
 
 1. For a Team/Enterprise plan, team admin imports the plugin to the Team Marketplace:
    - Temporarily set your branch as the default branch (or use the PR merge branch if available)
@@ -161,21 +161,9 @@ For changes to the root `SKILL.md`, fetch it the way the install snippet does (`
 
 ## Versioning and Releases
 
-Version lives in four places and must stay in sync:
-
-**Claude:**
-- `.claude-plugin/plugin.json` → `version`
-- `.claude-plugin/marketplace.json` → `plugins[0].version`
-
-**Cursor:**
-- `cursor/.cursor-plugin/plugin.json` → `version`
-- `.cursor-plugin/marketplace.json` → `plugins[0].version`
+The version lives in four manifests that must stay in sync, and which of them actually triggers a client update is not obvious. [Manifest version lockstep](CLAUDE.md#manifest-version-lockstep) in CLAUDE.md is the single source for the file list and the resolution rules; do not restate either here, so a correction has one place to land.
 
 Bump all four in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
-
-For Claude Code, `claude plugin update` compares the version in `.claude-plugin/plugin.json`. Leave that one behind and users are told "already at the latest version" and never pull the new content, even after `claude plugin marketplace update`. The marketplace entry is what a user browses before installing, so keeping it in step matters for what a release advertises rather than for whether the update fires.
-
-Cursor's resolution has not been verified the same way. Bump both Cursor manifests together and do not rely on one covering for the other.
 
 Versioning follows [Semantic Versioning](https://semver.org/):
 
