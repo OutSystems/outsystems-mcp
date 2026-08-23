@@ -144,7 +144,7 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 1. First turn: start a mentor run with the `app_key` and your prompt (e.g. "Add a due date field to Task"). It returns a `runId`; poll the run with its `cursor` until terminal, then pull `mentor_session_id` + `mentor_session_token` out of the result.
 2. Optional follow-up turns: start another run passing `mentor_session_id` + `mentor_session_token` and your next prompt, and poll the same way. Each terminal result returns a fresh token; use the newest one next.
 3. Publish the edited OML with `mentor_session_id` + `mentor_session_token` + `env_key`; it returns a publication id. An optional `message` (max 500 chars) attaches a publish note to the created revision — the same note ODC Studio's "1-Click Publish with message" sets; over-length is rejected up front, and attaching the note is best-effort so a failure to attach it doesn't fail the publish.
-4. Poll the publication status until terminal. Pull the publication logs for messages on failure.
+4. Poll the publication status until terminal. Pull the publication logs for messages on failure. **A `failed` carrying `indeterminate: true` is not a confirmed failure** — the server lost sight of the publish, so it may still be building and may yet succeed. Do NOT re-publish on that (a second publish on the same app while the first is still running is what wedges an app); re-poll `publish_status` with the `publication_key` from the payload, or verify with `env_app`, and only then decide.
 
 **Promote a build across environments:**
 1. Start a deployment with the asset key, the target `env_key`, and `from_env` for the source (or pin with `build_key` + `revision`); it returns an operation key.
