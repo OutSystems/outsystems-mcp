@@ -54,6 +54,5 @@ jobs:
       configurationFilePath: '.github/workflows/ai-review-config.json'
       prNumber: ${{ inputs.pr_number }}
       headSha: ${{ inputs.sha }}
-      bedrockRole:   ${{ secrets.AI_REVIEW_AWS_ROLE_ARN }}
       bedrockRegion: ${{ vars.AI_REVIEW_AWS_REGION }}
       bedrockModel:  ${{ vars.AI_REVIEW_BEDROCK_MODEL }}
