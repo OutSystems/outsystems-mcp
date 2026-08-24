@@ -1,0 +1,50 @@
+{
+  "_comment": "outsystems-mcp: not a service, no CI, no compiled language, no PRC. Its content is text an LLM agent reads (skills, commands, plugin manifests) plus per-harness assets. The panel we want is narrow: consistency + agent-facing + context-cost, plus the always-on basics (architecture, error-handling). Everything else (test, security's tenant/injection focus, docs-versus-code, deploy safety) either does not apply or would produce false positives on documentation-shaped content.",
+
+  "Panel": {
+    "Always": [
+      "architecture-reviewer",
+      "consistency-reviewer",
+      "error-handling-reviewer"
+    ],
+    "Conditional": {
+      "docs-reviewer":           { "When": "always" },
+      "simplification-reviewer": { "When": "code-changed" }
+    },
+    "Disabled": [
+      "security-reviewer",
+      "test-reviewer",
+      "robustness-reviewer",
+      "compliance-reviewer"
+    ],
+    "Local": []
+  },
+
+  "Packs": {
+    "consistency-reviewer":    ["agent-facing"],
+    "simplification-reviewer": ["context-cost"]
+  },
+
+  "Gate": {
+    "ExpectedWorkflows": [],
+    "RequireReleaseOnMainOnly": false,
+    "TimeoutMinutes": 30
+  },
+
+  "Prewarm": {
+    "Run": "",
+    "CacheKey": ""
+  },
+
+  "Verify": {
+    "Language": "none",
+    "CheckCommand": "",
+    "TestCommand": "",
+    "LintOutputPath": ""
+  },
+
+  "Noise": {
+    "InlineSeverities": ["MUST", "SHOULD"],
+    "MaxRounds": 3
+  }
+}

@@ -1,0 +1,59 @@
+name: AI PR Review
+
+# Thin caller. The panel, prompt, and composition mechanics live in
+# OutSystems/rd-ai-review-panel. What lands here is one workflow stub
+# and one config file.
+#
+# Pinned to an exact panel SHA rather than @v1 while the panel is in
+# phase 3 (selftest gate). Flip to @v1 once that gate lands.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: string
+      sha:
+        description: 'Head SHA to review (40-char lowercase hex).'
+        required: true
+        type: string
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  id-token: write
+  actions: read
+
+concurrency:
+  group: >-
+    ai-review-${{
+      github.event.pull_request.number
+      || format('comment-{0}', github.event.comment.id)
+      || format('dispatch-{0}', inputs.sha)
+    }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ai-review:
+    uses: OutSystems/rd-ai-review-panel/.github/workflows/ai-review.yml@4b5f90fa513d32420abc181d17fa51a7ba5a8bb6
+    secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read
+    with:
+      ref: 4b5f90fa513d32420abc181d17fa51a7ba5a8bb6
+      configurationFilePath: '.github/workflows/ai-review-config.json'
+      prNumber: ${{ inputs.pr_number }}
+      headSha: ${{ inputs.sha }}
+      bedrockRole:   ${{ secrets.AI_REVIEW_AWS_ROLE_ARN }}
+      bedrockRegion: ${{ vars.AI_REVIEW_AWS_REGION }}
+      bedrockModel:  ${{ vars.AI_REVIEW_BEDROCK_MODEL }}
