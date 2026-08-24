@@ -1,42 +1,43 @@
 {
-  "_comment": "outsystems-mcp: not a service, no CI, no compiled language, no PRC. Its content is text an LLM agent reads (skills, commands, plugin manifests) plus per-harness assets. The panel we want is narrow: consistency + agent-facing + context-cost, plus the always-on basics (architecture, error-handling). Everything else (test, security's tenant/injection focus, docs-versus-code, deploy safety) either does not apply or would produce false positives on documentation-shaped content.",
+  "_help": "Per-repo knobs for the shared AI review panel. This repo is not a service - its content is text an LLM agent reads (skills, commands, plugin manifests) plus per-harness assets. No CI, no compiled language, no PRC. Consumer configs shallow-merge onto the defaults in rd-ai-review-panel/ai-review-config-defaults.json; keys starting with `_` are documentation and are ignored by the validator.",
 
   "Panel": {
-    "Always": [
-      "architecture-reviewer",
-      "consistency-reviewer",
-      "error-handling-reviewer"
-    ],
+    "_help": "Narrow panel. Only critics that have something to say on text-and-manifest changes are listed; the ones that require code/runtime/rollout/PRC are omitted entirely (not Disabled - they simply do not appear in Conditional).",
+    "Always": [],
     "Conditional": {
-      "docs-reviewer":           { "When": "always" },
-      "simplification-reviewer": { "When": "code-changed" }
+      "docs-reviewer":           { "_help": "MD-to-code drift + skill recipe correctness. Primary value for this repo.", "When": "any-diff" },
+      "consistency-reviewer":    { "_help": "Tool descriptions, schemas, injected instruction text as contract, not copy. This repo IS text a model reads.",
+                                   "When": "code-changed",
+                                   "Paths": ["**/.claude-plugin/**", "**/plugin.json", "**/marketplace.json", "**/*.json"] },
+      "error-handling-reviewer": { "_help": "Swallowed errors in skill helpers, if any exist in this repo's scripts.", "When": "code-changed" },
+      "simplification-reviewer": { "_help": "Helper complexity + response-payload cost when a helper adds a field to something a model reads.", "When": "code-changed" }
     },
-    "Disabled": [
-      "security-reviewer",
-      "test-reviewer",
-      "robustness-reviewer",
-      "compliance-reviewer"
-    ],
+    "Disabled": ["security-reviewer", "test-reviewer", "robustness-reviewer", "architecture-reviewer", "compliance-reviewer"],
+    "_disabled_help": "Explicitly disabled so a future addition to the panel repo's defaults does not silently opt this repo in. security: no secrets/injection/authz surface here. test: no tests in the repo. robustness: no deploy artifact, no ring, no live contract. architecture: file-shape module boundaries are trivial here. compliance: no PRC or threat-model artifacts.",
     "Local": []
   },
 
   "Packs": {
+    "_help": "Two widening packs match this repo's shape: content read by an LLM (agent-facing) with a limited context window (context-cost).",
     "consistency-reviewer":    ["agent-facing"],
     "simplification-reviewer": ["context-cost"]
   },
 
   "Gate": {
+    "_help": "No sibling CI on this repo; empty list short-circuits the poll and the review runs immediately.",
     "ExpectedWorkflows": [],
     "RequireReleaseOnMainOnly": false,
     "TimeoutMinutes": 30
   },
 
   "Prewarm": {
+    "_help": "Nothing to pre-compile in a plugin repo.",
     "Run": "",
     "CacheKey": ""
   },
 
   "Verify": {
+    "_help": "No build system. Runtime verify degrades to 'quote the code' via prompts/verify/none.md in the panel repo.",
     "Language": "none",
     "CheckCommand": "",
     "TestCommand": "",
@@ -44,6 +45,7 @@
   },
 
   "Noise": {
+    "_help": "MUST and SHOULD post inline; COULD and lower are collapsed. Fewer rounds than a service repo because the diffs are smaller.",
     "InlineSeverities": ["MUST", "SHOULD"],
     "MaxRounds": 3
   }
