@@ -41,7 +41,7 @@ concurrency:
 
 jobs:
   ai-review:
-    uses: OutSystems/rd-ai-review-panel/.github/workflows/ai-review.yml@4b5f90fa513d32420abc181d17fa51a7ba5a8bb6
+    uses: OutSystems/rd-ai-review-panel/.github/workflows/ai-review.yml@v1
     secrets: inherit
     permissions:
       contents: read
@@ -50,7 +50,7 @@ jobs:
       id-token: write
       actions: read
     with:
-      ref: 4b5f90fa513d32420abc181d17fa51a7ba5a8bb6
+      ref: v1
       configurationFilePath: '.github/workflows/ai-review-config.json'
       prNumber: ${{ inputs.pr_number }}
       headSha: ${{ inputs.sha }}
