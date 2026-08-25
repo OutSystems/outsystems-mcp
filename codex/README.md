@@ -30,17 +30,26 @@ The plugin ships the **skill only**. It cannot ship the MCP server entry: a Code
 
 1. The agent asks for your **OutSystems tenant hostname** (e.g. `mycompany.outsystems.dev`).
 2. The agent runs `codex mcp add outsystems --url https://<my-tenant>/mcp`, which writes `~/.codex/config.toml`.
-3. The agent runs `codex mcp login outsystems`; you complete the OAuth sign-in in the browser.
-4. The agent retries your original request.
+3. The agent hands you `codex mcp login outsystems` to run **yourself, in your own terminal**; you complete the OAuth sign-in in the browser.
+4. The agent verifies and retries your original request.
 
 Verify at any point with:
 
 ```bash
 codex plugin list        # outsystems@outsystems -> installed, enabled
-codex mcp list           # outsystems registered
+codex mcp list           # outsystems -> Status: enabled, and Auth: NOT "Not logged in"
 ```
 
 Start a new session after installing — bundled skills are picked up at session start.
+
+### Run the sign-in outside the session
+
+`~/.codex/` sits outside the sandbox that Codex applies to commands it runs, so anything writing there is denied with `Operation not permitted`. The two setup commands fail differently, and only one of them tells you:
+
+- `codex mcp add` fails **loudly** — `failed to persist config at ~/.codex/config.toml … Operation not permitted`, non-zero exit. Nothing is half-done; re-run it yourself.
+- `codex mcp login` fails **silently**. The OAuth flow is network plus a loopback callback, so the browser sign-in genuinely succeeds and the command prints `Successfully logged in to MCP server 'outsystems'`. Only the token write is denied, and the command doesn't surface that. You find out in the next session, as `The outsystems MCP server requires OAuth reauthentication` and `MCP startup incomplete (failed: outsystems)`.
+
+So run `codex mcp login outsystems` in a plain terminal, and check it stuck with `codex mcp list`. **Read the `Auth` column, not `Status`**: `Status: enabled` only means the server is registered, while `Auth: Not logged in` means no token was stored. A telltale that a command ran sandboxed is `WARNING: proceeding, even though we could not create PATH aliases: Operation not permitted (os error 1)` in its output.
 
 ## Install - skill as a file (no plugin)
 

@@ -175,7 +175,7 @@ Then resolve and install from your checkout:
 2. `codex plugin list` and confirm `outsystems@outsystems` resolves to `<repo>/codex` with the version from `codex/.codex-plugin/plugin.json`. A wrong `source.path` shows up here and nowhere else
 3. `codex plugin add outsystems@outsystems`, then confirm `STATUS` reads `installed, enabled`. Bump the version first if you already installed this one: the install is cached under `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and an unchanged version re-serves the stale copy
 4. Start a new session and confirm the skill is offered — `codex exec "Without using any tools: is a skill named 'outsystems' available to you? Print its exact file path if so."` should print the path under that cache directory
-5. Ask an OutSystems-related prompt and let the skill drive setup: it should ask for the tenant, run `codex mcp add outsystems --url …`, then `codex mcp login outsystems`
+5. Ask an OutSystems-related prompt and let the skill drive setup: it should ask for the tenant, run `codex mcp add outsystems --url …`, and then hand you `codex mcp login outsystems` to run in your own terminal rather than running it itself. Confirm with `codex mcp list` that the `Auth` column is not `Not logged in` — a sign-in run inside the session reports success and stores nothing, since `~/.codex/` is outside the sandbox
 6. Run a full task end-to-end such as listing applications, starting an edit session, or publishing an app
 
 Clean up afterwards so a local checkout doesn't stay wired into your config: `codex plugin remove outsystems@outsystems` then `codex plugin marketplace remove outsystems`.
