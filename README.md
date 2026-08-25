@@ -180,13 +180,50 @@ Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is work
 
 See [cursor/README.md](cursor/README.md) for detailed setup instructions and version alignment requirements.
 
+## Install - Codex CLI
+
+> **Requires Codex 0.147.0 or newer** — that is when `codex plugin` and skill frontmatter landed, and neither install path works without them. Check with `codex --version`. Works on every plan, including Free.
+
+Codex resolves plugins through a marketplace, and this repo is one. Install it yourself, in a terminal:
+
+```bash
+codex plugin marketplace add OutSystems/outsystems-mcp
+codex plugin add outsystems@outsystems
+```
+
+Then paste into Codex:
+
+```
+Finish setting up the OutSystems plugin in Codex.
+Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
+Step 2: run `codex mcp add outsystems --url https://<my-tenant>/mcp` (substitute my actual tenant for `<my-tenant>`). Pass no `--oauth-client-id`: the server supports OAuth Dynamic Client Registration, so Codex registers its own client on an ephemeral loopback port.
+Step 3: run `codex mcp login outsystems` and tell me to complete the browser sign-in.
+Step 4: run `codex plugin list` and `codex mcp list` to confirm the plugin is enabled and `outsystems` is registered, then tell me to start a new session and ask you anything OutSystems-related.
+```
+
+The plugin ships the conventions doc as a skill, which Codex loads on demand. It cannot ship the MCP server entry, because that URL contains your tenant hostname and differs per user — that is what Step 2 writes, into `~/.codex/config.toml`. `codex plugin marketplace add` also accepts a local path, an HTTPS or SSH Git URL, and `--ref` to pin a branch or tag.
+
+**Prefer not to install a plugin?** Register the server the same way, then place the conventions doc yourself as a skill file — `~/.agents/skills/outsystems/SKILL.md` for every project, or `<repo>/.agents/skills/outsystems/SKILL.md` to scope it to one. Copy [`codex/skills/outsystems/SKILL.md`](codex/skills/outsystems/SKILL.md) verbatim, frontmatter included; Codex decides when to load a skill from that frontmatter, so a doc pasted without it is inert. Details in [codex/README.md](codex/README.md).
+
+## Install - Codex in the ChatGPT desktop app (macOS)
+
+The desktop app shares `~/.codex/config.toml` with the CLI, so **the Codex CLI install above already covers it** — MCP servers, marketplaces, and installed plugins all appear in both. Install once, from either surface.
+
+If you'd rather stay in the app: open the **Plugins** tab to install a plugin from a configured marketplace, and **Settings > MCP servers** to add `outsystems` as a **Streamable HTTP** server at `https://<my-tenant>/mcp`, then **Restart** and hit **Authenticate**. Registering the marketplace itself is still a CLI step (`codex plugin marketplace add OutSystems/outsystems-mcp`), or the app can read a repo marketplace from a checkout of this repo.
+
+> **Codex IDE extension (VS Code):** MCP servers work — same shared config, same `codex mcp add` — but **plugins do not**. Install the skill as a file, per the note at the end of the CLI section, or you get the tools without the conventions, the confirm-before-destructive rule included.
+
+### Managed workspaces (Business, Enterprise, Edu)
+
+On a personal plan nothing here is gated. In a managed ChatGPT workspace, an admin can block this install in four separate ways through `requirements.toml`: a marketplace-source allowlist (`marketplaces.restrict_to_allowed_sources`), a plugin feature pin (`features.plugins`), an MCP-server allowlist that must match both the server name **and** its URL, and workspace plugin controls for the web and desktop surfaces. All four fail the same misleading way — the command reports success and the server or plugin never appears. If `codex mcp list` or `codex plugin list` disagrees with what you just ran, ask your workspace admin rather than re-running it. See [codex/README.md](codex/README.md#free-paid-and-managed-workspaces).
+
 ## Install - M365 Copilot (web browser)
 
 Currently, this assistant does not support custom MCP servers.
 
 ## Install - other AI assistants (best effort)
 
-For other agentic harnesses (Codex CLI, Continue, Cline, Aider, etc.), this is a best-effort install path — the MCP server is a stock streamable-HTTP MCP endpoint with OAuth + Dynamic Client Registration, so most harnesses should be able to wire it up, but we don't validate the flow ourselves. If something breaks, file an issue with the symptoms.
+For other agentic harnesses (Continue, Cline, Aider, etc.), this is a best-effort install path — the MCP server is a stock streamable-HTTP MCP endpoint with OAuth + Dynamic Client Registration, so most harnesses should be able to wire it up, but we don't validate the flow ourselves. If something breaks, file an issue with the symptoms.
 
 Paste into your harness:
 
@@ -208,6 +245,8 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 | Auth fails with `OAuth callback port <port> is already in use ...` (Claude Code) | An earlier setup step pinned a fixed callback port, and the pin sits in your own config, so updating the plugin does not clear it. Run `claude mcp get outsystems` and note the reported URL, which you need to re-add. If it reports a `callback_port`, unpin it in the reset below. If it does not, the pin is not in your MCP config: check for a callback-port override in your environment, then for another process holding the port with `lsof -nP -iTCP:<port> -sTCP:LISTEN`, or `netstat -ano \| findstr :<port>` on Windows. |
 | Auth never triggers in a non-interactive session | The OAuth flow needs a browser and a loopback callback, so it cannot complete in a headless or piped session. Authenticate once in an interactive session first; the token is reused afterwards. |
 | "Server Disconnected" or "failed authorization" | Usually a stale or partial OAuth grant. Run the reset below. If it persists, the tenant hostname is likely wrong: confirm it resolves and that `https://<my-tenant>/mcp` returns `401` rather than `404`. |
+| `codex mcp add` or `codex plugin marketplace add` reports success but nothing appears (Codex) | On a managed ChatGPT workspace (Business, Enterprise, Edu), an admin `requirements.toml` can allowlist MCP servers by name **and** URL, restrict plugin marketplace sources, or pin `features.plugins` off. Codex falls back to a compatible value and carries on, so the command looks like it worked. Check `codex mcp list` / `codex plugin list`, and ask your workspace admin to allow the `outsystems` server and this repository as a marketplace source. |
+| Plugin installs but the skill never loads (Codex IDE extension) | The IDE extension has no plugin support; only the CLI and the ChatGPT desktop app do. Install the skill as a file instead, at `~/.agents/skills/outsystems/SKILL.md` or `<repo>/.agents/skills/outsystems/SKILL.md`. |
 | Nothing connects on Windows, or `npx` is "not found" | Applies to the Claude Desktop local-proxy fallback only. Claude Desktop launches processes with a minimal PATH. Replace `"npx"` in the config with the absolute path from `where npx`. |
 | Browser windows keep reopening, and the proxy log shows `EADDRINUSE` | Applies whenever you reach the server through the `mcp-remote` proxy, which is the Claude Desktop fallback above and any harness you wired up that way. The proxy reuses the callback port saved in its own client registration and exits before sign-in completes, so the host restarts it and no token is ever stored. Clear the saved registration, in the reset below. |
 | Tools are listed but greyed out (Visual Studio) | MCP tools are disabled by default. Enable them in the Tools picker. |
@@ -218,8 +257,8 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 
 When an install is wedged and updates don't stick, do a clean cycle rather than reinstalling on top:
 
-1. Write down the whole `outsystems` entry first, on any harness, because removing it destroys the only record of your tenant URL and of any extra proxy arguments, and later steps need both. On Claude Code, `claude mcp get outsystems` prints the URL and the scope. Then remove the server: `claude mcp remove outsystems`, or delete the `outsystems` entry from the relevant config file on other harnesses. Removing it is also what drops a callback port pinned by an earlier setup step. Omitting `-s` clears whichever scope holds the entry; if the name exists in more than one the command removes nothing and lists them, so repeat it per scope with `-s <scope>`, and leave a `project` scope alone if the config is shared with other people.
-2. Uninstall the plugin or Power, if you installed one.
+1. Write down the whole `outsystems` entry first, on any harness, because removing it destroys the only record of your tenant URL and of any extra proxy arguments, and later steps need both. On Claude Code, `claude mcp get outsystems` prints the URL and the scope; on Codex, `codex mcp get outsystems` does. Then remove the server: `claude mcp remove outsystems`, `codex mcp remove outsystems`, or delete the `outsystems` entry from the relevant config file on other harnesses. Removing it is also what drops a callback port pinned by an earlier setup step. Omitting `-s` clears whichever scope holds the entry; if the name exists in more than one the command removes nothing and lists them, so repeat it per scope with `-s <scope>`, and leave a `project` scope alone if the config is shared with other people.
+2. Uninstall the plugin or Power, if you installed one. On Codex that is `codex plugin remove outsystems@outsystems`, which also drops the cached copy under `~/.codex/plugins/cache/`.
 3. Clear the host's cache (in Claude Desktop: **Help > Troubleshooting > Clear cache**). If you reach the server through the `mcp-remote` proxy, also do the following before restarting.
 
    <details>
@@ -241,7 +280,7 @@ When an install is wedged and updates don't stick, do a clean cycle rather than 
    </details>
 
 4. Restart the host.
-5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
+5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), `codex plugin marketplace upgrade outsystems` (Codex), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
 6. Reinstall from the recipe above.
 
 ### Getting logs
@@ -252,5 +291,6 @@ Attach these when opening an issue; they are what makes a report actionable.
 - **Claude Desktop**: `~/Library/Application Support/Claude/logs/` on macOS, `%APPDATA%\Claude\logs\` on Windows, `~/.config/Claude/logs/` on Linux. There is a per-server log file alongside the main one.
 - **VS Code**: the MCP server output channel, via `MCP: List Servers` then **Show Output**.
 - **Kiro**: the Powers and MCP output channels.
+- **Codex**: `codex mcp list`, `codex mcp get outsystems`, and `codex plugin list` (which prints the path each plugin resolved to).
 
 Redact your tenant hostname and any bearer tokens before posting.

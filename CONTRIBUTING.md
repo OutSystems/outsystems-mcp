@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), Cursor (via a plugin for the app, CLI support via mcp.json), and Codex (via a plugin for the CLI and the ChatGPT desktop app, with a skill-file path for the IDE extension) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.agents/`, `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, `codex/`, and `skills/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
@@ -13,6 +13,7 @@ This is a distribution-only repository. It packages the OutSystems MCP integrati
   - **Kiro 0.11.133 or newer** for Power changes.
   - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
   - **Cursor App** (Team/Enterprise plan with team admin access) OR **Cursor CLI** (all plans) for Cursor changes.
+  - **Codex 0.147.0 or newer** for Codex changes; `codex plugin` and skill frontmatter do not exist in older builds. Verified against 0.148.0. The ChatGPT desktop app on macOS shares the same `~/.codex/config.toml`, so it needs no separate setup. Validating the manifests also needs Python with `pyyaml`.
 - An OutSystems tenant you can authenticate against (e.g. `mycompany.outsystems.dev`) and that is enabled for the MCP server, for end-to-end verification. Authenticating is not sufficient: a tenant outside the server-side allowlist rejects every tool call.
 
 ## Getting Started
@@ -24,16 +25,29 @@ git clone https://github.com/OutSystems/outsystems-mcp.git
 cd outsystems-mcp
 ```
 
-There is nothing to install or build. The files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/` are the source of truth.
+There is nothing to install or build. The files under `.agents/`, `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, `codex/`, and `skills/` are the source of truth.
 
 ## Repository Structure
 
 ```
+.agents/
+  plugins/
+    marketplace.json      # Codex marketplace manifest (source.path is repo-root relative)
 .claude-plugin/
   marketplace.json        # Claude Code marketplace manifest (lists the plugin)
   plugin.json             # Claude Code plugin manifest (name, version, skills dir)
 .cursor-plugin/
   marketplace.json        # Cursor marketplace manifest (lists the plugin)
+codex/
+  .codex-plugin/
+    plugin.json           # Codex plugin manifest (name, version, skills dir, interface)
+  assets/
+    icon.png              # Logo shown in the Codex plugin UI
+  mcp.toml                # Canonical Codex MCP server configuration (TOML, mcp_servers key)
+  README.md               # Codex install instructions (plugin + skill-file)
+  skills/
+    outsystems/
+      SKILL.md            # Agent guidance loaded by the Codex plugin
 copilot/
   mcp.json                # Copilot MCP server configuration
   skill.md                # Agent guidance for Copilot
@@ -58,9 +72,10 @@ SKILL.md                  # Generic skill content for other harnesses
 README.md                 # Install instructions for each supported harness
 ```
 
-All five skill documents overlap in intent (they all describe the same MCP tools and conventions):
+All six skill documents overlap in intent (they all describe the same MCP tools and conventions):
 - `skills/outsystems/SKILL.md` (Claude Code)
 - `cursor/skills/outsystems/SKILL.md` (Cursor)
+- `codex/skills/outsystems/SKILL.md` (Codex)
 - `kiro/outsystems/steering/skill.md` (Kiro)
 - `copilot/skill.md` (GitHub Copilot)
 - `SKILL.md` (root, generic)
@@ -145,13 +160,37 @@ Point your local Cursor CLI at the `cursor/mcp.json` file (copy to `~/.cursor/mc
 3. `agent mcp login outsystems` to trigger OAuth sign-in
 4. Run an OutSystems-related prompt end-to-end in a new agent session. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursor/rules/outsystems.md` (or `AGENTS.md`) is properly loaded and the conventions are applied.
 
+### Codex (plugin + skill file)
+
+Validate the manifests before installing anything; Codex ships both validators as system skills, and both need `pyyaml`:
+
+```bash
+python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py codex
+python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py codex/skills/outsystems
+```
+
+Then resolve and install from your checkout:
+
+1. `codex plugin marketplace add .` from the repo root, which registers the repo's `.agents/plugins/marketplace.json`
+2. `codex plugin list` and confirm `outsystems@outsystems` resolves to `<repo>/codex` with the version from `codex/.codex-plugin/plugin.json`. A wrong `source.path` shows up here and nowhere else
+3. `codex plugin add outsystems@outsystems`, then confirm `STATUS` reads `installed, enabled`. Bump the version first if you already installed this one: the install is cached under `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and an unchanged version re-serves the stale copy
+4. Start a new session and confirm the skill is offered — `codex exec "Without using any tools: is a skill named 'outsystems' available to you? Print its exact file path if so."` should print the path under that cache directory
+5. Ask an OutSystems-related prompt and let the skill drive setup: it should ask for the tenant, run `codex mcp add outsystems --url …`, then `codex mcp login outsystems`
+6. Run a full task end-to-end such as listing applications, starting an edit session, or publishing an app
+
+Clean up afterwards so a local checkout doesn't stay wired into your config: `codex plugin remove outsystems@outsystems` then `codex plugin marketplace remove outsystems`.
+
+The ChatGPT desktop app on macOS shares `~/.codex/config.toml` with the CLI, so the steps above cover it; check the **Plugins** tab and **Settings > MCP servers** to confirm both appear. The **IDE extension does not support plugins at all**, so verify that path separately by copying the skill to `~/.agents/skills/outsystems/SKILL.md` (or `$REPO_ROOT/.agents/skills/outsystems/SKILL.md` for repo scope), starting a new session, and confirming the skill is offered. The YAML frontmatter has to survive the copy — a doc pasted without it is inert.
+
+On a managed ChatGPT workspace (Business, Enterprise, Edu), admin `requirements.toml` policy can block the marketplace add, the plugin install, or the MCP registration, and all three fail quietly. If a command reports success and nothing appears, check `codex plugin list` and `codex mcp list` before assuming the change is at fault.
+
 ### M365 Copilot
 
 Never applicable, because it does not support custom MCP servers, so neither the server nor the skill content reaches it.
 
 ### Generic harnesses
 
-For changes to the root `SKILL.md`, fetch it the way the install snippet does (`curl https://raw.githubusercontent.com/...`) and confirm it parses as plain markdown and doesn't reference Claude-Code-specific, Kiro-specific, Copilot-specific, or Cursor-specific affordances.
+For changes to the root `SKILL.md`, fetch it the way the install snippet does (`curl https://raw.githubusercontent.com/...`) and confirm it parses as plain markdown and doesn't reference Claude-Code-specific, Kiro-specific, Copilot-specific, Cursor-specific, or Codex-specific affordances.
 
 ## Code Standards
 
@@ -161,7 +200,7 @@ For changes to the root `SKILL.md`, fetch it the way the install snippet does (`
 
 ## Versioning and Releases
 
-Version lives in four places and must stay in sync:
+Version lives in five places and must stay in sync:
 
 **Claude:**
 - `.claude-plugin/plugin.json` → `version`
@@ -171,11 +210,18 @@ Version lives in four places and must stay in sync:
 - `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
 
-Bump all four in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
+**Codex:**
+- `codex/.codex-plugin/plugin.json` → `version`
+
+Codex's `.agents/plugins/marketplace.json` declares no version — Codex reads it from the plugin manifest at install time — so there is nothing to bump there.
+
+Bump all five in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
 
 For Claude Code, `claude plugin update` compares the version in `.claude-plugin/plugin.json`. Leave that one behind and users are told "already at the latest version" and never pull the new content, even after `claude plugin marketplace update`. The marketplace entry is what a user browses before installing, so keeping it in step matters for what a release advertises rather than for whether the update fires.
 
 Cursor's resolution has not been verified the same way. Bump both Cursor manifests together and do not rely on one covering for the other.
+
+For Codex the version is also the cache key: `codex plugin add` copies the plugin to `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and loads it from there, so re-installing an unchanged version re-serves the stale copy.
 
 Versioning follows [Semantic Versioning](https://semver.org/):
 
@@ -183,7 +229,7 @@ Versioning follows [Semantic Versioning](https://semver.org/):
 - **MINOR** — new skill content, new workflows documented, new install path for an additional harness.
 - **PATCH** — fixes and clarifications that don't change how a user installs or invokes the integration.
 
-There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install`, Cursor Team Marketplace refresh, or Kiro Power re-fetch.
+There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install`, Cursor Team Marketplace refresh, Kiro Power re-fetch, or `codex plugin marketplace upgrade outsystems` followed by `codex plugin add outsystems@outsystems`.
 
 ## License
 

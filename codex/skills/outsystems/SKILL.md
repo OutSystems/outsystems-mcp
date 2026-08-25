@@ -1,24 +1,58 @@
+---
+name: outsystems
+description: "OutSystems over MCP. Edit apps, publish, deploy, search tenant elements, manage external libraries. Use for ANY OutSystems task."
+---
+
 # OutSystems - Remote MCP
 
 You are connected to OutSystems over the MCP HTTP transport. OutSystems is a cloud-native low-code platform where apps are built from OML (OutSystems Model Language), a binary format describing entities, screens, actions, and logic. Every tool call carries the harness's validated OAuth bearer; tenant + user identity are derived from the JWT, not from arguments.
 
 **Once authenticated and the server's tools are visible**, read the live `tools/list` before your first non-auth OutSystems operation. This skill names domains, not tools — names, parameters, and defaults can change server-side, and the server is the source of truth. (Authenticating is the one exception: drive the auth flow first, as described below.)
 
+## First use / setup
+
+This plugin ships the skill, not the tenant URL — the tenant is per-user, so the `outsystems` MCP server has to be registered once on this machine before any tool exists to call. Codex keeps MCP configuration in `~/.codex/config.toml`, shared by Codex CLI, the ChatGPT desktop app, and the IDE extension, so registering once covers all three. The edit is idempotent, so re-run it to point at a different tenant.
+
+Trigger conditions (any of):
+- The user asks for anything OutSystems-related AND no `outsystems` MCP server is registered.
+- A call returns `tenant not configured` / connection errors. A rejection naming `tenant_not_allowed` is a different condition and usually not a setup fault, so check the configured host in `~/.codex/config.toml` first, see Rules.
+- The user explicitly asks to switch tenants (e.g. "point this at `<other-tenant>`").
+
+Steps:
+
+1. **Ask the user for their OutSystems tenant hostname.** Prompt verbatim:
+   > "Which OutSystems tenant should I connect to? It's the host portion of your OutSystems URL, typically something like `mycompany.outsystems.dev`."
+2. **Normalize, then validate.** Accept whatever the user gives you (URL, hostname, hostname-with-path). Strip the scheme (`https://`, `http://`), any leading `www.`, trailing slash, and any path or query — keep only the host. The result must match `^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`. Only ask again if the normalized value is still implausible (empty, contains whitespace, or clearly isn't a hostname). The tenant slug is whatever the user chose; do not assume a fixed pattern.
+3. **Construct the URL**: `https://<TENANT>/mcp`.
+4. **Register the server.** Prefer the CLI, which writes `~/.codex/config.toml` for you:
+   ```bash
+   codex mcp add outsystems --url https://<TENANT>/mcp
+   ```
+   Pass no `--oauth-client-id` and no fixed callback port: the server advertises OAuth discovery and Dynamic Client Registration, so Codex registers its own client on an ephemeral loopback port. If you edit `~/.codex/config.toml` by hand instead, read first and preserve every other entry — never clobber siblings. The canonical shape, also kept in the repo at `codex/mcp.toml`:
+   ```toml
+   [mcp_servers.outsystems]
+   enabled = true
+   url = "https://<TENANT>/mcp"
+   ```
+   The key is `mcp_servers` in **TOML**, not the `mcpServers` JSON spelling every other harness uses. The wrong spelling still parses and registers nothing.
+5. **Sign in**: run `codex mcp login outsystems` and have the user complete the browser sign-in. See Authenticating for the recovery paths when it fails.
+6. **Verify** with `codex mcp list` that `outsystems` is registered, then **retry the user's original request**.
+
+**On a managed workspace the registration can be refused rather than saved.** ChatGPT Business, Enterprise, and Edu admins can ship an `mcp_servers` allowlist in `requirements.toml`, and Codex enables a server only when both its name and its identity (here, the URL) match an approved entry; anything else is disabled. So if `codex mcp list` doesn't show `outsystems` after an `add` that reported success, or Codex says it fell back to a compatible value, that's workspace policy and not a bad edit. Tell the user to ask their workspace admin to allow the `outsystems` server for `https://<TENANT>/mcp`, and don't re-run the registration or hand-edit `config.toml` to work around it.
+
 ## Authenticating
 
-The remote MCP server is OAuth-protected with **standard OAuth**: an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + dynamic client registration (`/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by your MCP client, not by an OutSystems tool — the server exposes no `authenticate` tool.** How you sign in depends on the harness:
+The remote MCP server is OAuth-protected with **standard OAuth** (an unauthenticated call gets `401` + `WWW-Authenticate`, and the server advertises OAuth discovery + DCR: `/authorize`, `/token`, `/register`, PKCE S256). **Authentication is performed by Codex, not by an OutSystems tool — the server exposes no `authenticate` tool, and there is no agent-callable auth tool in Codex.**
 
-- **GitHub Copilot / VS Code (and most other MCP clients)** expose **no** agent-callable auth tool — the IDE runs the OAuth flow in its own UI (opens the browser, captures the callback). Just make the first OutSystems tool call; the client prompts the user to sign in. Tell the user to complete that prompt, then proceed. **Don't look for an `authenticate` tool** — it isn't there.
-- **Kiro** drives the sign-in through its own MCP UI — same as the IDE clients above, no `authenticate` tool.
-- **CLI-based clients** (Cursor CLI, Copilot CLI, Codex CLI) open the system browser and listen on `localhost` for the callback, allowing shell-based recovery if needed. Codex signs in with `codex mcp login outsystems`.
+Codex runs the flow itself: it opens the system browser and listens on an ephemeral `127.0.0.1` port for the callback. Either run `codex mcp login outsystems` explicitly, or make the first OutSystems tool call and let Codex prompt. In the ChatGPT desktop app the same server appears under **Settings > MCP servers** with an **Authenticate** button; in the IDE extension it's the gear menu > **MCP servers**. All three read the one `~/.codex/config.toml`, so a sign-in done on any of them serves the others.
 
-**If the browser shows "site can't be reached" at the callback URL:** The sign-in succeeded on the tenant side — only the callback connection failed, typically an IPv4/IPv6 loopback mismatch in a VM. **Do not make the user wait for timeout; tell them immediately.** Ask for the full callback URL from the address bar. Recovery depends on your harness: some clients can replay the callback via shell commands; others require the user to adjust the address in their browser. See your harness's specific Authenticating section for the exact steps. Treat authorization codes as credentials — code is single-use and short-lived.
+**Needs a local browser.** The callback lands on `127.0.0.1` on the same machine as Codex, so a browser has to be reachable there. On a remote/SSH session with no local browser, run the sign-in where a browser can reach `localhost` and retry.
 
-**Lazy.** Authenticate before the first OutSystems tool call, following your harness's path above. The real tools appear once the user has authorized — wait for that, then proceed. Your harness completes the sign-in in its own UI; you won't receive an authorization URL to relay.
+**If the browser shows "site can't be reached" at the callback URL:** The sign-in already succeeded on the tenant side — the identity provider issued the code and redirected. Only the last local hop failed: Codex's callback listener and the browser's redirect resolved to different addresses, typically an IPv4/IPv6 loopback mismatch in a VM, where the listener is on `[::1]:PORT` and the redirect went to `127.0.0.1:PORT`. **Do not wait for the timeout, and tell the user so immediately** — they don't need to sit through the failure. Ask the user for the full URL from the address bar (it looks like `http://127.0.0.1:PORT/callback/<id>?state=...&code=...`), then **complete the callback yourself via the terminal**: re-send the identical callback to Codex's listener with `curl "http://[::1]:PORT/callback/<id>?state=...&code=..."`, swapping the host to `[::1]` if the address bar showed `127.0.0.1`. That hand-off is not an auth tool call; it simply delivers the code to the loopback listener where the redirect was meant to land. The code is single-use, so do not also ask the user to retry in the browser — one of you, not both. **Expect the attempt to be dead already:** a refused connection tears down the authorization session, so you'll likely find the code spent. If so, ask the user to start a fresh `codex mcp login outsystems` and tell them the corrected address (`[::1]` instead of `127.0.0.1`) to use *before* they click through. Treat authorization codes as credentials either way.
 
-**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied), your client's session lapsed — re-trigger its sign-in (your client re-prompts on the next call), then retry the original call ONCE. Don't hunt for an auth tool your harness doesn't expose. If the rejection names `tenant_not_allowed`, do not re-trigger sign-in, see Rules.
+**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): the stored grant lapsed — re-run `codex mcp login outsystems` (or have the user hit **Authenticate** in the desktop app), then retry the original call ONCE. If the rejection names `tenant_not_allowed`, do not re-trigger sign-in, see Rules.
 
-**If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
+**If sign-in fails:** Check the browser first. If it shows "site can't be reached" at the callback URL, see the guidance above — that's a local network issue, not a server fault, and often recoverable by asking the user for the URL. For other failures (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals. One exception: an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. See Troubleshooting at https://github.com/OutSystems/outsystems-mcp#troubleshooting
 
 ## Tools at a glance
 
@@ -46,7 +80,7 @@ Cross-tool behaviors not expressible in a single per-tool description:
 
 - **Read `tools/list` before your first non-auth call.** This skill names domains; the server names tools. (Auth comes first; see Authenticating.)
 - **Agent-facing tools.** Don't expose raw tool output; extract the relevant fields and present them naturally.
-- **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy sign-in described above; identity comes from the harness-negotiated bearer.
+- **Go straight to the task.** No setup checks, no auth pre-flight beyond the lazy authentication step described above; identity comes from the harness-negotiated bearer.
 - **Confirm before tenant-state mutations.** Before invoking any tool that can change tenant state, restate the planned change to the user and wait for explicit confirmation. Skip the prompt only when the user has already authorised this specific change in the current turn. A generic "go ahead with the task" earlier in the conversation is not authorisation for a specific destructive call. The destructive actions are: starting or rolling back a deployment, publishing OML, uploading/publishing/deleting an external library, and creating an app. Read-only and inert local-mutating tools are unaffected: listing or inspecting apps, the context lookups, any status/logs/messages poll, enumerating environments, listing deployments, and the external-library listing, contents, and source-download lookups. A deployment-impact analysis is read-only on the server and exists to inform a deploy decision, so run it *before* you ask for confirmation rather than asking permission to run it. The deletion-impact variant mutates nothing either, but it is deletion-adjacent, so name the asset you are about to analyse and get confirmation first, as for the destructive calls. The host may prompt on either form regardless, since its annotation covers the tool as a whole and cannot see which variant you asked for. Editing in a mentor session changes only the in-memory mentor OML, not deployed tenant assets, so it does not require confirmation. The MCP host's own `destructiveHint` prompt is a backstop, not a substitute: this rule applies on every host regardless of whether the host gates on the hint.
 - **OML stays server-side.** There is no download tool. Inspect an app through its references and the context lookups; edit it through the mentor flow (start a mentor run, then poll it until terminal). The OML lives in the server-side mentor session and never crosses the wire as bytes. When a user asks for the OML on disk, say plainly that the remote MCP transport does not expose a file-to-local-disk download (the server has no local filesystem to write to), and where useful offer the partially answerable portion (e.g. the app's revision history for the latest version number).
 - **Never guess opaque IDs.** If `env_key`, `app_key`, an asset key, or a `mentor_session_*` token is missing and you can't resolve it, ask the user.
@@ -100,6 +134,7 @@ Mentor is a multi-turn conversation backed by a server-side session that holds t
 - **Publish the data model before you ask for screens.** Once a mentor turn has committed the entities, publish that session and poll the publication to terminal before you start the screen turns. Everything a turn changes lives only in the server-side session until then, and a session that GCs re-downloads the OML from the tenant, so unpublished work is gone. Publishing first bumps the ODC revision and gives every later turn a durable base, so a failure mid-sequence costs one turn instead of the whole build. If `publish_start` refuses the session, the refusal message names the reason and the fix; the remedy is to run a further mentor turn that completes the work, never to retry the publish. Publishing is a tenant-state mutation, so restate it and get explicit confirmation first, exactly as for any other publish.
 - **Pick the strongest model tier for multi-screen and data-model turns.** A turn that creates more than one screen, or a whole data model, is the most reasoning-heavy thing this transport asks for. Run it on the top reasoning tier your harness offers (Claude Opus, or the equivalent frontier tier of whichever provider backs your harness). Small, fast tiers (Haiku, mini and Flash class models) do not push through a mentor stall: they retry without converging and burn more tokens than the stronger tier would have spent finishing. Mid tiers (Sonnet class) are marginal, fine for a single-screen edit and expensive on a hard multi-screen build. When the user is on a weak tier for a big build, say so before you start.
 - **On a mentor timeout, retry the SAME app with a higher `max_turn_time`; never create a new app.** `max_turn_time` is an integer on the mentor start call (seconds, default 1800). A timeout means the turn needed more wall clock, not that the backend is broken, so raise it (2700 or 3600) and resume the same session, or restart on the same `app_key` when the failure carried no session credentials. Creating a fresh app discards everything the session already applied, and it is how this failure cascades: the agent that recreated the app had no key to pass and sent the string `"null"` as `app_key`. The server now rejects that up front as an invalid application key; before that guard landed it cascaded into an opaque downstream 400. Never pass `"null"`, `"undefined"`, or any other placeholder as `app_key`; when you do not have a real key, ask the user.
+
 
 ## Context Service visibility (`owned_only`)
 
