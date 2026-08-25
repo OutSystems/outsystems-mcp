@@ -62,13 +62,14 @@ Cursor CLI works on all plans and provides MCP management via terminal commands.
 
 ## Version Alignment
 
-Cursor and Claude plugin versions must stay in sync:
+Cursor, Claude, and Codex plugin versions must stay in sync:
 - `.claude-plugin/plugin.json` -> `version`
 - `.claude-plugin/marketplace.json` -> `plugins[0].version`
 - `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
+- `codex/.codex-plugin/plugin.json` → `version`
 
-Update all four together in the same commit when bumping the version.
+Update all five together in the same commit when bumping the version.
 
 ## Skill Docs Lockstep
 
@@ -76,14 +77,15 @@ The Cursor skill doc is included in the plugin and deployed via `cursor/.cursor-
 - `skills/outsystems/SKILL.md` (Claude Code)
 - `kiro/outsystems/steering/skill.md` (Kiro)
 - `copilot/skill.md` (GitHub Copilot)
+- `codex/skills/outsystems/SKILL.md` (Codex)
 - `SKILL.md` (root, generic)
 
-All five files carry a `## Rules` section that is identical but for one wording drift in the "Go straight to the task" bullet, and broadly the same `## Tools at a glance`, `### Caveats`, `## Workflows`, and `## Feedback` sections. Any behavioral change to one must be applied to all five, and to `kiro/outsystems/POWER.md`, whose `## Conventions` section carries the same rules for Kiro operators while sitting outside the grep below.
+All six files carry a `## Rules` section that is identical but for one wording drift in the "Go straight to the task" bullet, and broadly the same `## Tools at a glance`, `### Caveats`, `## Workflows`, and `## Feedback` sections. Any behavioral change to one must be applied to all six, and to `kiro/outsystems/POWER.md`, whose `## Conventions` section carries the same rules for Kiro operators while sitting outside the grep below.
 
 Use the lockstep grep check before opening a PR:
 ```bash
 PHRASE="<distinctive substring from your change>"
-for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/skill.md cursor/skills/outsystems/SKILL.md SKILL.md; do
+for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/skill.md cursor/skills/outsystems/SKILL.md codex/skills/outsystems/SKILL.md SKILL.md; do
   printf '%s  %s\n' "$(grep -c "$PHRASE" "$f")" "$f"
 done
 ```

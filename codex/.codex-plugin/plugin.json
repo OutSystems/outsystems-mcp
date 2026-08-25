@@ -1,0 +1,28 @@
+{
+  "name": "outsystems",
+  "description": "Edit, publish, deploy, and search OutSystems apps from your AI assistant.",
+  "version": "0.17.0",
+  "author": {
+    "name": "OutSystems AI Platform"
+  },
+  "repository": "https://github.com/OutSystems/outsystems-mcp",
+  "license": "MIT",
+  "keywords": ["outsystems", "low-code", "mcp", "deployment"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "OutSystems - MCP",
+    "shortDescription": "Edit, publish, and deploy OutSystems apps.",
+    "longDescription": "Connects Codex to an OutSystems tenant over the remote MCP server. Inspect and edit apps, publish and promote revisions across environments, search tenant elements, and manage external libraries.",
+    "developerName": "OutSystems",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://www.outsystems.com/",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
+    "defaultPrompt": [
+      "List 10 of my OutSystems apps.",
+      "Show the environments in my tenant.",
+      "Publish my app and report the revision."
+    ]
+  }
+}

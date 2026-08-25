@@ -1,0 +1,22 @@
+# Canonical OutSystems MCP config for Codex.
+# Source of truth for MCP server registration.
+#
+# Requires Codex 0.147.0 or newer.
+#
+# Goes in ~/.codex/config.toml, which Codex CLI, the ChatGPT desktop app, and the
+# IDE extension all share — register once and every surface sees it. A project can
+# scope its own servers in <repo>/.codex/config.toml instead (trusted projects only).
+#
+# Prefer `codex mcp add outsystems --url https://<my-tenant>/mcp`, which writes this
+# table for you. Replace <my-tenant> with the tenant hostname (e.g. mycompany.outsystems.dev).
+#
+# Note the TOML key is `mcp_servers`, not the `mcpServers` JSON spelling used by every
+# other harness in this repo. The wrong spelling still parses and registers nothing.
+#
+# No oauth configuration belongs here. The OutSystems auth server supports OAuth
+# discovery + Dynamic Client Registration, so Codex registers its own client;
+# `codex mcp login outsystems` then runs the browser sign-in.
+
+[mcp_servers.outsystems]
+enabled = true
+url = "https://<my-tenant>/mcp"
