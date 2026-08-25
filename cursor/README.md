@@ -11,27 +11,31 @@ If your organization uses a Cursor Team or Enterprise plan, a **team admin** mus
 **Team Admin Installation:**
 1. Open Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
 2. Enter: `https://github.com/OutSystems/outsystems-mcp`
-3. Review the `outsystems` plugin and save (Default On / Required as needed)
+3. Review the `outsystems` plugin and save it as **Required** — or at minimum **Default On**
+
+> **Mark it Required.** This is the single biggest thing you can do to make setup painless for your developers: the skill is loaded the moment they open Cursor, so setup collapses to "ask for something OutSystems-related and answer the tenant prompt". Left opt-in, every developer has to discover and enable the plugin first, and until they do the agent has none of the OutSystems conventions — it will guess at config locations and formats.
 
 **Individual User Setup (after admin installs plugin):**
 1. Open Cursor
 2. In the chat, ask anything OutSystems-related (e.g., "list my apps")
 3. The agent will ask for your **OutSystems tenant hostname** (e.g., `mycompany.outsystems.dev`)
-4. The agent configures `~/.cursor/mcp.json` with the tenant URL
+4. The agent writes your personal `~/.cursor/mcp.json` with the tenant URL, creating that file if you don't have one yet
 5. Complete OAuth sign-in when prompted
 6. You're ready to use OutSystems tools
 
-### Free Plans
+> The `cursor/mcp.json` shipped in this plugin is a **reference template, not your config**. It lives inside the read-only installed plugin directory and Cursor never reads server registrations from it, so the agent copies its shape into `~/.cursor/mcp.json` instead of editing it in place. A refusal to write inside the plugin directory is correct behavior, not a broken install.
 
-Free Cursor plans do not support custom Marketplace plugins. Use **Cursor CLI** instead (see below).
+### Free / Individual Plans
 
-## Install - Cursor CLI
+Free and individual Cursor plans do not support custom Marketplace plugins. Use **Cursor CLI** instead (see below).
 
-Cursor CLI works on all plans and provides MCP management via terminal commands.
+## Install - Cursor CLI (all plans, individual accounts included)
+
+Cursor CLI works on every plan — individual accounts included, no team admin or Marketplace plugin required — and provides MCP management via terminal commands.
 
 **Setup Steps:**
 
-1. **Create MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project):
+1. **Create or edit the MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project, takes precedence). Read it first if it exists and preserve your other entries:
    ```json
    {
      "mcpServers": {
@@ -42,6 +46,8 @@ Cursor CLI works on all plans and provides MCP management via terminal commands.
    }
    ```
    Replace `<my-tenant>` with your OutSystems tenant hostname (e.g., `mycompany.outsystems.dev`).
+
+   Only these two files matter. Don't copy an entry over from another assistant's MCP config (`.vscode/mcp.json`, `.mcp.json`, `~/.copilot/mcp-config.json`, `~/.claude.json`, `claude_desktop_config.json`, `~/.kiro/settings/mcp.json`, …) — they use different keys (`servers` vs `mcpServers`) and schemas, and a block moved across silently fails to load.
 
 2. **Install conventions file** (optional but recommended):
    - Fetch: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md

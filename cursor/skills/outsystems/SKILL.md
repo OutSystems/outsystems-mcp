@@ -13,8 +13,12 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 The OutSystems MCP server registration happens in two stages:
 
-1. **Team admin adds the plugin** (via Dashboard → Plugins → Team Marketplaces → Import from Repo)
+1. **Team admin adds the plugin** (via Dashboard → Plugins → Team Marketplaces → Import from Repo, saved as **Required**, or at least **Default On**, so every developer gets it without opting in)
 2. **Individual user completes setup** via agent prompts in Cursor app or CLI
+
+**Cursor's config is the only config.** The only files you may read or write for this setup are `~/.cursor/mcp.json` (global) and `.cursor/mcp.json` (project). Do NOT open, import, copy from, or migrate another harness's MCP config — `.vscode/mcp.json`, `.mcp.json`, `~/.copilot/mcp-config.json`, `~/.claude.json`, `claude_desktop_config.json`, `~/.kiro/settings/mcp.json`, `~/.gemini/settings.json`, `.continue/`, `~/.windsurf/`, or any other assistant's file — not even to read a tenant out of one, and not even when it already contains an `outsystems` entry. Those files use different keys (`servers` vs `mcpServers`), different schemas, and different auth state; a block lifted from one is not a Cursor config and produces a server that silently never loads. The only thing you would be hunting for in them is the tenant hostname, and the correct way to get that is to ask the user (step 1 below). Searching the filesystem for other MCP configs is itself out of scope for this setup — don't.
+
+**Never write inside the plugin directory.** The plugin ships `cursor/mcp.json` as a reference *template*. It lives inside the installed plugin, it is read-only, and Cursor does not read server registrations from it. If an edit is refused because the path is inside the plugin, that refusal is correct and you targeted the wrong file: retarget to the user's `~/.cursor/mcp.json`. Never ask the user to make the plugin writable, and never modify any other plugin-shipped file to work around it.
 
 ### For Cursor App Users (Plugin Auto-Setup)
 
@@ -24,7 +28,7 @@ When a user opens Cursor with this plugin installed:
    > "Which OutSystems tenant should I connect to? It's the host portion of your OutSystems URL, typically something like `mycompany.outsystems.dev`."
 2. **Normalize, then validate.** Accept whatever the user gives you (URL, hostname, hostname-with-path). Strip the scheme (`https://`, `http://`), any leading `www.`, trailing slash, and any path or query — keep only the host. The result must match `^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`. Only ask again if the normalized value is still implausible (empty, contains whitespace, or clearly isn't a hostname). The tenant slug is whatever the user chose; do not assume a fixed pattern.
 3. **Construct the URL**: `https://<TENANT>/mcp`.
-4. **Register the server** by writing to `~/.cursor/mcp.json`. Read first, preserve every other entry, write back — never clobber siblings. Format:
+4. **Register the server** in the user's own global config at `~/.cursor/mcp.json` — the plugin never registers it for them, and the plugin's own `cursor/mcp.json` is not the target (see above). **On a plugin install this file usually does not exist yet: create it** (creating `~/.cursor/` too if needed) containing only the block below. That is the expected path, not an error — do not go looking for an existing config elsewhere to edit instead. If the file does exist, read it first, preserve every other entry, and write it back — never clobber siblings. Format:
    ```json
    {
      "mcpServers": {
@@ -40,11 +44,11 @@ When a user opens Cursor with this plugin installed:
 
 ### For Cursor CLI Users (Manual Config)
 
-For CLI-only setups (no Cursor app):
+For CLI-only setups (no Cursor app, and no plugin — this path works on every plan, individual accounts included):
 
 1. **Ask the user for their OutSystems tenant hostname** (same prompt as above).
 2. **Normalize and validate** (same as above).
-3. **Write to `~/.cursor/mcp.json` or `.cursor/mcp.json`** (global or project config, same format as above).
+3. **Create or edit `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project, takes precedence)**, same format as above. Nothing is plugin-owned on this path, so editing an existing Cursor config in place is fine: read it first, add or update only the `outsystems` entry, preserve every other entry. Prefer the project config when the workspace already has one; don't create a new project config unprompted, since it is often checked in and shared with the user's collaborators.
 4. **Run CLI commands to verify and authenticate**:
    - `agent mcp list` — see registered servers
    - `agent mcp enable outsystems` — if it shows "needs approval"

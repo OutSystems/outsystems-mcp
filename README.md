@@ -151,7 +151,9 @@ Step 4: tell me to open the Tools picker, and ENABLE the `outsystems` tools — 
 Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
 ```
 
-## Install - Cursor CLI
+## Install - Cursor CLI (all plans, individual accounts included)
+
+No plugin and no team admin needed — this path works on a personal/individual Cursor account as well as on Team/Enterprise.
 
 Paste into Cursor agent:
 
@@ -161,7 +163,7 @@ Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outs
 Step 2: create or edit `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json` (project config, takes precedence). Read it first and preserve existing entries, then add under the top-level `mcpServers` object (NOT `servers`) the canonical `mcpServers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/mcp.json), substituting my tenant for `<my-tenant>`:
 {"outsystems": {"url": "https://<my-tenant>/mcp"}}
 Important: use `mcpServers` as the key (not `servers`), and omit `"type": "http"` — Cursor CLI expects this exact format.
-Ignore any other mcp config and prefer project config.
+Only touch Cursor's own config. Do NOT read, copy from, or migrate any other assistant's MCP config — `.vscode/mcp.json`, `.mcp.json`, `~/.copilot/mcp-config.json`, `~/.claude.json`, `claude_desktop_config.json`, `~/.kiro/settings/mcp.json`, `~/.gemini/settings.json`, `.continue/` — even if one exists and already has an `outsystems` entry; different keys and schemas mean a block lifted from one silently never loads in Cursor. Ask me for the tenant instead of hunting for it. Between the two Cursor configs, prefer the project one when my workspace already has it.
 Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes to `.cursor/rules/outsystems.md` in my workspace root (or `AGENTS.md` if my project uses that). Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
 Step 4: in a terminal, run: `agent mcp list` (verify outsystems appears), then `agent mcp enable outsystems` if it shows "needs approval", then `agent mcp login outsystems` (opens browser for OAuth sign-in; complete it there).
 Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is working.
@@ -174,9 +176,13 @@ Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is work
 **Team Admin:** Import the plugin to your Marketplace:
 1. Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
 2. Enter: `https://github.com/OutSystems/outsystems-mcp`
-3. Review the `outsystems` plugin and save (Default On / Required as needed).
+3. Review the `outsystems` plugin and save it as **Required** — or at minimum **Default On**.
 
-**Individual User (after admin installs):** Open Cursor and ask anything OutSystems-related. The agent prompts for your tenant hostname and completes setup automatically.
+> Save it as **Required** unless you have a reason not to. Marking it Required (or Default On) is what makes setup one step for your developers: the skill is already loaded when they open Cursor, so they just ask for something OutSystems-related and the agent walks them through the tenant prompt and sign-in. Leaving it opt-in means each developer must find and enable the plugin first, and until they do the agent has no OutSystems conventions at all.
+
+**Individual User (after admin installs):** Open Cursor and ask anything OutSystems-related. The agent prompts for your tenant hostname, writes your personal `~/.cursor/mcp.json` (creating it if you don't have one — the plugin's own `cursor/mcp.json` is a read-only template and is never edited), and completes setup automatically.
+
+No team admin, or on an individual plan? Use the **Cursor CLI** path above; it works on every plan.
 
 See [cursor/README.md](cursor/README.md) for detailed setup instructions and version alignment requirements.
 
