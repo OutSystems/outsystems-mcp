@@ -23,7 +23,7 @@ If your organization uses a Cursor Team or Enterprise plan, a **team admin** mus
 5. Complete OAuth sign-in when prompted
 6. You're ready to use OutSystems tools
 
-> The `cursor/mcp.json` shipped in this plugin is a **reference template, not your config**. It lives inside the read-only installed plugin directory and Cursor never reads server registrations from it, so the agent copies its shape into `~/.cursor/mcp.json` instead of editing it in place. A refusal to write inside the plugin directory is correct behavior, not a broken install.
+> The `cursor/mcp.json` shipped in this plugin is a **reference template, not your config**. It lives inside the read-only installed plugin directory, so the agent copies its shape into `~/.cursor/mcp.json` instead of editing it in place. A refusal to write inside the plugin directory is correct behavior, not a broken install.
 
 ### Free / Individual Plans
 
@@ -35,7 +35,7 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
 
 **Setup Steps:**
 
-1. **Create or edit the MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project, takes precedence). Read it first if it exists and preserve your other entries:
+1. **Create or edit the MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project). Both files are merged; if the same server name appears in both, the project-level entry takes priority. Read it first if it exists and preserve your other entries:
    ```json
    {
      "mcpServers": {
@@ -47,11 +47,12 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
    ```
    Replace `<my-tenant>` with your OutSystems tenant hostname (e.g., `mycompany.outsystems.dev`).
 
-   Only these two files matter. Don't copy an entry over from another assistant's MCP config (`.vscode/mcp.json`, `.mcp.json`, `~/.copilot/mcp-config.json`, `~/.claude.json`, `claude_desktop_config.json`, `~/.kiro/settings/mcp.json`, …) — they use different keys (`servers` vs `mcpServers`) and schemas, and a block moved across silently fails to load.
+   Only these two files matter. Don't copy an entry over from another assistant's MCP config (`.vscode/mcp.json`, `.mcp.json`, `~/.copilot/mcp-config.json`, `~/.claude.json`, `claude_desktop_config.json`, `~/.kiro/settings/mcp.json`, or any other assistant's file) — they use different keys (`servers` vs `mcpServers`) and schemas, and a block moved across silently fails to load.
 
 2. **Install conventions file** (optional but recommended):
    - Fetch: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md
-   - Save to `.cursor/rules/outsystems.md` in your workspace root (or `AGENTS.md` if your project uses that)
+   - Save to `AGENTS.md` in your workspace root — Cursor loads it verbatim, with no frontmatter requirement
+   - Don't save it under `.cursor/rules/`: that loader only picks up `.mdc` files carrying rule frontmatter (`description`, `globs`, `alwaysApply`), so a plain `.md` copy there is never loaded
    - This provides behavioral guidelines for the agent
 
 3. **Verify and authenticate**:
