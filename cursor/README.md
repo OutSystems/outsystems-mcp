@@ -53,6 +53,7 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
    - Fetch: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md
    - Save to `AGENTS.md` in your workspace root — Cursor loads it verbatim, with no frontmatter requirement
    - Don't save it under `.cursor/rules/`: that loader only picks up `.mdc` files carrying rule frontmatter (`description`, `globs`, `alwaysApply`), so a plain `.md` copy there is never loaded
+   - If `AGENTS.md` already holds an OutSystems conventions doc that another assistant's setup installed, keep it rather than adding a second copy beside it — and note that a later Copilot setup in the same workspace should then be pointed at `.github/copilot-instructions.md`, the path Copilot actually reads
    - This provides behavioral guidelines for the agent
 
 3. **Verify and authenticate**:
