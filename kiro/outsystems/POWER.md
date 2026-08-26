@@ -10,7 +10,7 @@ author: "OutSystems AI Platform"
 
 ## Overview
 
-OutSystems is a cloud-native low-code platform where apps are built from OML (OutSystems Model Language) — a binary format describing entities, screens, actions, and logic. This Power connects Kiro to the **OutSystems MCP server**: a hosted, multi-tenant HTTP transport that exposes the full OutSystems tool surface (`mentor_*`, `app_*`, `context_*`, `deploy_*`, `publish_*`, `extlib_*`, `env_*`).
+OutSystems is a cloud-native low-code platform where apps are built from OML (OutSystems Model Language) — a binary format describing entities, screens, actions, and logic. This Power connects Kiro to the **OutSystems MCP server**: a hosted, multi-tenant HTTP transport that exposes the full OutSystems tool surface (`mentor_*`, `app_list`, `app_logs`, `context_*`, `deploy_*`, `publish_*`, `extlib_*`, `env_*`).
 
 There is no CLI to install. There is no OML on disk. OML stays server-side; you edit through the mentor flow (`mentor_start` → poll `mentor_get_run`) and ship via `publish_start`.
 
