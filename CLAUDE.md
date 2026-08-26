@@ -15,7 +15,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
 | Copilot in Visual Studio | `copilot/skill.md` | manual download to `.github/copilot-instructions.md` | `<SolutionDir>\.mcp.json`, or `%USERPROFILE%\.mcp.json` | `servers` |
 | Cursor App | `cursor/skills/outsystems/SKILL.md` | automatic, via `cursor/.cursor-plugin/plugin.json` | Team Marketplace install (Team/Enterprise plan required) | `mcpServers` |
-| Cursor CLI | `cursor/skills/outsystems/SKILL.md` | manual copy to `.cursor/rules/outsystems.md` | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) | `mcpServers` |
+| Cursor CLI | `cursor/skills/outsystems/SKILL.md` | manual copy to `AGENTS.md` | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) | `mcpServers` |
 | M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
 | Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
 
@@ -23,7 +23,7 @@ Two traps the table encodes:
 
 - **`servers` vs `mcpServers`.** VS Code and Visual Studio read `servers`; Copilot CLI, Kiro, Claude Desktop, and Cursor CLI read `mcpServers`. `copilot/mcp.json` carries both keys so each surface copies the one it needs. Writing the wrong key fails silently: the file still parses and no server appears. (Cursor also has a `.vscode/mcp.json` (IDE-only) that uses `servers`, but the CLI ignores it.)
 - **Claude Desktop receives no skill doc.** Its install path wires up the MCP server and nothing else, so Desktop users get the tools without the conventions, the confirm-before-destructive rule included. Every behavioral rule below reaches every harness except that one.
-- **Cursor has dual paths: plugin-based (app) and file-based (CLI).** Cursor App users get the plugin from their Team Marketplace (requires Team/Enterprise plan + team admin approval). Each user then configures via agent setup, which writes `~/.cursor/mcp.json`. Cursor CLI users manually create `~/.cursor/mcp.json` or `.cursor/mcp.json` and use `agent mcp` commands. Both paths use `mcpServers` key; both skill docs are identical and ship via the plugin manifest.
+- **Cursor has dual paths: plugin-based (app) and file-based (CLI).** Cursor App users get the plugin from their Team Marketplace (requires Team/Enterprise plan + team admin approval). Each user then configures via agent setup, which writes `~/.cursor/mcp.json`. Cursor CLI users manually create `~/.cursor/mcp.json` or `.cursor/mcp.json` and use `agent mcp` commands. Both paths use `mcpServers` key. The two skill docs are identical, but only the App path receives one automatically, via the plugin manifest — on the CLI path it is a manual copy to `AGENTS.md`, so a plugin version bump does not reach CLI users at all.
 
 ### Validate every change against every supported harness
 

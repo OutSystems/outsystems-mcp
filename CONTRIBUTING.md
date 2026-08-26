@@ -132,18 +132,19 @@ Before you start, confirm `cursor/.cursor-plugin/plugin.json` and `.cursor-plugi
    - Temporarily set your branch as the default branch (or use the PR merge branch if available)
    - Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
    - Repo: `OutSystems/outsystems-mcp`, Branch: your test branch
-   - Review the `outsystems` plugin and save (Default On / Required as needed)
+   - Review the `outsystems` plugin and save it **Default On** — deliberately *not* Required, unlike the production guidance in `README.md` and `cursor/README.md`. Required is the right default for a released version; here you are pushing an unmerged branch at a live org marketplace, and Required would force it on everyone.
 2. Individual user opens Cursor and asks anything OutSystems-related
 3. Agent prompts for tenant hostname, configures `~/.cursor/mcp.json`, and completes OAuth
 4. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app
 
 ### Cursor CLI
 
-Point your local Cursor CLI at the `cursor/mcp.json` file (copy to `~/.cursor/mcp.json` global config or `.cursor/mcp.json` project config, using the `mcpServers` key without `type` field). Run:
+Copy the `mcpServers.outsystems` block out of `cursor/mcp.json` — the block only, never the whole file, which opens with a `TEMPLATE ONLY - this is not your MCP config` comment that has no business inside a real config — into `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project), under the `mcpServers` key and with no `type` field. Run:
 1. `agent mcp list` to verify `outsystems` is registered
 2. `agent mcp enable outsystems` if it shows "needs approval"
 3. `agent mcp login outsystems` to trigger OAuth sign-in
-4. Run an OutSystems-related prompt end-to-end in a new agent session. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `.cursor/rules/outsystems.md` (or `AGENTS.md`) is properly loaded and the conventions are applied.
+4. Save `cursor/skills/outsystems/SKILL.md` to `AGENTS.md` in the test workspace root. Nothing above creates it, and step 5 has nothing to verify without it.
+5. Run an OutSystems-related prompt end-to-end in a new agent session. Verify the agent completes a full task such as listing applications, starting an edit session, or publishing an app. Also verify that `AGENTS.md` is properly loaded and the conventions are applied.
 
 ### M365 Copilot
 

@@ -129,7 +129,7 @@ Paste into copilot:
 Install the OutSystems MCP server in Copilot CLI.
 Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
 Step 2: run `copilot mcp add --transport http outsystems https://<my-tenant>/mcp` (substitute my tenant). This writes the server to `~/.copilot/mcp-config.json` under the top-level `mcpServers` object — it's added to config, but a CLI session that's already running won't load it until Step 4. This matches the canonical `mcpServers.outsystems` block at https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/mcp.json. Add no auth headers or client_id; the server uses OAuth + Dynamic Client Registration.
-Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in the working directory (or `AGENTS.md` if the project uses that). Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in the working directory — that is the path Copilot reads, so default to it. Use `AGENTS.md` instead only when the project already keeps its own conventions there; an `AGENTS.md` that holds an OutSystems conventions doc installed for a different assistant (Cursor's recipe writes one) is not the project's own file, so in that case write `.github/copilot-instructions.md` and tell me. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
 Step 4: since `copilot mcp add` wrote the server to config from outside this running session, the session hasn't loaded it yet. Tell me to type `/mcp reload` in the CLI to load it (then optionally `/mcp show outsystems` to confirm it's listed). Note: `/mcp ...` are interactive slash commands I type in the REPL — you cannot run them for me, so ask me to run them rather than executing them yourself. The OAuth flow runs on the first OutSystems tool call — a browser opens for me to authorize.
 Step 5: once the tools are listed, tell me to ask `list 10 of my outsystems apps` to ensure it is working.
 ````
@@ -151,18 +151,20 @@ Step 4: tell me to open the Tools picker, and ENABLE the `outsystems` tools — 
 Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
 ```
 
-## Install - Cursor CLI
+## Install - Cursor CLI (all plans, individual accounts included)
+
+No plugin and no team admin needed — this path works on a personal/individual Cursor account as well as on Team/Enterprise.
 
 Paste into Cursor agent:
 
 ```
 Install the OutSystems MCP server in Cursor CLI.
 Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 2: create or edit `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json` (project config, takes precedence). Read it first and preserve existing entries, then add under the top-level `mcpServers` object (NOT `servers`) the canonical `mcpServers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/mcp.json), substituting my tenant for `<my-tenant>`:
+Step 2: create or edit `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json` (project config). Cursor merges both files, and on a server-name collision the project entry is the one that wins. Read it first and preserve existing entries, then add under the top-level `mcpServers` object (NOT `servers`) the canonical `mcpServers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/mcp.json), substituting my tenant for `<my-tenant>`:
 {"outsystems": {"url": "https://<my-tenant>/mcp"}}
-Important: use `mcpServers` as the key (not `servers`), and omit `"type": "http"` — Cursor CLI expects this exact format.
-Ignore any other mcp config and prefer project config.
-Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes to `.cursor/rules/outsystems.md` in my workspace root (or `AGENTS.md` if my project uses that). Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Important: use `mcpServers` as the key (not `servers`), and omit `type` — Cursor infers the transport from the `url`. Never set `"type": "streamable-http"`; that value makes Cursor CLI silently drop the entire `mcp.json`.
+Only touch Cursor's own config. Do NOT read, copy from, or migrate any other assistant's MCP config — `.vscode/mcp.json`, `.mcp.json`, `~/.copilot/mcp-config.json`, `~/.claude.json`, `claude_desktop_config.json`, `~/.kiro/settings/mcp.json`, `~/.gemini/settings.json`, `.continue/`, or any other assistant's file — even if one exists and already has an `outsystems` entry; different keys and schemas mean a block lifted from one silently never loads in Cursor. Ask me for the tenant instead of hunting for it. Between the two Cursor configs, prefer the project one when my workspace already has it.
+Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes to `AGENTS.md` in my workspace root — Cursor loads that file verbatim. Do NOT save it under `.cursor/rules/`: that loader only reads `.mdc` files carrying rule frontmatter, so a plain `.md` copy there never loads. If `AGENTS.md` already exists, read it before writing: when it already holds an OutSystems conventions doc that another assistant's setup put there, stop and tell me — that file is already doing this job and a second copy alongside it helps nobody. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file exists with unrelated content do NOT hand-merge; save the copy alongside it and tell me.
 Step 4: in a terminal, run: `agent mcp list` (verify outsystems appears), then `agent mcp enable outsystems` if it shows "needs approval", then `agent mcp login outsystems` (opens browser for OAuth sign-in; complete it there).
 Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is working.
 ```
@@ -174,9 +176,13 @@ Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is work
 **Team Admin:** Import the plugin to your Marketplace:
 1. Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
 2. Enter: `https://github.com/OutSystems/outsystems-mcp`
-3. Review the `outsystems` plugin and save (Default On / Required as needed).
+3. Review the `outsystems` plugin and save it as **Required** — or at minimum **Default On**.
 
-**Individual User (after admin installs):** Open Cursor and ask anything OutSystems-related. The agent prompts for your tenant hostname and completes setup automatically.
+> Save it as **Required** unless you have a reason not to. Marking it Required (or Default On) is what makes setup one step for your developers: the skill is already loaded when they open Cursor, so they just ask for something OutSystems-related and the agent walks them through the tenant prompt and sign-in. Leaving it opt-in means each developer must find and enable the plugin first, and until they do the agent has no OutSystems conventions at all.
+
+**Individual User (after admin installs):** Open Cursor and ask anything OutSystems-related. The agent prompts for your tenant hostname, writes your personal `~/.cursor/mcp.json` (creating it if you don't have one — the plugin's own `cursor/mcp.json` is a read-only template and is never edited), and completes setup automatically.
+
+No team admin, or on an individual plan? Use the **Cursor CLI** path above; it works on every plan.
 
 See [cursor/README.md](cursor/README.md) for detailed setup instructions and version alignment requirements.
 
@@ -210,6 +216,7 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 | "Server Disconnected" or "failed authorization" | Usually a stale or partial OAuth grant. Run the reset below. If it persists, the tenant hostname is likely wrong: confirm it resolves and that `https://<my-tenant>/mcp` returns `401` rather than `404`. |
 | Nothing connects on Windows, or `npx` is "not found" | Applies to the Claude Desktop local-proxy fallback only. Claude Desktop launches processes with a minimal PATH. Replace `"npx"` in the config with the absolute path from `where npx`. |
 | Browser windows keep reopening, and the proxy log shows `EADDRINUSE` | Applies whenever you reach the server through the `mcp-remote` proxy, which is the Claude Desktop fallback above and any harness you wired up that way. The proxy reuses the callback port saved in its own client registration and exits before sign-in completes, so the host restarts it and no token is ever stored. Clear the saved registration, in the reset below. |
+| The Cursor agent ignores the OutSystems conventions | An earlier version of the Cursor CLI recipe saved the conventions file to `.cursor/rules/outsystems.md`. Cursor's rules loader only enumerates `.mdc` files carrying rule frontmatter, so a plain `.md` there never loaded. Move it to `AGENTS.md` in your workspace root, which Cursor loads verbatim, and delete the old copy. |
 | Tools are listed but greyed out (Visual Studio) | MCP tools are disabled by default. Enable them in the Tools picker. |
 | Nothing appears at all on a Copilot Business or Enterprise plan | An admin must enable the "MCP servers in Copilot" policy. |
 | No "Add custom connector" button in Claude Desktop | Adding custom connectors is an organization-level permission. An Owner adds it in **Admin settings > Connectors**, or your organization has custom connectors disabled. Use the local-proxy fallback in the Claude Desktop section meanwhile. |
