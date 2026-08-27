@@ -250,8 +250,20 @@ jobs:
               echo "::error::gh api call failed for PR #${pr_number} (network error, rate limit, or bad PR number). Cannot resolve base_ref or verify fork status."
               exit 1
             }
-            base_ref=$(echo "$pr_json" | jq -r .base_ref)
-            head_repo=$(echo "$pr_json" | jq -r .head_repo)
+            # `2>&1` folds jq's own stderr into the capture so a jq crash
+            # (bad JSON, missing binary, signal) surfaces its actual reason
+            # in the `::error::` message below instead of leaving base_ref
+            # empty and only tripping the generic "could not extract" check
+            # further down, with the real cause visible only in a raw log
+            # stream the operator has to expand.
+            if ! base_ref=$(echo "$pr_json" | jq -r .base_ref 2>&1); then
+              echo "::error::jq failed extracting base_ref from PR #${pr_number} API response: ${base_ref}"
+              exit 1
+            fi
+            if ! head_repo=$(echo "$pr_json" | jq -r .head_repo 2>&1); then
+              echo "::error::jq failed extracting head_repo from PR #${pr_number} API response: ${head_repo}"
+              exit 1
+            fi
             if [ -z "$base_ref" ] || [ "$base_ref" = "null" ]; then
               echo "::error::Could not extract base_ref from PR #${pr_number} API response."
               exit 1
