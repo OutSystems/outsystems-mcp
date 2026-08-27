@@ -1,41 +1,47 @@
-# AI PR Review (shared panel)
+# AI PR Review
 
-Every push to a PR triggers an AI code review through the shared panel at
-[`OutSystems/rd-ai-review-panel`](https://github.com/OutSystems/rd-ai-review-panel).
-This repo owns two files, and nothing else about the review:
+Every push to a PR triggers an AI code review. Unlike
+`OutSystems/rd-ai-ase-toolkit`, this repo does not call the shared panel
+at [`OutSystems/rd-ai-review-panel`](https://github.com/OutSystems/rd-ai-review-panel)
+as a reusable workflow: this repo is public and does not share the
+internal `GIT_HUB_CLONE_TOKEN` org secret the panel's cross-repo checkout
+needs, so `ai-review.yml` runs standalone and the critic panel is
+vendored directly into `.claude/agents/`.
 
-- `ai-review.yml` - the caller stub. Pins the panel by exact SHA during
-  phase 3 (selftest gate). Flip to `@v1` once that gate promotes.
-- `ai-review-config.json` - the per-repo knobs.
+- `ai-review.yml` - the full workflow: trigger gating, SHA pinning, OIDC
+  Bedrock auth, and the inline review prompt.
+- `.claude/agents/*.md` - the critic panel, adapted from the shared
+  panel's composed output for this repo's shape (skill docs, slash
+  commands, plugin manifests - no compiled language, no CI to gate on).
 
 ## What this repo runs
 
 Narrow, because this repo is not a service. Its content is text an LLM
 agent reads (skills, commands, plugin manifests) plus per-harness assets.
 
-Always:
+Conditional (spawned only when the diff matches the critic's condition,
+decided in the prompt before the panel spawns):
 
-- `architecture-reviewer` - duplication, wrong abstraction, misplaced logic.
-- `consistency-reviewer` **+ agent-facing pack** - MD-to-schema drift plus
-  tool-name / description / injected-instruction coherence. The primary
-  value for this repo, because its whole product IS text a model reads.
-- `error-handling-reviewer` - swallowed errors in skill helpers.
-
-Conditional:
-
-- `docs-reviewer` - MD-to-code drift when a skill's example diverges from
-  its recipe.
+- `docs-reviewer` - MD-to-code drift, including `.github/workflows/README.md`
+  itself when this workflow or its critics change.
+- `consistency-reviewer` **+ agent-facing pack** - skill-doc instruction
+  accuracy, cross-harness lockstep, manifest version lockstep, and
+  slash-command naming/contract checks. Spawned when the diff touches
+  `.claude-plugin/`, `plugin.json`, `marketplace.json`, or any other JSON.
+- `error-handling-reviewer` - swallowed errors in skill helpers, if any
+  exist in this repo's scripts. Spawned when the diff adds or changes code.
 - `simplification-reviewer` **+ context-cost pack** - complexity cost of
-  helpers, plus response-payload cost when a helper adds a field to
-  something a model reads. The context axis is the point.
+  helpers, plus the context cost a skill doc or command body spends on
+  every agent that reads it. Spawned when the diff adds or changes code.
 
-Disabled (explicitly, in `Panel.Disabled`), because they would produce
-false positives on doc-shaped content or do not apply:
+Not run at all: `security-reviewer`, `test-reviewer`, `robustness-reviewer`,
+`architecture-reviewer`, `compliance-reviewer`. This repo has no
+secrets/injection/authz surface, no test suite, no deploy artifact or ring,
+no module-boundary complexity worth a dedicated pass, and no PRC or
+threat-model artifacts.
 
-- `security-reviewer` - no secrets/injection/authz surface here.
-- `test-reviewer` - no tests in the repo.
-- `robustness-reviewer` - no deploy artifact, no ring, no live contract.
-- `compliance-reviewer` - no PRC or threat-model artifacts here.
+Max 3 review rounds; MUST and SHOULD findings post inline, COULD and
+lower collapse into the review body.
 
 ## Required repo configuration
 
@@ -48,10 +54,18 @@ Set once, at the repo level:
 | variable | `AI_REVIEW_BEDROCK_MODEL` | `us.anthropic.claude-sonnet-4-6` |
 
 The IAM role's trust policy must include a subject condition allowing
-`repo:OutSystems/outsystems-mcp:*`. Same role that ase-toolkit and the
-panel repo use; just widen the sub.
+`repo:OutSystems/outsystems-mcp:*`.
+
+## Re-running
+
+- Push a new commit - runs automatically.
+- `workflow_dispatch` from the Actions UI, given the PR number and the
+  exact head SHA to review.
+- Comment `/ai-review <40-char sha>` on the PR. Requires OWNER, MEMBER,
+  or COLLABORATOR author association.
 
 ## Skipping
 
-Apply the `skip-ai-review` label to a PR. See the panel repo's README
-for the full behavior contract.
+Apply the `skip-ai-review` label to a PR before pushing. Removing the
+label does not re-engage the review on its own; push again or use one of
+the re-run methods above.
