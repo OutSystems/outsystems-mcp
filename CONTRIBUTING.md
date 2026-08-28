@@ -2,14 +2,14 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately in Desktop's Chat tab), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
 - Git.
 - At least one of the supported harnesses installed locally. Rows you cannot verify are recorded as gaps with a follow-up per the PR checklist, not skipped silently:
   - **Claude Code** (any recent version) for plugin/skill changes.
-  - **Claude Desktop** for MCP config changes. It receives no skill doc, so skill content does not reach it.
+  - **Claude Desktop** for MCP config changes and, on a paid plan, plugin/skill-content changes. Verifying skill content additionally requires installing the plugin from Desktop's Chat tab, since patching `claude_desktop_config.json` alone only wires up the MCP server.
   - **Kiro 0.11.133 or newer** for Power changes.
   - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
   - **Cursor App** (Team/Enterprise plan with team admin access) OR **Cursor CLI** (all plans) for Cursor changes.
@@ -59,7 +59,7 @@ README.md                 # Install instructions for each supported harness
 ```
 
 All five skill documents overlap in intent (they all describe the same MCP tools and conventions):
-- `skills/outsystems/SKILL.md` (Claude Code)
+- `skills/outsystems/SKILL.md` (Claude Code, and Claude Desktop via the same plugin)
 - `cursor/skills/outsystems/SKILL.md` (Cursor)
 - `kiro/outsystems/steering/skill.md` (Kiro)
 - `copilot/skill.md` (GitHub Copilot)
@@ -114,7 +114,18 @@ Restart Claude Code, register the MCP server with `claude mcp add` (see the `REA
 
 ### Claude Desktop
 
-Desktop receives the MCP server configuration and no skill doc, so skill-content changes are not applicable to it. Verify only that the server still resolves from `claude_desktop_config.json` under `mcpServers`. Record skill-content changes as not applicable, with that reason.
+Before you start, confirm `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` carry the version you expect. An unbumped version risks leaving testers on previously installed content rather than on your branch; if Desktop's plugin panel shows a currently-installed version, uninstall and reinstall rather than relying on an in-place update to have picked up the new content.
+
+1. Prerequisite: a Claude Desktop client where plugins are not org-disabled. Open its plugin-install flow, note the exact menu/panel names and button labels it shows, and check whether the flow lets you specify a branch/ref directly. If yes, point it at your test branch and skip step 2.
+2. If not, temporarily set your branch as the repo's default branch on GitHub (the same fallback the Cursor App section above documents) and install the plugin from Desktop. This requires GitHub admin/maintainer rights. Leave the default branch pointed at your test branch until step 8; reverting earlier lets Desktop re-sync the plugin's skill content back to `main`'s version while you are still verifying.
+3. Register the OutSystems MCP server in Claude Desktop. The plugin alone only delivers the skill doc; `.claude-plugin/plugin.json` declares no `mcpServers` block, so nothing in steps 1-2 wires up server connectivity. Patch `claude_desktop_config.json`'s `mcpServers.outsystems` entry using the same paste-prompt recipe in the `README.md` Claude Desktop install section, restart Claude Desktop, and confirm a tool call against a real tenant succeeds.
+4. Confirm the skill's `## Rules` are in effect in the Chat tab: trigger a destructive-tenant-operation prompt and observe the confirm-before-destructive behavior.
+5. Test whether `/outsystems-feedback` works in the Chat tab. If it does, also confirm `commands/outsystems-feedback.md`'s `AskUserQuestion`-driven flow actually renders for a plugin running inside Desktop.
+6. Trigger an auth error mid-session (or simulate one) and observe what a Desktop quit-and-restart does to the `mcp-remote` proxy registration.
+7. If steps 4 through 6 surfaced any wording gap in the shipped docs, re-run the lockstep grep from CLAUDE.md before merging.
+8. Revert the repo's default branch back to `main` if step 2's fallback was used, and confirm the revert took effect.
+
+Record the outcome (verified, gap, or not applicable with reason) in the PR body.
 
 ### Kiro (Power)
 
