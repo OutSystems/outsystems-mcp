@@ -70,6 +70,8 @@ All five counts must be equal for a phrase in `## Rules` or in any other lockste
 
 Setup steps legitimately diverge between the harnesses (Claude Code uses `claude mcp add`, Kiro Power patches `~/.kiro/settings/mcp.json`, GitHub Copilot uses VS Code/Visual Studio settings or Copilot CLI config, the root SKILL.md describes the wire-level tool names without prescribing a host). The lockstep rule applies to `## Rules` and to behavioral guidance outside the setup recipe itself, not to host-specific install recipes.
 
+`skills/outsystems/SKILL.md`'s Claude Desktop first-use subsection inlines the same `npx`/`mcp-remote` config recipe as `README.md`'s Claude Desktop install section (config paths, Windows variant, PATH caveat) because Desktop's Chat tab cannot read the README itself. Keep the two in sync when the recipe changes.
+
 ### Exception: plugin-specific and host-specific affordances
 
 Host-specific UI surfaces (typed shortcuts, hotkeys) live only in the doc for the host that has them; `commands/` is scoped by plugin, not host. The Claude plugin ships slash commands under `commands/` (declared in `.claude-plugin/plugin.json`'s `commands` key); Kiro Powers do not have an equivalent. So mentions of `/outsystems-feedback` and similar slash-command trigger phrases belong only in `skills/outsystems/SKILL.md`, not in `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, or root `SKILL.md`. The underlying *behavior* (what the agent does on the trigger) still has to lockstep across all five docs.
@@ -78,11 +80,13 @@ Naming note: slash-command filenames become the command name a user types. Claud
 
 `commands/` ships via the Claude plugin, same manifest key noted above. There is no Kiro analog, no Copilot analog, no Cursor analog, and no root analog; do not create one. Behavioral guidance about a command's effect still lands in all five skill docs per the main lockstep rule.
 
+The manifest ships `commands/` to any host that installs the plugin, including Claude Desktop, but whether Claude Desktop's Chat tab actually renders and executes a plugin-declared slash command is unverified (see CONTRIBUTING.md's Claude Desktop testing section). Until that is confirmed, `README.md` and `skills/outsystems/SKILL.md` correctly describe `/outsystems-feedback` as Claude-Code-only in user-facing wording; don't change that wording ahead of verification.
+
 ### Exception: per-harness Authenticating mechanics
 
 The mechanism prose in `## Authenticating` (whether a harness exposes an agent-callable `authenticate` tool, how each harness's OAuth flow is triggered, and harness-specific error remedies like the callback-port paragraph) is intentionally divergent per harness and exempt from the phrase-count grep. The Reactive paragraph's `tenant_not_allowed` closing sentence is the one exception within Authenticating: it stays byte-identical, once per file, across all five docs, and must be re-grepped at 1x/file across all five whenever a future change touches the Reactive paragraph, per `### Check before opening a PR` above. That grep is change-scoped and operator-run, not a standing automated check, so re-running it is a contributor obligation, not something CI enforces.
 
-Separately, the "if sign-in itself errors" trigger condition is now phrased identically in three of the five docs (`skills/outsystems/SKILL.md`, `copilot/skill.md`, root `SKILL.md`), while the other two (`kiro/outsystems/steering/skill.md`, `cursor/skills/outsystems/SKILL.md`) express the same rule as "if sign-in fails", a pre-existing wording divergence this exception does not resolve. Treat that phrase as a semantic alignment, not a 5/5 phrase-count case.
+Separately, the "if sign-in itself errors" trigger condition is phrased identically in three of the five docs (`skills/outsystems/SKILL.md`, `copilot/skill.md`, root `SKILL.md`), while the other two (`kiro/outsystems/steering/skill.md`, `cursor/skills/outsystems/SKILL.md`) express the same rule as "if sign-in fails"; a wording divergence this exception does not resolve. Treat that phrase as a semantic alignment, not a 5/5 phrase-count case.
 
 ### Manifest version lockstep
 
@@ -97,3 +101,5 @@ Two sets of files, four in total, declare plugin versions and they must stay in 
 - `.cursor-plugin/marketplace.json` -> `plugins[0].version`
 
 `claude plugin update outsystems@outsystems` compares the version in `.claude-plugin/plugin.json`. Bumping only `.claude-plugin/marketplace.json` does not trigger an update: the user is told "already at the latest version" and never pulls the new content, even after `claude plugin marketplace update`. Cursor's resolution has not been verified, so treat both Cursor manifests as load-bearing. Always bump all four files (Claude + Cursor pairs) in the same commit, keeping both Claude and Cursor versions aligned.
+
+Claude Desktop installs from the same `.claude-plugin/` manifest pair as Claude Code, and its in-place update resolution is equally unverified; CONTRIBUTING.md's Claude Desktop testing section recommends uninstall/reinstall over trusting an update to have picked up new content.
