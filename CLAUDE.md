@@ -70,7 +70,9 @@ All five counts must be equal for a phrase in `## Rules` or in any other lockste
 
 Setup steps legitimately diverge between the harnesses (Claude Code uses `claude mcp add`, Kiro Power patches `~/.kiro/settings/mcp.json`, GitHub Copilot uses VS Code/Visual Studio settings or Copilot CLI config, the root SKILL.md describes the wire-level tool names without prescribing a host). The lockstep rule applies to `## Rules` and to behavioral guidance outside the setup recipe itself, not to host-specific install recipes.
 
-`skills/outsystems/SKILL.md`'s Claude Desktop first-use subsection inlines the same `npx`/`mcp-remote` config recipe as `README.md`'s Claude Desktop install section (config paths, Windows variant, PATH caveat) because Desktop's Chat tab cannot read the README itself. Keep the two in sync when the recipe changes.
+`skills/outsystems/SKILL.md`'s Claude Desktop first-use subsection inlines the same `npx`/`mcp-remote` config recipe as `README.md`'s Claude Desktop install section (e.g. config paths, Windows variant, PATH caveat, Node/npx prerequisite) because Desktop's Chat tab cannot read the README itself. Keep the two in sync when the recipe changes.
+
+`skills/outsystems/SKILL.md`'s Desktop-facing error-handling paragraphs also point at `README.md`'s `### Reset` heading by absolute URL (`https://github.com/OutSystems/outsystems-mcp#reset`), for the same reason: Desktop's Chat tab cannot read the README to resolve a bare section name. Check those links whenever the Reset heading's text or anchor slug changes.
 
 ### Exception: plugin-specific and host-specific affordances
 
