@@ -11,7 +11,7 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 ## First use / setup
 
-If the `outsystems` MCP tools aren't visible in your toolset, or a call returns `tenant not configured` / connection errors, the MCP server hasn't been registered against the user's tenant. A rejection naming `tenant_not_allowed` is a different condition and usually not a setup fault, so check the configured host with `claude mcp get outsystems` first, or by reading the `mcpServers.outsystems` entry in `claude_desktop_config.json`, see Rules. Otherwise, do this once per machine:
+If the `outsystems` MCP tools aren't visible in your toolset, or a call returns `tenant not configured` / connection errors, the MCP server hasn't been registered against the user's tenant. A rejection naming `tenant_not_allowed` is a different condition and usually not a setup fault, so check the configured host with `claude mcp get outsystems` on Claude Code, or by asking the user to check the `mcpServers.outsystems` entry in their `claude_desktop_config.json` on Claude Desktop (the Chat tab has no filesystem access to read it directly), see Rules. Otherwise, do this once per machine:
 
 ### For Claude Code Users (CLI)
 
@@ -27,13 +27,18 @@ If the `outsystems` MCP tools aren't visible in your toolset, or a call returns 
 5. **Authenticate.** Proceed to the "Authenticating" section below. The agent drives auth via tool calls; the user does NOT click anything in `/mcp`.
 6. **Retry the user's original request** once authentication completes.
 
-### For Claude Desktop Users (Plugin)
+### For Claude Desktop Users (Manual Config)
 
 1. **Ask the user for their OutSystems tenant hostname** (same prompt as above).
-2. **Normalize, then validate** (same as above).
-3. **Add the server entry.** Tell the user to add the corresponding `mcpServers.outsystems` entry (command `npx`, args including `mcp-remote` and the constructed tenant URL) to `claude_desktop_config.json`.
-4. **Restart Claude Desktop.**
-5. **Retry the user's original request** once authentication completes.
+2. **Normalize and validate** (same as above).
+3. **Construct the MCP URL** (same as above): `https://<TENANT>/mcp`.
+4. **Add the server entry.** Locate the config file: macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows `%APPDATA%\Claude\claude_desktop_config.json`. Read it first (start from `{}` if it doesn't exist) and preserve every existing key, then add or replace the `mcpServers.outsystems` entry:
+   - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "<the constructed URL>"]}`
+   - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote <the constructed URL>"]}`
+   Claude Desktop launches processes with a minimal PATH, so `npx` may fail to resolve even though it works in a terminal; if the server doesn't connect after restart, replace `"npx"` with the absolute path from `which npx` / `where npx`.
+5. **Restart Claude Desktop.**
+6. **Authenticate.** Proceed to the "Authenticating" section below; the `mcp-remote` proxy drives the browser sign-in on the first tool call.
+7. **Retry the user's original request** once authentication completes.
 
 If the user already has an `outsystems` MCP server registered but pointing at the wrong tenant, follow the same flow. The patches are idempotent for the same tenant and update the URL for a new one.
 
@@ -44,18 +49,18 @@ OAuth-protected. Whether the agent drives the flow directly or the host handles 
 - **Claude Code** exposes two deferred tools the agent drives:
   - `mcp__outsystems__authenticate`: starts the OAuth flow; returns an authorization URL.
   - `mcp__outsystems__complete_authentication { callback_url }`: finalizes auth for remote sessions.
-- **Claude Desktop** exposes no agent-callable auth tool. The `mcp-remote` local proxy runs the OAuth flow in its own browser window on the first tool call. Just make the call and wait for the user to complete sign-in in the browser, then proceed. **Don't look for an `authenticate` tool** on Desktop, it isn't there.
+- **Claude Desktop** exposes no agent-callable auth tool. The `mcp-remote` local proxy runs the OAuth flow in its own browser window on the first tool call. **Don't look for an `authenticate` tool** on Desktop, it isn't there; see Lazy below for what to do instead.
 
 **Lazy.** **Claude Code:** Before the first OutSystems tool call in a session, call `mcp__outsystems__authenticate` and share the returned URL with the user. Then:
 
 - **Local session** (browser can reach `http://localhost:<port>/callback`): the server's real tools appear automatically — wait for the user's confirmation, then proceed.
 - **Remote session** (callback page fails to load, e.g. SSH / devcontainer, or "site can't be reached" in a VM): **do not wait for timeout, and tell the user immediately** — tenant-side sign-in already succeeded; they don't need to sit through the two-minute failure. Ask the user to copy the full URL from their browser's address bar (`http://localhost:<port>/callback?code=...&state=...`), then call `mcp__outsystems__complete_authentication { callback_url: "<that URL>" }` to deliver the code to Claude Code's callback listener. This completes the sign-in flow. The authorization code is single-use, so if it fails, start a fresh `mcp__outsystems__authenticate` and do not ask the user to also retry in the browser. **Expect the code to be spent:** if the callback connection was refused, the authorization session was torn down and that code is no longer valid. If you get a "session ended" error, ask the user to start a fresh sign-in. Treat authorization codes as credentials either way.
 
-**Claude Desktop:** the real tools appear automatically once the user finishes the browser sign-in, wait for that, then proceed.
+**Claude Desktop:** make the call and wait for the user to complete sign-in in the browser, then proceed once the real tools appear. If no browser window opens within a few seconds, or the user closes it before finishing sign-in, tell the user immediately rather than waiting silently, and retry the same call once they confirm sign-in is done.
 
-**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): **Claude Code**, call `mcp__outsystems__authenticate` again, then retry the original call ONCE. **Claude Desktop**, there is no tool to call; retry the failed call once and wait for `mcp-remote` to reopen its browser sign-in window before treating the retry as failed, the same way the Lazy clause above waits on first use. If the rejection names `tenant_not_allowed`, do not re-trigger sign-in, see Rules.
+**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): **Claude Code**, call `mcp__outsystems__authenticate` again, then retry the original call ONCE. **Claude Desktop**, there is no tool to call; retry the failed call once and wait for `mcp-remote` to reopen its browser sign-in window before treating the retry as failed, the same way the Lazy clause above waits on first use. If the window keeps reopening without ever completing sign-in, that is the `mcp-remote` proxy's `EADDRINUSE` wedge, not a normal retry: stop and point the user at the Reset section's saved-proxy-registration clear rather than retrying again. If the rejection names `tenant_not_allowed`, do not re-trigger sign-in, see Rules.
 
-**On Claude Code**, don't fall back to the `/mcp -> outsystems -> Authenticate` menu, the deferred tool pair is always available there; the menu is the host's emergency fallback. Claude Desktop has neither the tool pair nor this menu, see the Authenticating clause above.
+**On Claude Code**, don't fall back to the `/mcp -> outsystems -> Authenticate` menu, the deferred tool pair is always available there; the menu is the host's emergency fallback. Claude Desktop has neither the tool pair nor this menu, see the Claude Desktop bullet above.
 
 **If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
 
@@ -67,7 +72,7 @@ OAuth-protected. Whether the agent drives the flow directly or the host handles 
 - **If it reports no `callback_port`**, the pin is not in the MCP config. Do not remove or re-register. Surface the message verbatim, note that a callback-port override in the environment or another process holding the port would both produce it, and point at https://github.com/OutSystems/outsystems-mcp#troubleshooting
 - **If the error survives one cycle**, stop. Surface it and point at the same place. Don't loop.
 
-On Claude Desktop, a callback-port conflict is a different mechanism (the `mcp-remote` proxy's own port, not Claude Code's), see https://github.com/OutSystems/outsystems-mcp#troubleshooting rather than the `claude mcp` steps below, which don't apply there.
+**On Claude Desktop**, a callback-port conflict is a different mechanism (the `mcp-remote` proxy's own port, not Claude Code's) and is also local, not a server fault, so don't file it either. See the Reset section's saved-proxy-registration clear, or https://github.com/OutSystems/outsystems-mcp#troubleshooting for the matching symptom rows, rather than the `claude mcp` steps above, which are Claude-Code-specific.
 
 ## Tools at a glance
 
