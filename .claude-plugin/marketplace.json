@@ -1,7 +1,7 @@
 {
   "name": "outsystems",
   "metadata": {
-    "description": "OutSystems MCP plugin for Claude Code"
+    "description": "OutSystems MCP plugin for Claude Code and Claude Desktop"
   },
   "owner": {
     "name": "OutSystems AI Platform"
