@@ -32,13 +32,14 @@ If the `outsystems` MCP tools aren't visible in your toolset, or a call returns 
 1. **Ask the user for their OutSystems tenant hostname** (same prompt as above).
 2. **Normalize and validate** (same as above).
 3. **Construct the MCP URL** (same as above): `https://<TENANT>/mcp`.
-4. **Add the server entry.** Locate the config file: macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows `%APPDATA%\Claude\claude_desktop_config.json`. Read it first (start from `{}` if it doesn't exist) and preserve every existing key, then add or replace the `mcpServers.outsystems` entry:
+4. **Confirm Node.js/npx is available, then install `mcp-remote`.** This recipe requires Node.js with `npx` available on the user's machine. Confirm it (e.g. `npx --version`), then run `npm install -g mcp-remote` — idempotent and safe even if it's already installed. If `npx` is unavailable, stop here and tell the user to install Node.js first; writing the config entry below without it produces a server that silently fails to connect.
+5. **Add the server entry.** Locate the config file: macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows `%APPDATA%\Claude\claude_desktop_config.json`. Read it first (start from `{}` if it doesn't exist) and preserve every existing key, then add or replace the `mcpServers.outsystems` entry:
    - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "<the constructed URL>"]}`
    - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote <the constructed URL>"]}`
    Claude Desktop launches processes with a minimal PATH, so `npx` may fail to resolve even though it works in a terminal; if the server doesn't connect after restart, replace `"npx"` with the absolute path from `which npx` / `where npx`.
-5. **Restart Claude Desktop.**
-6. **Authenticate.** Proceed to the "Authenticating" section below; the `mcp-remote` proxy drives the browser sign-in on the first tool call.
-7. **Retry the user's original request** once authentication completes.
+6. **Restart Claude Desktop.**
+7. **Authenticate.** Proceed to the "Authenticating" section below; the `mcp-remote` proxy drives the browser sign-in on the first tool call.
+8. **Retry the user's original request** once authentication completes.
 
 If the user already has an `outsystems` MCP server registered but pointing at the wrong tenant, follow the same flow. The patches are idempotent for the same tenant and update the URL for a new one.
 
