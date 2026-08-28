@@ -9,7 +9,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | Harness | Skill doc | How the skill doc arrives | MCP config target | Server key |
 | :-- | :-- | :-- | :-- | :-- |
 | Claude Code | `skills/outsystems/SKILL.md` | automatic, via `plugin.json`'s `skills` key | user scope, written by `claude mcp add` | n/a |
-| Claude Desktop | none | **not delivered** | `claude_desktop_config.json` | `mcpServers` |
+| Claude Desktop | `skills/outsystems/SKILL.md` | same plugin as Claude Code, installed separately in Desktop's Chat tab (paid plan required) | `claude_desktop_config.json` | `mcpServers` |
 | Kiro Chat | `kiro/outsystems/steering/skill.md` | automatic, via the Power's `steering/` directory | `~/.kiro/settings/mcp.json` | `mcpServers` |
 | Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
@@ -22,7 +22,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 Two traps the table encodes:
 
 - **`servers` vs `mcpServers`.** VS Code and Visual Studio read `servers`; Copilot CLI, Kiro, Claude Desktop, and Cursor CLI read `mcpServers`. `copilot/mcp.json` carries both keys so each surface copies the one it needs. Writing the wrong key fails silently: the file still parses and no server appears. (Cursor also has a `.vscode/mcp.json` (IDE-only) that uses `servers`, but the CLI ignores it.)
-- **Claude Desktop receives no skill doc.** Its install path wires up the MCP server and nothing else, so Desktop users get the tools without the conventions, the confirm-before-destructive rule included. Every behavioral rule below reaches every harness except that one.
+- **Claude Desktop's plugin requires a paid plan.** On Free, no plugin can be installed, so those users get the tools without the conventions, the confirm-before-destructive rule included. On a paid plan, installing the plugin closes this gap the same way it does for Claude Code.
 - **Cursor has dual paths: plugin-based (app) and file-based (CLI).** Cursor App users get the plugin from their Team Marketplace (requires Team/Enterprise plan + team admin approval). Each user then configures via agent setup, which writes `~/.cursor/mcp.json`. Cursor CLI users manually create `~/.cursor/mcp.json` or `.cursor/mcp.json` and use `agent mcp` commands. Both paths use `mcpServers` key. The two skill docs are identical, but only the App path receives one automatically, via the plugin manifest — on the CLI path it is a manual copy to `AGENTS.md`, so a plugin version bump does not reach CLI users at all.
 
 ### Validate every change against every supported harness
@@ -41,7 +41,7 @@ Harnesses differ in ways that break otherwise-correct changes: the config key (`
 
 This repo ships **five parallel skill documents**:
 
-- `skills/outsystems/SKILL.md` is the Claude Code marketplace skill, consumed when a user runs `claude plugin install outsystems@outsystems`.
+- `skills/outsystems/SKILL.md` is the Claude Code marketplace skill, consumed when a user runs `claude plugin install outsystems@outsystems`, or when a Claude Desktop user installs the same plugin from the Chat tab.
 - `kiro/outsystems/steering/skill.md` is the Kiro Power steering doc, consumed by Kiro.
 - `copilot/skill.md` is the GitHub Copilot skill doc, consumed by GitHub Copilot (VS Code, CLI, or Visual Studio).
 - `cursor/skills/outsystems/SKILL.md` is the Cursor skill doc, consumed by Cursor CLI.
@@ -70,13 +70,19 @@ All five counts must be equal for a phrase in `## Rules` or in any other lockste
 
 Setup steps legitimately diverge between the harnesses (Claude Code uses `claude mcp add`, Kiro Power patches `~/.kiro/settings/mcp.json`, GitHub Copilot uses VS Code/Visual Studio settings or Copilot CLI config, the root SKILL.md describes the wire-level tool names without prescribing a host). The lockstep rule applies to `## Rules` and to behavioral guidance outside the setup recipe itself, not to host-specific install recipes.
 
-### Exception: host-specific affordances
+### Exception: plugin-specific and host-specific affordances
 
-Host-specific UI surfaces (typed shortcuts, hotkeys) live only in the doc for the host that has them. The Claude Code marketplace plugin ships slash commands under `commands/` (declared in `.claude-plugin/plugin.json`'s `commands` key); Kiro Powers do not have an equivalent. So mentions of `/outsystems-feedback` and similar slash-command trigger phrases belong only in `skills/outsystems/SKILL.md`, not in `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, or root `SKILL.md`. The underlying *behavior* (what the agent does on the trigger) still has to lockstep across all five docs.
+Host-specific UI surfaces (typed shortcuts, hotkeys) live only in the doc for the host that has them; `commands/` is scoped by plugin, not host. The Claude plugin ships slash commands under `commands/` (declared in `.claude-plugin/plugin.json`'s `commands` key); Kiro Powers do not have an equivalent. So mentions of `/outsystems-feedback` and similar slash-command trigger phrases belong only in `skills/outsystems/SKILL.md`, not in `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, or root `SKILL.md`. The underlying *behavior* (what the agent does on the trigger) still has to lockstep across all five docs.
 
 Naming note: slash-command filenames become the command name a user types. Claude Code ships a built-in `/feedback` that routes to Anthropic's issue tracker, so a plugin file named `commands/feedback.md` is shadowed by the host and never fires. Every plugin slash MUST be prefixed with `outsystems-` (`commands/outsystems-feedback.md` → `/outsystems-feedback`) so the host-vs-plugin collision surface is closed by the file name alone.
 
-`commands/` is a Claude-Code-plugin-only directory. There is no Kiro analog, no Copilot analog, no Cursor analog, and no root analog; do not create one. Behavioral guidance about a command's effect still lands in all five skill docs per the main lockstep rule.
+`commands/` ships via the Claude plugin, same manifest key noted above. There is no Kiro analog, no Copilot analog, no Cursor analog, and no root analog; do not create one. Behavioral guidance about a command's effect still lands in all five skill docs per the main lockstep rule.
+
+### Exception: per-harness Authenticating mechanics
+
+The mechanism prose in `## Authenticating` (whether a harness exposes an agent-callable `authenticate` tool, how each harness's OAuth flow is triggered, and harness-specific error remedies like the callback-port paragraph) is intentionally divergent per harness and exempt from the phrase-count grep. The Reactive paragraph's `tenant_not_allowed` closing sentence is the one exception within Authenticating: it stays byte-identical, once per file, across all five docs, and must be re-grepped at 1x/file across all five whenever a future change touches the Reactive paragraph, per `### Check before opening a PR` above. That grep is change-scoped and operator-run, not a standing automated check, so re-running it is a contributor obligation, not something CI enforces.
+
+Separately, the "if sign-in itself errors" trigger condition is now phrased identically in three of the five docs (`skills/outsystems/SKILL.md`, `copilot/skill.md`, root `SKILL.md`), while the other two (`kiro/outsystems/steering/skill.md`, `cursor/skills/outsystems/SKILL.md`) express the same rule as "if sign-in fails", a pre-existing wording divergence this exception does not resolve. Treat that phrase as a semantic alignment, not a 5/5 phrase-count case.
 
 ### Manifest version lockstep
 
