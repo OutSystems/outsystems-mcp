@@ -116,14 +116,16 @@ Restart Claude Code, register the MCP server with `claude mcp add` (see the `REA
 
 Before you start, confirm `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` carry the version you expect. An unbumped version risks leaving testers on previously installed content rather than on your branch; if Desktop's plugin panel shows a currently-installed version, uninstall and reinstall rather than relying on an in-place update to have picked up the new content.
 
-1. Prerequisite: a Claude Desktop client where plugins are not org-disabled. Open its plugin-install flow, note the exact menu/panel names and button labels it shows, and check whether the flow lets you specify a branch/ref directly. If yes, point it at your test branch and skip step 2.
-2. If not, temporarily set your branch as the repo's default branch on GitHub (the same fallback the Cursor App section above documents) and install the plugin from Desktop. This requires GitHub admin/maintainer rights. Leave the default branch pointed at your test branch until step 8; reverting earlier lets Desktop re-sync the plugin's skill content back to `main`'s version while you are still verifying.
-3. Register the OutSystems MCP server in Claude Desktop. The plugin alone only delivers the skill doc; `.claude-plugin/plugin.json` declares no `mcpServers` block, so nothing in steps 1-2 wires up server connectivity. Patch `claude_desktop_config.json`'s `mcpServers.outsystems` entry using the same paste-prompt recipe in the `README.md` Claude Desktop install section, restart Claude Desktop, and confirm a tool call against a real tenant succeeds.
-4. Confirm the skill's `## Rules` are in effect in the Chat tab: trigger a destructive-tenant-operation prompt and observe the confirm-before-destructive behavior.
-5. Test whether `/outsystems-feedback` works in the Chat tab. If it does, also confirm `commands/outsystems-feedback.md`'s `AskUserQuestion`-driven flow actually renders for a plugin running inside Desktop.
-6. Trigger an auth error mid-session (or simulate one) and observe what a Desktop quit-and-restart does to the `mcp-remote` proxy registration.
-7. If steps 4 through 6 surfaced any wording gap in the shipped docs, re-run the lockstep grep from CLAUDE.md before merging.
-8. Revert the repo's default branch back to `main` if step 2's fallback was used, and confirm the revert took effect.
+**One-time discovery, only needed once per contributor:** open Claude Desktop's plugin-install flow and check whether it lets you point at a branch/ref directly. If it does, use that for every test cycle below and skip the default-branch fallback entirely. If it does not, note the exact menu/panel names and button labels it shows, so the generic wording in `README.md` and above can eventually name them instead of describing the surface generically.
+
+If your Desktop client has no branch/ref option, install from the default branch, and bound the exposure: **temporarily set your branch as the repo's default branch on GitHub only long enough to complete step 1 below (installing the plugin), then immediately revert the default branch back to `main`.** This briefly makes an unreviewed branch installable by anyone refreshing the plugin marketplace on the public repo, so keep the window as short as the install click itself, not the whole test session; state the exposure and its actual duration in the PR. This requires GitHub admin/maintainer rights.
+
+1. Install the plugin from Desktop (using the branch/ref option if available; otherwise the bounded default-branch fallback above, reverting the default branch immediately once the install completes).
+2. Register the OutSystems MCP server in Claude Desktop. The plugin alone only delivers the skill doc; `.claude-plugin/plugin.json` declares no `mcpServers` block, so installing the plugin wires up no server connectivity by itself. Patch `claude_desktop_config.json`'s `mcpServers.outsystems` entry using the same paste-prompt recipe in the `README.md` Claude Desktop install section, restart Claude Desktop, and confirm a tool call against a real tenant succeeds.
+3. Confirm the skill's `## Rules` are in effect in the Chat tab: trigger a destructive-tenant-operation prompt and observe the confirm-before-destructive behavior.
+4. Test whether `/outsystems-feedback` works in the Chat tab. If it does, also confirm `commands/outsystems-feedback.md`'s `AskUserQuestion`-driven flow actually renders for a plugin running inside Desktop.
+5. One-time discovery, not a per-change regression check: trigger an auth error mid-session (or simulate one) and observe what a Desktop quit-and-restart does to the `mcp-remote` proxy registration. Record the observed behavior once, in the PR body.
+6. If steps 3 through 5 surfaced any wording gap in the shipped docs, re-run the lockstep grep from CLAUDE.md before merging.
 
 Record the outcome (verified, gap, or not applicable with reason) in the PR body.
 
