@@ -42,6 +42,12 @@ Step 4: tell me to restart Claude Desktop. After restarting, the first OutSystem
 
 Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in your terminal. If the server fails to connect after restart, find the full path to `npx` (run `which npx` on macOS/Linux or `where npx` on Windows) and substitute it for `npx` in the config: on macOS/Linux that is the `"command"` value (e.g. `/opt/homebrew/bin/npx`); on Windows it is the `npx` token inside the `/c` string. If that path contains spaces, wrap it in escaped quotes inside the `/c` string, e.g. `"\"C:\\Program Files\\nodejs\\npx.cmd\" mcp-remote https://<my-tenant>/mcp"`.
 
+Once the MCP server is wired up above, install the plugin too: it delivers the conventions doc.
+
+> **Requires a paid plan:** Plugins require a paid plan (Pro, Max, Team, Enterprise), and Enterprise admins may restrict which plugins install.
+
+Add the `OutSystems/outsystems-mcp` marketplace and install the `outsystems` plugin from Claude Desktop's plugin install flow, the same marketplace and plugin the Claude Code recipe above uses.
+
 <details>
 <summary>Native "Add custom connector" steps (not currently working, kept for reference)</summary>
 
@@ -56,7 +62,7 @@ On a Team or Enterprise plan you may not see "Add custom connector" at all, beca
 
 </details>
 
-> **Note:** the local proxy does not install the OutSystems conventions doc, so Claude Desktop gets the tools without the usage guidance the other harnesses receive. Read [SKILL.md](SKILL.md) if you want the conventions, and expect to confirm destructive operations yourself rather than being prompted.
+> **Note:** the plugin installed above delivers the same OutSystems conventions doc Claude Code gets, including the confirm-before-destructive rule, once both the local proxy and the plugin are set up. Plugins require a paid plan, so on Free the gap remains: read [SKILL.md](SKILL.md) if you want the conventions, and expect to confirm destructive operations yourself rather than being prompted.
 
 ## Install - Kiro Chat
 
@@ -215,6 +221,8 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 | Tools are listed but greyed out (Visual Studio) | MCP tools are disabled by default. Enable them in the Tools picker. |
 | Nothing appears at all on a Copilot Business or Enterprise plan | An admin must enable the "MCP servers in Copilot" policy. |
 | No "Add custom connector" button in Claude Desktop | The native connector flow is not a working install path today regardless of button visibility; use the local-proxy steps in the Claude Desktop section. |
+| Can't find a plugin-install option in Claude Desktop | Plugins require a paid plan (Pro, Max, Team, Enterprise); on Free there is no plugin install surface. On a paid plan, an Enterprise admin may also restrict which plugins install. |
+| The agent isn't asking for confirmation before a destructive tenant operation on Claude Desktop | Either the plugin isn't installed, or you're on the Free plan where plugins aren't available. Install the plugin above, or read [SKILL.md](SKILL.md) manually and apply the conventions yourself. |
 
 ### Reset
 
@@ -245,7 +253,7 @@ When an install is wedged and updates don't stick, do a clean cycle rather than 
    </details>
 
 4. Restart the host.
-5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
+5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), refresh the marketplace source from Claude Desktop's plugin panel (Claude Desktop), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
 6. Reinstall from the recipe above.
 
 ### Getting logs
