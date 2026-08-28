@@ -11,7 +11,9 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 ## First use / setup
 
-If the `outsystems` MCP tools aren't visible in your toolset, or a call returns `tenant not configured` / connection errors, the MCP server hasn't been registered against the user's tenant. A rejection naming `tenant_not_allowed` is a different condition and usually not a setup fault, so check the configured host with `claude mcp get outsystems` first, see Rules. Otherwise, do this once per machine:
+If the `outsystems` MCP tools aren't visible in your toolset, or a call returns `tenant not configured` / connection errors, the MCP server hasn't been registered against the user's tenant. A rejection naming `tenant_not_allowed` is a different condition and usually not a setup fault, so check the configured host with `claude mcp get outsystems` first, or by reading the `mcpServers.outsystems` entry in `claude_desktop_config.json`, see Rules. Otherwise, do this once per machine:
+
+### For Claude Code Users (CLI)
 
 1. **Ask the user for their OutSystems tenant hostname.** Format: `<tenant>.outsystems.dev` (e.g. `mycompany.outsystems.dev`, `mytenant.outsystems.dev`). The tenant slug is whatever the user chose; do not assume a fixed `<short>-<region>-<index>` pattern. Prompt verbatim:
    > "Which OutSystems tenant should I connect to? It's the host portion of your OutSystems URL, typically something like `mycompany.outsystems.dev`."
@@ -25,33 +27,47 @@ If the `outsystems` MCP tools aren't visible in your toolset, or a call returns 
 5. **Authenticate.** Proceed to the "Authenticating" section below. The agent drives auth via tool calls; the user does NOT click anything in `/mcp`.
 6. **Retry the user's original request** once authentication completes.
 
+### For Claude Desktop Users (Plugin)
+
+1. **Ask the user for their OutSystems tenant hostname** (same prompt as above).
+2. **Normalize, then validate** (same as above).
+3. **Add the server entry.** Tell the user to add the corresponding `mcpServers.outsystems` entry (command `npx`, args including `mcp-remote` and the constructed tenant URL) to `claude_desktop_config.json`.
+4. **Restart Claude Desktop.**
+5. **Retry the user's original request** once authentication completes.
+
 If the user already has an `outsystems` MCP server registered but pointing at the wrong tenant, follow the same flow. The patches are idempotent for the same tenant and update the URL for a new one.
 
 ## Authenticating
 
-OAuth-protected. The harness exposes two deferred tools; the agent drives the flow — the user does NOT run `/mcp -> outsystems -> Authenticate` manually.
+OAuth-protected. Whether the agent drives the flow directly or the host handles it depends on whether the harness exposes an agent-callable `authenticate` tool:
 
-- `mcp__outsystems__authenticate`: starts the OAuth flow; returns an authorization URL.
-- `mcp__outsystems__complete_authentication { callback_url }`: finalizes auth for remote sessions.
+- **Claude Code** exposes two deferred tools the agent drives:
+  - `mcp__outsystems__authenticate`: starts the OAuth flow; returns an authorization URL.
+  - `mcp__outsystems__complete_authentication { callback_url }`: finalizes auth for remote sessions.
+- **Claude Desktop** exposes no agent-callable auth tool. The `mcp-remote` local proxy runs the OAuth flow in its own browser window on the first tool call. Just make the call and wait for the user to complete sign-in in the browser, then proceed. **Don't look for an `authenticate` tool** on Desktop, it isn't there.
 
-**Lazy.** Before the first OutSystems tool call in a session, call `mcp__outsystems__authenticate` and share the returned URL with the user. Then:
+**Lazy.** **Claude Code:** Before the first OutSystems tool call in a session, call `mcp__outsystems__authenticate` and share the returned URL with the user. Then:
 
 - **Local session** (browser can reach `http://localhost:<port>/callback`): the server's real tools appear automatically — wait for the user's confirmation, then proceed.
 - **Remote session** (callback page fails to load, e.g. SSH / devcontainer, or "site can't be reached" in a VM): **do not wait for timeout, and tell the user immediately** — tenant-side sign-in already succeeded; they don't need to sit through the two-minute failure. Ask the user to copy the full URL from their browser's address bar (`http://localhost:<port>/callback?code=...&state=...`), then call `mcp__outsystems__complete_authentication { callback_url: "<that URL>" }` to deliver the code to Claude Code's callback listener. This completes the sign-in flow. The authorization code is single-use, so if it fails, start a fresh `mcp__outsystems__authenticate` and do not ask the user to also retry in the browser. **Expect the code to be spent:** if the callback connection was refused, the authorization session was torn down and that code is no longer valid. If you get a "session ended" error, ask the user to start a fresh sign-in. Treat authorization codes as credentials either way.
 
-**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): call `mcp__outsystems__authenticate` again, then retry the original call ONCE. If the rejection names `tenant_not_allowed`, do not re-trigger sign-in, see Rules.
+**Claude Desktop:** the real tools appear automatically once the user finishes the browser sign-in, wait for that, then proceed.
 
-**Don't fall back to the `/mcp -> outsystems -> Authenticate` menu** — the deferred tool pair is always available; the menu is the host's emergency fallback.
+**Reactive.** On `data.category: "AuthError"` mid-session (token expired, refresh denied, etc.): **Claude Code**, call `mcp__outsystems__authenticate` again, then retry the original call ONCE. **Claude Desktop**, there is no tool to call; retry the failed call once and wait for `mcp-remote` to reopen its browser sign-in window before treating the retry as failed, the same way the Lazy clause above waits on first use. If the rejection names `tenant_not_allowed`, do not re-trigger sign-in, see Rules.
 
-**If `authenticate` itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
+**On Claude Code**, don't fall back to the `/mcp -> outsystems -> Authenticate` menu, the deferred tool pair is always available there; the menu is the host's emergency fallback. Claude Desktop has neither the tool pair nor this menu, see the Authenticating clause above.
 
-**One exception, at most once per session:** an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. It is often a fixed port pinned by an older setup. Diagnose first with `claude mcp get outsystems`, reading the reported `URL`, `Scope` and `OAuth` line.
+**If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
+
+**One exception, at most once per session, on Claude Code:** an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. It is often a fixed port pinned by an older setup. Diagnose first with `claude mcp get outsystems`, reading the reported `URL`, `Scope` and `OAuth` line.
 
 - **If it reports a `callback_port`**, that is the pin. This mutates the user's MCP config, so restate the exact change and wait for explicit confirmation before running anything. Read the `URL` and `Scope` first, since you need both to re-register and the removal destroys the entry. Then `claude mcp remove outsystems`, re-register with `-s <the scope you read>` and that URL and no `--client-id` or `--callback-port`, and tell the user to restart Claude Code, because the running session keeps the registration it started with. Re-registering without `-s` would land it in `local` scope and quietly narrow where the server is available.
   - Never touch a `project` scope yourself: that config is shared with the user's collaborators. Report it and let them decide.
   - If the removal reports the name in multiple scopes it removed nothing. Re-run it per scope with `-s <scope>` for `local` and `user` only, and stop and report if one of the listed scopes is `project`.
 - **If it reports no `callback_port`**, the pin is not in the MCP config. Do not remove or re-register. Surface the message verbatim, note that a callback-port override in the environment or another process holding the port would both produce it, and point at https://github.com/OutSystems/outsystems-mcp#troubleshooting
 - **If the error survives one cycle**, stop. Surface it and point at the same place. Don't loop.
+
+On Claude Desktop, a callback-port conflict is a different mechanism (the `mcp-remote` proxy's own port, not Claude Code's), see https://github.com/OutSystems/outsystems-mcp#troubleshooting rather than the `claude mcp` steps below, which don't apply there.
 
 ## Tools at a glance
 
@@ -265,7 +281,7 @@ Use:
 - A tool's response is missing fields its description explicitly promised, and you needed those fields to proceed → fire `unexpected_shape`.
 - You are on the 3rd back-and-forth clarification about the same user intent → fire `repeated_clarification`.
 
-**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer `/outsystems-feedback`", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
+**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer feedback", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
 
 > "That failed unexpectedly. Want to send feedback about it? I'd include the tool call, error code, and pod version to help the team reproduce."
 
