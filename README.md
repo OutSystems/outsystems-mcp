@@ -253,7 +253,7 @@ When an install is wedged and updates don't stick, do a clean cycle rather than 
    </details>
 
 4. Restart the host.
-5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), refresh the marketplace source from Claude Desktop's plugin panel (Claude Desktop), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
+5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), refresh the marketplace source from Claude Desktop's plugin management UI, if it exposes one (Claude Desktop), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
 6. Reinstall from the recipe above.
 
 ### Getting logs
