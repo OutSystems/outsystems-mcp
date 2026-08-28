@@ -297,7 +297,7 @@ Rules for the exception:
 - Fires at most once per session, no matter how many failures happen.
 - Skip when the failure was expected (dry-run, deliberate misconfiguration test, or the user just told you they're testing failure paths).
 - Skip when a `server_failure` auto-emit was NOT triggered — those cases aren't "clearly broken", they're user errors.
-- If the user says yes, submit via the **User-initiated** flow above with `value` pre-filled to `"bug-report"`, applying the redaction rule and correlation-id offer as normal.
+- If the user says yes, ask for a one-line description, set the feedback `value` to `"bug-report"` (already known, don't ask), and submit via `submit_feedback` per the field rules above. On Claude Code, this can also be done by invoking the guided form in `commands/outsystems-feedback.md`, skipping its category-picker step since the category is already known.
 - If the user says no or ignores the ask, DO NOT re-ask this session.
 
 **User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that `submit_feedback` is the surface and offer to invoke it directly. On Claude Code, say: "You can type `/outsystems-feedback` for a guided form, or `/outsystems-feedback <message>` to submit directly. Want me to open the guided form now?" This is an exception to "don't volunteer" — the user asked; walking them through it is helpful, not manipulative.
