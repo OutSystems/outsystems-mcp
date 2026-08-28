@@ -114,18 +114,41 @@ Restart Claude Code, register the MCP server with `claude mcp add` (see the `REA
 
 ### Claude Desktop
 
-Before you start, confirm `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` carry the version you expect. An unbumped version risks leaving testers on previously installed content rather than on your branch; if Desktop's plugin panel shows a currently-installed version, uninstall and reinstall rather than relying on an in-place update to have picked up the new content.
+Before you start, confirm two prerequisites: `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` carry the version you expect (an unbumped version risks leaving testers on previously installed content rather than on your branch; if Desktop's plugin panel shows a currently-installed version, uninstall and reinstall rather than relying on an in-place update to have picked up the new content), and your Desktop client is one where plugins are not org-disabled (an Enterprise admin can disable plugin installs entirely, per `README.md`'s troubleshooting table).
 
-**One-time discovery, only needed once per contributor:** open Claude Desktop's plugin-install flow and check whether it lets you point at a branch/ref directly. If it does, use that for every test cycle below and skip the default-branch fallback entirely. If it does not, note the exact menu/panel names and button labels it shows, so the generic wording in `README.md` and above can eventually name them instead of describing the surface generically.
+**Branch-targeting check (once per contributor):** open Claude Desktop's plugin-install flow and work down this list until one applies, then use that path for every test cycle below:
 
-If your Desktop client has no branch/ref option, install from the default branch, and bound the exposure: **temporarily set your branch as the repo's default branch on GitHub only long enough to complete step 1 below (installing the plugin), then immediately revert the default branch back to `main`.** This briefly makes an unreviewed branch installable by anyone refreshing the plugin marketplace on the public repo, so keep the window as short as the install click itself, not the whole test session; state the exposure and its actual duration in the PR. This requires GitHub admin/maintainer rights.
+1. **Local filesystem path** — the same zero-exposure mechanism the Claude Code recipe above uses (`claude plugin marketplace add ~/path/to/outsystems-mcp`). If Desktop's install flow accepts a local path, use it and skip everything else in this subsection, including the fallback below.
+2. **An arbitrary owner/repo.** If Desktop's marketplace-add accepts any GitHub owner/repo rather than just this org's, push your branch to your own fork and install from `<you>/outsystems-mcp` at that branch. This needs zero admin rights on the shared repo, zero exposure of an unreviewed branch on the public repo, and no revert step, since it's your own fork.
+3. **A branch/ref on this repo directly.** If Desktop's install flow lets you target a non-default branch/ref on `OutSystems/outsystems-mcp`, use that.
+4. If none of the above are available, fall back to the bounded default-branch swap below.
 
-1. Install the plugin from Desktop (using the branch/ref option if available; otherwise the bounded default-branch fallback above, reverting the default branch immediately once the install completes).
-2. Register the OutSystems MCP server in Claude Desktop. The plugin alone only delivers the skill doc; `.claude-plugin/plugin.json` declares no `mcpServers` block, so installing the plugin wires up no server connectivity by itself. Patch `claude_desktop_config.json`'s `mcpServers.outsystems` entry using the same paste-prompt recipe in the `README.md` Claude Desktop install section, restart Claude Desktop, and confirm a tool call against a real tenant succeeds.
+Whichever option applies, note the exact menu/panel names and button labels Desktop shows, so the generic wording in `README.md` and above can eventually name them instead of describing the surface generically.
+
+#### Fallback: bounded default-branch swap
+
+Only reach for this when Desktop's plugin-install flow supports none of options 1 through 3 above. It requires GitHub admin/maintainer rights on the shared repo, same as any admin-gated step here, and it has a real security cost that the other options don't: `main`'s branch-protection ruleset (force-push and deletion protection) targets the symbolic `~DEFAULT_BRANCH` ref rather than the literal `main` ref, so swapping the default branch swaps which branch the ruleset protects, leaving `main` unprotected for the swap's duration.
+
+**Revert before doing anything else, including before debugging a failed install — do not leave this open while troubleshooting.** If the install fails, revert first, then investigate with a local path or a fork per the priority list above rather than staying in the swapped state.
+
+Reverting too early carries its own risk: if you revert before Desktop has actually pulled the plugin's skill content from your branch, every verification step you run afterward silently tests `main`'s content instead of the branch under test. Confirm the installed plugin content reflects your branch (e.g. check for wording your branch introduced) before you revert, not just that the install click succeeded.
+
+1. Temporarily set your branch as the repo's default branch on GitHub.
+2. Install the plugin from Desktop's install flow.
+3. Confirm the installed content is your branch's, not stale `main` content, before doing anything else.
+4. Revert the default branch back to `main` immediately — the very next action, not something deferred until verification finishes or a failure is debugged.
+5. Confirm the branch-protection ruleset reports `main` as its target again.
+
+State the exposure and its actual duration in the PR.
+
+#### Verification steps
+
+1. Install the plugin via whichever path above applies, then restart Desktop with no `outsystems` entry yet in `claude_desktop_config.json` — this is the actual first-time-user state.
+2. In the Chat tab, ask an OutSystems-related question and let the agent drive `skills/outsystems/SKILL.md`'s "For Claude Desktop Users (Manual Config)" subsection end-to-end from that fresh state (tenant prompt, config patch, restart instruction, OAuth sign-in). This is what certifies the skill doc's own Desktop recipe works, not just that Desktop received the plugin. Fall back to `README.md`'s paste-prompt recipe only if the agent can't complete it unassisted, and record that fallback as a gap in the PR body.
 3. Confirm the skill's `## Rules` are in effect in the Chat tab: trigger a destructive-tenant-operation prompt and observe the confirm-before-destructive behavior.
-4. Test whether `/outsystems-feedback` works in the Chat tab. If it does, also confirm `commands/outsystems-feedback.md`'s `AskUserQuestion`-driven flow actually renders for a plugin running inside Desktop.
-5. One-time discovery, not a per-change regression check: trigger an auth error mid-session (or simulate one) and observe what a Desktop quit-and-restart does to the `mcp-remote` proxy registration. Record the observed behavior once, in the PR body.
-6. If steps 3 through 5 surfaced any wording gap in the shipped docs, re-run the lockstep grep from CLAUDE.md before merging.
+4. **One-time, not a per-change check:** test whether `/outsystems-feedback` renders in the Chat tab. If it does, also confirm `commands/outsystems-feedback.md`'s `AskUserQuestion`-driven flow actually renders for a plugin running inside Desktop.
+5. **Restart-behavior observation (once, not a per-change check):** trigger an auth error mid-session (or simulate one) and observe what a Desktop quit-and-restart does to the `mcp-remote` proxy registration. Record the observed behavior once, in the PR body.
+6. If any step above surfaced a wording gap in the shipped docs, re-run the lockstep grep from CLAUDE.md before merging.
 
 Record the outcome (verified, gap, or not applicable with reason) in the PR body.
 
