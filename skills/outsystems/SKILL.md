@@ -63,7 +63,7 @@ OAuth-protected. Whether the agent drives the flow directly or the host handles 
 
 **On Claude Code**, don't fall back to the `/mcp -> outsystems -> Authenticate` menu, the deferred tool pair is always available there; the menu is the host's emergency fallback. Claude Desktop has neither the tool pair nor this menu, see the Claude Desktop bullet above.
 
-**If sign-in itself errors** (server unreachable, DCR fails): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
+**If sign-in itself errors** (server unreachable, DCR fails) for a reason not already covered above as local to this machine (a callback-port conflict, the `mcp-remote` `EADDRINUSE` wedge, or a missing `npx`): surface the message verbatim and file against `OutSystems/outsystems-mcp`. Don't speculate about server internals.
 
 **One exception, at most once per session, on Claude Code:** an error saying the OAuth callback port is already in use is a local port conflict, not a server fault, so don't file it. It is often a fixed port pinned by an older setup. Diagnose first with `claude mcp get outsystems`, reading the reported `URL`, `Scope` and `OAuth` line.
 
