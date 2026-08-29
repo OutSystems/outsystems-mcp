@@ -128,13 +128,13 @@ Before you start, confirm two prerequisites: `.claude-plugin/plugin.json` and `.
 
 Only reach for this when Desktop's plugin-install flow supports none of options 1 through 3 above. It requires GitHub admin/maintainer rights on the shared repo, same as any admin-gated step here, and it has a real security cost that the other options don't: `main`'s branch-protection ruleset (force-push and deletion protection) targets the symbolic `~DEFAULT_BRANCH` ref rather than the literal `main` ref, so swapping the default branch swaps which branch the ruleset protects, leaving `main` unprotected for the swap's duration. Swapping the default branch also means the public `OutSystems/outsystems-mcp` marketplace serves your unreviewed branch content as the published plugin to any user who adds it during that window, not just your own test session — state this exposure, not only the ruleset one, in the PR.
 
-**Revert before doing anything else, including before debugging a failed install — do not leave this open while troubleshooting.** If the install fails, revert first, then investigate with a local path or a fork per the priority list above rather than staying in the swapped state.
+**If the install fails, revert immediately before doing anything else, including before debugging — do not leave this open while troubleshooting.** If the install succeeds, complete the content-confirmation step below first, then revert; don't linger past that one check.
 
 Reverting too early carries its own risk: if you revert before Desktop has actually pulled the plugin's skill content from your branch, every verification step you run afterward silently tests `main`'s content instead of the branch under test. Confirm the installed plugin content reflects your branch (e.g. check for wording your branch introduced) before you revert, not just that the install click succeeded.
 
 1. Temporarily set your branch as the repo's default branch on GitHub.
 2. Install the plugin from Desktop's install flow.
-3. Confirm the installed content is your branch's, not stale `main` content, before doing anything else.
+3. Confirm the installed content is your branch's — check for one piece of wording your branch introduced (a phrase unique to your change), not a general read — before doing anything else.
 4. Revert the default branch back to `main` immediately — the very next action, not something deferred until verification finishes or a failure is debugged.
 5. Confirm the branch-protection ruleset reports `main` as its target again.
 
