@@ -126,7 +126,7 @@ Before you start, confirm two prerequisites: `.claude-plugin/plugin.json` and `.
 
 #### Fallback: bounded default-branch swap
 
-Only reach for this when Desktop's plugin-install flow supports none of options 1 through 3 above. It requires GitHub admin/maintainer rights on the shared repo, same as any admin-gated step here, and it has a real security cost that the other options don't: `main`'s branch-protection ruleset (force-push and deletion protection) targets the symbolic `~DEFAULT_BRANCH` ref rather than the literal `main` ref, so swapping the default branch swaps which branch the ruleset protects, leaving `main` unprotected for the swap's duration.
+Only reach for this when Desktop's plugin-install flow supports none of options 1 through 3 above. It requires GitHub admin/maintainer rights on the shared repo, same as any admin-gated step here, and it has a real security cost that the other options don't: `main`'s branch-protection ruleset (force-push and deletion protection) targets the symbolic `~DEFAULT_BRANCH` ref rather than the literal `main` ref, so swapping the default branch swaps which branch the ruleset protects, leaving `main` unprotected for the swap's duration. Swapping the default branch also means the public `OutSystems/outsystems-mcp` marketplace serves your unreviewed branch content as the published plugin to any user who adds it during that window, not just your own test session — state this exposure, not only the ruleset one, in the PR.
 
 **Revert before doing anything else, including before debugging a failed install — do not leave this open while troubleshooting.** If the install fails, revert first, then investigate with a local path or a fork per the priority list above rather than staying in the swapped state.
 
