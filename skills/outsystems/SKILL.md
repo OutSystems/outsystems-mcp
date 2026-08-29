@@ -11,7 +11,7 @@ You are connected to OutSystems over the MCP HTTP transport. OutSystems is a clo
 
 ## First use / setup
 
-If the `outsystems` MCP tools aren't visible in your toolset, or a call returns `tenant not configured` / connection errors, the MCP server hasn't been registered against the user's tenant. A rejection naming `tenant_not_allowed` is a different condition and usually not a setup fault, so check the configured host with `claude mcp get outsystems` on Claude Code, or by reading the `mcpServers.outsystems` entry in `claude_desktop_config.json` on Claude Desktop (same file the Desktop setup steps below write to; if you cannot read files in this host, ask the user to open that file and paste the `outsystems` entry), see Rules. Otherwise, do this once per machine:
+If the `outsystems` MCP tools aren't visible in your toolset, or a call returns `tenant not configured` / connection errors, the MCP server hasn't been registered against the user's tenant. A rejection naming `tenant_not_allowed` is a different condition and usually not a setup fault, so check the configured host with `claude mcp get outsystems` on Claude Code, or by reading the `mcpServers.outsystems` entry in `claude_desktop_config.json` on Claude Desktop (same file the Desktop setup steps below write to; if you cannot read files in this host, ask the user to open that file and paste only the `outsystems` entry, telling them the file's other entries may hold other MCP servers' credentials in their `args`/`env` and should not be pasted), see Rules. Otherwise, do this once per machine:
 
 ### For Claude Code Users (CLI)
 
