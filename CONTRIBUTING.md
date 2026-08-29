@@ -149,7 +149,7 @@ State the exposure and its actual duration in the PR.
 3. Confirm the skill's `## Rules` are in effect in the Chat tab: trigger a destructive-tenant-operation prompt and observe the confirm-before-destructive behavior.
 4. **One-time, not a per-change check:** test whether `/outsystems-feedback` renders in the Chat tab. If it does, also confirm `commands/outsystems-feedback.md`'s `AskUserQuestion`-driven flow actually renders for a plugin running inside Desktop.
 5. **Restart-behavior observation (once, not a per-change check):** trigger an auth error mid-session (or simulate one) and observe what a Desktop quit-and-restart does to the `mcp-remote` proxy registration. Record the observed behavior once, in the PR body.
-6. If any step above surfaced a wording gap in the shipped docs, re-run the lockstep grep from CLAUDE.md before merging.
+6. If step 2 surfaced a gap in the Desktop setup recipe itself, fix it in both `skills/outsystems/SKILL.md`'s Desktop subsection and `README.md`'s Claude Desktop install section (per `CLAUDE.md`'s README-SKILL sync note; setup recipes are exempt from the lockstep grep, so the grep will not catch this), and state both edits in the PR. If any step surfaced a gap in `## Rules` or another lockstepped section, re-run the lockstep grep from `CLAUDE.md` across all five docs before merging.
 
 Restore your saved `claude_desktop_config.json` (see step 1) when you are done.
 
