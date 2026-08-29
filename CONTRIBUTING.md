@@ -30,8 +30,8 @@ There is nothing to install or build. The files under `.claude-plugin/`, `.curso
 
 ```
 .claude-plugin/
-  marketplace.json        # Claude Code marketplace manifest (lists the plugin)
-  plugin.json             # Claude Code plugin manifest (name, version, skills dir, commands dir)
+  marketplace.json        # Claude Code / Desktop marketplace manifest (lists the plugin)
+  plugin.json             # Claude Code / Desktop plugin manifest (name, version, skills dir, commands dir)
 .cursor-plugin/
   marketplace.json        # Cursor marketplace manifest (lists the plugin)
 commands/
@@ -55,7 +55,7 @@ kiro/
       skill.md            # Agent steering content loaded into Kiro Chat
 skills/
   outsystems/
-    SKILL.md              # Agent-facing skill loaded by the Claude Code plugin
+    SKILL.md              # Agent-facing skill loaded by the Claude Code plugin (and Claude Desktop via the same plugin)
 SKILL.md                  # Generic skill content for other harnesses
 README.md                 # Install instructions for each supported harness
 ```
@@ -147,7 +147,7 @@ Reverting too early carries its own risk: if you revert before Desktop has actua
 
 1. Temporarily set your branch as the repo's default branch on GitHub.
 2. Install the plugin from Desktop's install flow.
-3. Confirm the installed content is your branch's — check for one piece of wording your branch introduced (a phrase unique to your change), not a general read — before doing anything else. If the check fails, the install picked up stale content rather than your branch — uninstall and reinstall the plugin once (not relying on an in-place update), and re-check. If that second attempt still shows `main`'s content, revert the default branch and confirm ruleset protection (steps 4-5 below), then stop: run Teardown and record Claude Desktop as a gap, skipping the Verification steps entirely — the install never carried your branch's content, so nothing downstream would be testing it.
+3. Confirm the installed content is your branch's — check for one piece of wording your branch introduced (a phrase unique to your change), not a general read — before doing anything else. If the check fails, the install picked up stale content rather than your branch — uninstall and reinstall the plugin once (not relying on an in-place update), and re-check. If that second attempt still shows `main`'s content, revert the default branch and confirm ruleset protection (steps 4-5 below), then stop: run Teardown and record Claude Desktop as a gap, skipping the remaining Verification steps — the install never carried your branch's content, so nothing downstream would be testing it.
 4. Revert the default branch back to `main` immediately — the very next action, not something deferred until verification finishes or a failure is debugged.
 5. Confirm the repo's default-branch setting actually shows `main` again, and that the branch-protection ruleset reports `main` as its target, per rule 2 above. If the ruleset target is still wrong while the default branch already shows `main`, wait briefly and recheck — GitHub's ruleset resolution can lag a default-branch change — rather than editing the ruleset. If the default branch itself did not revert, repeat step 4; only escalate to a repo admin once the default branch is confirmed back on `main` and the ruleset still doesn't protect it.
 
@@ -155,7 +155,7 @@ Reverting too early carries its own risk: if you revert before Desktop has actua
 
 #### Verification steps
 
-1. **Install.** If you used the Fallback default-branch swap above and its content check passed, that install already satisfies the install-and-confirm part of this step: skip to the closing notes below, then to step 2. (If the Fallback's content check instead failed twice, you already stopped and ran Teardown there — there is no install to resume here.) If step 4 below turns out to need your branch's content freshly installed again, repeat the Fallback's steps 1-5 as a second, separately-timed exposure window (stated separately in the PR) rather than reinstalling against the already-reverted `main` — see step 4's note.
+1. **Install.** If you used the Fallback default-branch swap above and its content check passed, that install already satisfies the install-and-confirm part of this step: skip to the closing notes below, then to step 2. (If the Fallback's install itself failed, or its content check instead failed twice, you already stopped and ran Teardown there — there is no install to resume here.) If step 4 below turns out to need your branch's content freshly installed again, repeat the Fallback's steps 1-5 as a second, separately-timed exposure window (stated separately in the PR) rather than reinstalling against the already-reverted `main` — see step 4's note.
 
    Otherwise, if you did not use the Fallback swap at all, install the plugin via whichever path above applies, and confirm the installed content is your branch's — check for wording your branch introduced — before proceeding. If the check fails, uninstall and reinstall the plugin once, and re-check. If that second attempt still shows stale content, or if the install itself fails outright, stop, run Teardown, and record Claude Desktop as a gap — skip the rest of this step and the Verification steps that follow; there is nothing further to do.
 
