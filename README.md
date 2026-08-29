@@ -45,7 +45,7 @@ Once the MCP server is wired up above, install the plugin too: it delivers the c
 
 > **Requires a paid plan:** Plugins require a paid plan (Pro, Max, Team, Enterprise), and Enterprise admins may restrict which plugins install.
 
-Add the `OutSystems/outsystems-mcp` marketplace and install the `outsystems` plugin from Claude Desktop's plugin install flow, the same marketplace and plugin the Claude Code recipe above uses.
+Add the `OutSystems/outsystems-mcp` marketplace and install the `outsystems` plugin from Claude Desktop's plugin install flow, the same marketplace and plugin the Claude Code recipe above uses, then restart Claude Desktop.
 
 <details>
 <summary>Native "Add custom connector" steps (not currently working, kept for reference)</summary>
@@ -252,7 +252,7 @@ When an install is wedged and updates don't stick, do a clean cycle rather than 
    </details>
 
 4. Restart the host.
-5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), refresh the marketplace source from Claude Desktop's plugin management UI, if it exposes one (Claude Desktop), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
+5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), refresh the marketplace source from Claude Desktop's plugin management UI if it exposes one, or otherwise uninstall the plugin, remove and re-add the marketplace, and reinstall (Claude Desktop), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
 6. Reinstall from the recipe above.
 
 ### Getting logs
