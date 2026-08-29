@@ -19,7 +19,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
 | Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
 
-Two traps the table encodes:
+Three traps the table encodes:
 
 - **`servers` vs `mcpServers`.** VS Code and Visual Studio read `servers`; Copilot CLI, Kiro, Claude Desktop, and Cursor CLI read `mcpServers`. `copilot/mcp.json` carries both keys so each surface copies the one it needs. Writing the wrong key fails silently: the file still parses and no server appears. (Cursor also has a `.vscode/mcp.json` (IDE-only) that uses `servers`, but the CLI ignores it.)
 - **Claude Desktop's plugin requires a paid plan.** On Free, no plugin can be installed, so those users get the tools without the conventions, the confirm-before-destructive rule included. On a paid plan, installing the plugin closes this gap the same way it does for Claude Code.
