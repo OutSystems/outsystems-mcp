@@ -116,14 +116,13 @@ Restart Claude Code, register the MCP server with `claude mcp add` (see the `REA
 
 Before you start, confirm two prerequisites: `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` carry the version you expect (an unbumped version risks leaving testers on previously installed content rather than on your branch; if Desktop's plugin panel shows a currently-installed version, uninstall and reinstall rather than relying on an in-place update to have picked up the new content), and your Desktop client is one where plugins are not org-disabled — an Enterprise admin may restrict or disable plugin installs on a paid plan, per `README.md`'s troubleshooting table. If your org disables them, run this section from a personal/non-managed account or a colleague's org that allows plugins.
 
-**Branch-targeting check (once per contributor):** open Claude Desktop's plugin-install flow and work down this list until one applies, then use that path for every test cycle below:
+**Branch-targeting check (once per contributor):** open Claude Desktop's plugin-install flow and work down this list until one applies, then use that path for every test cycle below. Whichever option ends up applying below, first note the exact menu/panel names and button labels Desktop shows, so the generic wording in `README.md` and above can eventually name them instead of describing the surface generically.
 
 1. **Local filesystem path** — the same zero-exposure mechanism the Claude Code recipe above uses (`claude plugin marketplace add ~/path/to/outsystems-mcp`). If Desktop's install flow accepts a local path, use it and skip everything else in this subsection, including the fallback below.
-2. **An arbitrary owner/repo.** If Desktop's marketplace-add accepts any GitHub owner/repo rather than just this org's, push your branch to your own fork and install from `<you>/outsystems-mcp` at that branch. This needs zero admin rights on the shared repo, zero exposure of an unreviewed branch on the public repo, and no revert step, since it's your own fork.
+2. **An arbitrary owner/repo.** If Desktop's marketplace-add accepts any GitHub owner/repo rather than just this org's, push your branch to your own fork and install from `<you>/outsystems-mcp` at that branch. This needs zero admin rights on the shared repo, zero exposure of an unreviewed branch on the public repo, and no revert step, since it's your own fork. If Desktop can't target a specific branch/ref at all, set your fork's own default branch to your working branch instead — this still needs no admin rights on the shared repo and no revert step, since it's your own fork's default branch, not the shared one's.
 3. **A branch/ref on this repo directly.** If Desktop's install flow lets you target a non-default branch/ref on `OutSystems/outsystems-mcp`, use that.
 4. If none of the above are available, fall back to the bounded default-branch swap below.
-
-Whichever option applies, note the exact menu/panel names and button labels Desktop shows, so the generic wording in `README.md` and above can eventually name them instead of describing the surface generically.
+5. If you have none of the above and no admin rights on this repo, stop and record Claude Desktop as a gap in the PR body, naming which options your Desktop client did not offer — that information is itself useful for whoever picks this up next.
 
 #### Fallback: bounded default-branch swap
 
