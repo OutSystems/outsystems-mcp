@@ -114,7 +114,7 @@ Restart Claude Code, register the MCP server with `claude mcp add` (see the `REA
 
 ### Claude Desktop
 
-Before you start, confirm two prerequisites: `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` carry the version you expect (an unbumped version risks leaving testers on previously installed content rather than on your branch; if Desktop's plugin panel shows a currently-installed version, uninstall and reinstall rather than relying on an in-place update to have picked up the new content), and your Desktop client is one where plugins are not org-disabled (an Enterprise admin can disable plugin installs entirely, per `README.md`'s troubleshooting table).
+Before you start, confirm two prerequisites: `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` carry the version you expect (an unbumped version risks leaving testers on previously installed content rather than on your branch; if Desktop's plugin panel shows a currently-installed version, uninstall and reinstall rather than relying on an in-place update to have picked up the new content), and your Desktop client is one where plugins are not org-disabled — an Enterprise admin may restrict or disable plugin installs on a paid plan, per `README.md`'s troubleshooting table. If your org disables them, run this section from a personal/non-managed account or a colleague's org that allows plugins.
 
 **Branch-targeting check (once per contributor):** open Claude Desktop's plugin-install flow and work down this list until one applies, then use that path for every test cycle below:
 
