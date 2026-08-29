@@ -148,4 +148,4 @@ Call the OutSystems `submit_feedback` MCP tool with:
 
 ## Scope
 
-Do not volunteer this command. Do not proactively ask "would you like to submit feedback?". Only run this `/outsystems-feedback` flow when the user explicitly types it. `agent_observation` self-reports go through `submit_feedback` directly per the SKILL.md guidance, not through this command.
+Do not volunteer this command. Do not proactively ask "would you like to submit feedback?". Only run this `/outsystems-feedback` flow when the user explicitly types it. Two exceptions, both defined in the skill doc: the once-per-session bounded prompt after a clearly-broken failure (enter at Step 2 with `value` pre-filled to `bug-report`), and a user who asks how to give feedback. `agent_observation` self-reports go through `submit_feedback` directly per the SKILL.md guidance, not through this command.
