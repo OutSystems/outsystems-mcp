@@ -268,7 +268,7 @@ Rules for the exception:
 - Fires at most once per session, no matter how many failures happen.
 - Skip when the failure was expected (dry-run, deliberate misconfiguration test, or the user just told you they're testing failure paths).
 - Skip when a `server_failure` auto-emit was NOT triggered — those cases aren't "clearly broken", they're user errors.
-- If the user says yes, ask for a one-line description, and submit via `submit_feedback` with `name: "user_feedback"`, `value: "bug-report"` (already known, don't ask), and `rationale` set to their description, per the user-initiated field rules above.
+- If the user says yes, ask for a one-line description, and submit via `submit_feedback` with `name: "user_feedback"`, `value: "bug-report"` (already known, don't ask), `rationale` set to their description, and `agent_context` built from the failing tool call (its name, error code, and any pod/build identifier the error carried) so the prompt's promise is honored, per the user-initiated field rules above.
 - If the user says no or ignores the ask, DO NOT re-ask this session.
 
 **User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that `submit_feedback` is the surface AND offer to invoke it directly. This is an exception to "don't volunteer" — the user asked; walking them through it is helpful, not manipulative.
