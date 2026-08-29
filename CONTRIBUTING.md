@@ -2,14 +2,14 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately in Desktop's Chat tab), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately via Desktop's plugin-install flow), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
 - Git.
 - At least one of the supported harnesses installed locally. Rows you cannot verify are recorded as gaps with a follow-up per the PR checklist, not skipped silently:
   - **Claude Code** (any recent version) for plugin/skill changes.
-  - **Claude Desktop** for MCP config changes and, on a paid plan, plugin/skill-content changes. Verifying skill content additionally requires installing the plugin from Desktop's Chat tab, since patching `claude_desktop_config.json` alone only wires up the MCP server.
+  - **Claude Desktop** for MCP config changes and, on a paid plan, plugin/skill-content changes. Verifying skill content additionally requires installing the plugin via Desktop's plugin-install flow, since patching `claude_desktop_config.json` alone only wires up the MCP server.
   - **Kiro 0.11.133 or newer** for Power changes.
   - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
   - **Cursor App** (Team/Enterprise plan with team admin access) OR **Cursor CLI** (all plans) for Cursor changes.
