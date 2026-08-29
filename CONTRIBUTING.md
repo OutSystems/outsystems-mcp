@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately via Desktop's plugin-install flow), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately via Desktop's plugin-install flow), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, `commands/`, and `skills/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
@@ -24,16 +24,18 @@ git clone https://github.com/OutSystems/outsystems-mcp.git
 cd outsystems-mcp
 ```
 
-There is nothing to install or build. The files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, and `skills/` are the source of truth.
+There is nothing to install or build. The files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, `commands/`, and `skills/` are the source of truth.
 
 ## Repository Structure
 
 ```
 .claude-plugin/
   marketplace.json        # Claude Code marketplace manifest (lists the plugin)
-  plugin.json             # Claude Code plugin manifest (name, version, skills dir)
+  plugin.json             # Claude Code plugin manifest (name, version, skills dir, commands dir)
 .cursor-plugin/
   marketplace.json        # Cursor marketplace manifest (lists the plugin)
+commands/
+  outsystems-feedback.md    # Slash command shipped by the Claude plugin
 copilot/
   mcp.json                # Copilot MCP server configuration
   skill.md                # Agent guidance for Copilot
@@ -126,7 +128,7 @@ Before you start, confirm two prerequisites: `.claude-plugin/plugin.json` and `.
 
 #### Fallback: bounded default-branch swap
 
-Only reach for this when Desktop's plugin-install flow supports none of options 1 through 3 above. It requires GitHub admin/maintainer rights on the shared repo, same as any admin-gated step here, and it has a real security cost that the other options don't: `main`'s branch-protection ruleset (force-push and deletion protection) targets the symbolic `~DEFAULT_BRANCH` ref rather than the literal `main` ref, so swapping the default branch swaps which branch the ruleset protects, leaving `main` unprotected for the swap's duration. Swapping the default branch also means the public `OutSystems/outsystems-mcp` marketplace serves your unreviewed branch content as the published plugin to any user who adds it during that window, not just your own test session — state this exposure, not only the ruleset one, in the PR.
+Only reach for this when Desktop's plugin-install flow supports none of options 1 through 3 above. It requires GitHub admin/maintainer rights on the shared repo, same as any admin-gated step here, and it has a real security cost that the other options don't: `main`'s branch-protection ruleset (force-push and deletion protection) targets the symbolic `~DEFAULT_BRANCH` ref rather than the literal `main` ref, so swapping the default branch swaps which branch the ruleset protects, leaving `main` unprotected for the swap's duration. Swapping the default branch also means the public `OutSystems/outsystems-mcp` marketplace serves your unreviewed branch content as the published plugin to any user who adds or refreshes it during that window — including anyone already on the marketplace who runs `claude plugin marketplace update outsystems` or Desktop's refresh, which `README.md`'s reset step recommends, not just your own test session — state this exposure, not only the ruleset one, in the PR.
 
 **If the install fails, revert immediately before doing anything else, including before debugging — do not leave this open while troubleshooting.** If the install succeeds, complete the content-confirmation step below first, then revert; don't linger past that one check.
 
@@ -221,13 +223,15 @@ For Claude Code, `claude plugin update` compares the version in `.claude-plugin/
 
 Cursor's resolution has not been verified the same way. Bump both Cursor manifests together and do not rely on one covering for the other.
 
+Claude Desktop installs from the same `.claude-plugin/` pair as Claude Code, but its in-place update resolution has not been verified either; when testing a bump on Desktop, uninstall and reinstall rather than trusting an update to have picked up new content (see the Claude Desktop testing section above).
+
 Versioning follows [Semantic Versioning](https://semver.org/):
 
 - **MAJOR** — breaking change to install instructions, file layout, or required harness version.
 - **MINOR** — new skill content, new workflows documented, new install path for an additional harness.
 - **PATCH** — fixes and clarifications that don't change how a user installs or invokes the integration.
 
-There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install`, Cursor Team Marketplace refresh, or Kiro Power re-fetch.
+There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install`, Claude Desktop plugin install or reinstall, Cursor Team Marketplace refresh, or Kiro Power re-fetch.
 
 ## License
 
