@@ -32,15 +32,14 @@ Paste into Claude Desktop (requires Node.js with `npx` available on your machine
 ```
 Install the OutSystems MCP server in Claude Desktop via a local proxy.
 Step 1: install `mcp-remote` globally: `npm install -g mcp-remote`. This is idempotent, safe to run even if already installed.
-Step 2: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 3: locate the Claude Desktop config file. macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`, Linux: `~/.config/Claude/claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
+Step 2: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`). Strip any scheme, leading `www.`, trailing slash, and path or query, keeping only the host. If the result doesn't match `^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`, ask again rather than proceeding with an unvalidated value.
+Step 3: locate the Claude Desktop config file. macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`, Linux: `~/.config/Claude/claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key — other entries may carry other MCP servers' credentials in their `args`/`env`, so don't paste the full file contents back to me; quote only the `outsystems` entry you're adding or changing. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
   - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp"]}`
-  - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp"]}`
+  - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp"]}` (safe here because Step 2 already restricted the tenant hostname to the pattern above, so it can't break out of this shell string)
 Substitute my actual tenant hostname for `<my-tenant>`. Write the file back.
-Step 4: tell me to restart Claude Desktop. After restarting, the first OutSystems tool call will open a browser window for OAuth sign-in; complete the sign-in when prompted.
+Step 4: Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in a terminal. If the server fails to connect after restart: macOS/Linux, replace the `"command"` value `"npx"` with the full path from `which npx`. Windows, replace the bare `npx` token inside the `/c` argument string with the `.cmd` path from `where npx` (the line ending in `.cmd`), quoting it if it contains a space — it commonly does (e.g. `C:\Program Files\nodejs\npx.cmd`).
+Step 5: tell me to restart Claude Desktop. After restarting, the first OutSystems tool call will open a browser window for OAuth sign-in; complete the sign-in when prompted.
 ```
-
-Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in your terminal. If the server fails to connect after restart, find the full path to `npx` (run `which npx` on macOS/Linux or `where npx` on Windows) and substitute it for `npx` in the config: on macOS/Linux that is the `"command"` value (e.g. `/opt/homebrew/bin/npx`); on Windows it is the `npx` token inside the `/c` string. If that path contains spaces, wrap it in escaped quotes inside the `/c` string, e.g. `"\"C:\\Program Files\\nodejs\\npx.cmd\" mcp-remote https://<my-tenant>/mcp"`.
 
 Once the MCP server is wired up above, install the plugin too: it delivers the conventions doc.
 
