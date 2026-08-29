@@ -64,7 +64,7 @@ for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/sk
 done
 ```
 
-All five counts must be equal for a phrase in `## Rules` or in any other lockstepped section. If they aren't, the change is incomplete and the PR will create a host-specific drift. A phrase that also appears in a host-specific setup or install section legitimately differs, per the setup-flow exception below. Pick one phrase unique to the lockstepped text and expect 5/5, and a second unique to the setup clause and expect 4/5 with root `SKILL.md` at 0 because it has no setup section. State both counts in the PR.
+All five counts must be equal for a phrase in `## Rules` or in any other lockstepped section. If they aren't, the change is incomplete and the PR will create a host-specific drift. A phrase that also appears in a host-specific setup or install section legitimately differs, per the setup-flow exception below. Pick one phrase unique to the lockstepped text and expect 5/5, and a second unique to the setup clause and expect 4/5 with root `SKILL.md` at 0 because it has no setup section. Setup-clause phrases can appear more than once within a single doc when it carries more than one recipe (e.g. `skills/outsystems/SKILL.md` now has both a Claude Code and a Claude Desktop setup section) — 4/5-with-root-0 is the common case, not a guarantee. Count what your own phrase actually returns in each file and state the real numbers, rather than assuming the pattern. State both counts in the PR.
 
 ### Exception: setup / installation flows
 
@@ -72,7 +72,7 @@ Setup steps legitimately diverge between the harnesses (Claude Code uses `claude
 
 `skills/outsystems/SKILL.md`'s Claude Desktop first-use subsection inlines the same `npx`/`mcp-remote` config recipe as `README.md`'s Claude Desktop install section (e.g. config paths, Windows variant, PATH caveat, Node/npx prerequisite) because Desktop's Chat tab cannot read the README itself. Keep the two in sync when the recipe changes.
 
-`skills/outsystems/SKILL.md`'s Desktop-facing error-handling paragraphs also point at `README.md`'s `### Reset` heading by absolute URL (`https://github.com/OutSystems/outsystems-mcp#reset`), for the same reason: Desktop's Chat tab cannot read the README to resolve a bare section name. Check those links whenever the Reset heading's text or anchor slug changes.
+`skills/outsystems/SKILL.md`'s Desktop-facing error-handling paragraphs also point at `README.md`'s `### Reset` heading by absolute URL (`https://github.com/OutSystems/outsystems-mcp#reset`), for the same reason: Desktop's Chat tab cannot read the README to resolve a bare section name. The same URL also ships in the "Never pin the OAuth callback port" `## Rules` bullet, byte-identical across all five skill docs. Check every `#reset` occurrence (`grep -rn 'outsystems-mcp#reset'`) whenever the Reset heading's text or anchor slug changes — the `## Rules` occurrence is under the lockstep rule, so it must change in all five docs in one commit, not just this one file.
 
 ### Exception: plugin-specific and host-specific affordances
 
