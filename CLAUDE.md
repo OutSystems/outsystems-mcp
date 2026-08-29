@@ -9,7 +9,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | Harness | Skill doc | How the skill doc arrives | MCP config target | Server key |
 | :-- | :-- | :-- | :-- | :-- |
 | Claude Code | `skills/outsystems/SKILL.md` | automatic, via `plugin.json`'s `skills` key | user scope, written by `claude mcp add` | n/a |
-| Claude Desktop | `skills/outsystems/SKILL.md` | same plugin as Claude Code, installed separately in Desktop's Chat tab (paid plan required) | `claude_desktop_config.json` | `mcpServers` |
+| Claude Desktop | `skills/outsystems/SKILL.md` | same plugin as Claude Code, installed separately via Desktop's plugin-install flow (paid plan required) | `claude_desktop_config.json` | `mcpServers` |
 | Kiro Chat | `kiro/outsystems/steering/skill.md` | automatic, via the Power's `steering/` directory | `~/.kiro/settings/mcp.json` | `mcpServers` |
 | Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
@@ -41,7 +41,7 @@ Harnesses differ in ways that break otherwise-correct changes: the config key (`
 
 This repo ships **five parallel skill documents**:
 
-- `skills/outsystems/SKILL.md` is the Claude Code marketplace skill, consumed when a user runs `claude plugin install outsystems@outsystems`, or when a Claude Desktop user installs the same plugin from the Chat tab.
+- `skills/outsystems/SKILL.md` is the Claude Code marketplace skill, consumed when a user runs `claude plugin install outsystems@outsystems`, or when a Claude Desktop user installs the same plugin via its plugin-install flow.
 - `kiro/outsystems/steering/skill.md` is the Kiro Power steering doc, consumed by Kiro.
 - `copilot/skill.md` is the GitHub Copilot skill doc, consumed by GitHub Copilot (VS Code, CLI, or Visual Studio).
 - `cursor/skills/outsystems/SKILL.md` is the Cursor skill doc, consumed by Cursor CLI.
@@ -70,9 +70,9 @@ All five counts must be equal for a phrase in `## Rules` or in any other lockste
 
 Setup steps legitimately diverge between the harnesses (Claude Code uses `claude mcp add`, Kiro Power patches `~/.kiro/settings/mcp.json`, GitHub Copilot uses VS Code/Visual Studio settings or Copilot CLI config, the root SKILL.md describes the wire-level tool names without prescribing a host). The lockstep rule applies to `## Rules` and to behavioral guidance outside the setup recipe itself, not to host-specific install recipes.
 
-`skills/outsystems/SKILL.md`'s Claude Desktop first-use subsection inlines the same `npx`/`mcp-remote` config recipe as `README.md`'s Claude Desktop install section (e.g. config paths, Windows variant, PATH caveat, Node/npx prerequisite) because Desktop's Chat tab cannot read the README itself. Keep the two in sync when the recipe changes.
+`skills/outsystems/SKILL.md`'s Claude Desktop first-use subsection inlines the same `npx`/`mcp-remote` config recipe as `README.md`'s Claude Desktop install section (config paths, Windows variant, PATH caveat, Node/npx prerequisite, hostname validation, and the secrets-echo guardrail) because Desktop's Chat tab cannot read the README itself. Keep the two in sync when the recipe changes.
 
-`skills/outsystems/SKILL.md`'s Desktop-facing error-handling paragraphs also point at `README.md`'s `### Reset` heading by absolute URL (`https://github.com/OutSystems/outsystems-mcp#reset`), for the same reason: Desktop's Chat tab cannot read the README to resolve a bare section name. The same URL also ships in the "Never pin the OAuth callback port" `## Rules` bullet, byte-identical across all five skill docs. Check every `#reset` occurrence (`grep -rn 'outsystems-mcp#reset'`) whenever the Reset heading's text or anchor slug changes — the `## Rules` occurrence is under the lockstep rule, so it must change in all five docs in one commit, not just this one file.
+`skills/outsystems/SKILL.md`'s Desktop-facing error-handling paragraphs also point at `README.md`'s `### Reset` heading by absolute URL (`https://github.com/OutSystems/outsystems-mcp#reset`), for the same reason: Desktop's Chat tab cannot read the README to resolve a bare section name. The same URL also ships in the "Never pin the OAuth callback port" `## Rules` bullet, byte-identical across all five skill docs. Check every `#reset` occurrence (`grep -rn 'outsystems-mcp#reset'`) whenever the Reset heading's text or anchor slug changes — the `## Rules` occurrence is under the lockstep rule, so it must change in all five docs in one commit, not just this one file. The same applies to `#troubleshooting` and `#install---claude-desktop` (verify the actual anchor slug against the real README heading before relying on it): `skills/outsystems/SKILL.md`'s no-shell fallback and PATH-exhaust paragraphs point at both by absolute URL for the same reason; check every occurrence of each anchor whenever its heading text or slug changes.
 
 ### Exception: plugin-specific and host-specific affordances
 
