@@ -442,15 +442,9 @@ jobs:
             - DEDUP: using the existing human review comments and prior bot
               comments gathered in Phase 0, never repost a finding a human or
               an earlier run already raised.
-            - If nothing high-signal survives, post a short body stating the
-              verdict and what was checked, with ZERO inline comments. Silence
-              is NOT an option: the review MUST always post exactly one
-              PR-level review (see the Post step below), even in a clean
-              round, so the author has positive confirmation that the loop
-              ran, converged, and found nothing (and can distinguish that
-              from a workflow failure that posts nothing). A "no findings"
-              body should still include the round count, the panel that
-              ran, and a one-line note on what was checked.
+            - If nothing high-signal survives, post a short body with ZERO
+              inline comments - see Hard rules below for the minimum body
+              content.
 
             ## Post the review (no preview is possible in CI - so post carefully)
             Post exactly ONE pull-request review via:
