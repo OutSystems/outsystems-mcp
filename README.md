@@ -31,16 +31,21 @@ Paste into Claude Desktop (requires Node.js with `npx` available on your machine
 
 ```
 Install the OutSystems MCP server in Claude Desktop via a local proxy.
-Step 1: install `mcp-remote` globally: `npm install -g mcp-remote`. This is idempotent, safe to run even if already installed.
-Step 2: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 3: locate the Claude Desktop config file. macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`, Linux: `~/.config/Claude/claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
+Step 1: confirm Node.js is available (`npx --version`). If it isn't, stop and tell me to install Node.js first — writing the config below without it produces a server that silently fails to connect. Then install `mcp-remote` globally: `npm install -g mcp-remote` (idempotent, safe if already installed).
+Step 2: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`). Strip any scheme, leading `www.`, trailing slash, and path or query, keeping only the host. If the result doesn't match `^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`, ask again rather than proceeding with an unvalidated value.
+Step 3: locate the Claude Desktop config file. macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`, Linux: `~/.config/Claude/claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key — other entries may carry other MCP servers' credentials in their `args`/`env`, so don't paste the full file contents back to me; quote only the `outsystems` entry you're adding or changing. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
   - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp"]}`
-  - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp"]}`
+  - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp"]}` (safe here because Step 2 already restricted the tenant hostname to the pattern above, so it can't break out of this shell string)
 Substitute my actual tenant hostname for `<my-tenant>`. Write the file back.
-Step 4: tell me to restart Claude Desktop. After restarting, the first OutSystems tool call will open a browser window for OAuth sign-in; complete the sign-in when prompted.
+Step 4: tell me to restart Claude Desktop.
+Step 5: After restarting, if the server fails to connect: Claude Desktop launches processes with a minimal PATH, and a broken, stale, or mistyped `"command"` value looks identical to Desktop. macOS/Linux, replace whatever the `"command"` value currently is with the full path from `which npx`. Windows, if the `"command"` value is anything other than `"cmd"`, restore it to `"cmd"` first; then replace whatever token stands in for `npx` inside the `/c` argument string with the `.cmd` path from `where npx` (the line ending in `.cmd`), quoting it if it contains a space — it commonly does (e.g. `C:\Program Files\nodejs\npx.cmd`). Restart Claude Desktop again and retry; if it still doesn't connect after that, stop and point me at https://github.com/OutSystems/outsystems-mcp#troubleshooting rather than continuing to guess. Otherwise, the first OutSystems tool call will open a browser window for OAuth sign-in; complete the sign-in when prompted.
 ```
 
-Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in your terminal. If the server fails to connect after restart, find the full path to `npx` (run `which npx` on macOS/Linux or `where npx` on Windows) and substitute it for `npx` in the config: on macOS/Linux that is the `"command"` value (e.g. `/opt/homebrew/bin/npx`); on Windows it is the `npx` token inside the `/c` string. If that path contains spaces, wrap it in escaped quotes inside the `/c` string, e.g. `"\"C:\\Program Files\\nodejs\\npx.cmd\" mcp-remote https://<my-tenant>/mcp"`.
+Once the MCP server is wired up above, install the plugin too: it delivers the conventions doc.
+
+> **Requires a paid plan:** Plugins require a paid plan (Pro, Max, Team, Enterprise), and Enterprise admins may restrict which plugins install.
+
+Add the `OutSystems/outsystems-mcp` marketplace and install the `outsystems` plugin from Claude Desktop's plugin install flow, the same marketplace and plugin the Claude Code recipe above uses, then restart Claude Desktop.
 
 <details>
 <summary>Native "Add custom connector" steps (not currently working, kept for reference)</summary>
@@ -52,11 +57,11 @@ Claude Desktop launches processes with a minimal PATH, so `npx` may not be found
 
 Available on Free, Pro, Max, Team and Enterprise, with Free limited to one custom connector. A custom connector is also reached from Anthropic's cloud rather than from your machine, so it cannot reach a tenant that is VPN-only or IP-allowlisted; the local proxy is required there too.
 
-On a Team or Enterprise plan you may not see "Add custom connector" at all, because adding custom connectors is an organization-level permission. An Owner adds the connector in **Admin settings > Connectors** and members then click **Connect** on it. If your organization has custom connectors disabled entirely, no member can add one and neither can an Owner without changing that policy.
+If the flow starts working: on a Team or Enterprise plan you may not see "Add custom connector" at all, because adding custom connectors is an organization-level permission. An Owner adds the connector in **Admin settings > Connectors** and members then click **Connect** on it. If your organization has custom connectors disabled entirely, no member can add one and neither can an Owner without changing that policy.
 
 </details>
 
-> **Note:** the local proxy does not install the OutSystems conventions doc, so Claude Desktop gets the tools without the usage guidance the other harnesses receive. Read [SKILL.md](SKILL.md) if you want the conventions, and expect to confirm destructive operations yourself rather than being prompted.
+> **Note:** the plugin installed above delivers the same OutSystems conventions doc Claude Code gets, including the confirm-before-destructive rule, once both the local proxy and the plugin are set up. Plugins require a paid plan, so on Free the gap remains: read [SKILL.md](SKILL.md) if you want the conventions, and expect to confirm destructive operations yourself rather than being prompted.
 
 ## Install - Kiro Chat
 
@@ -208,19 +213,22 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 | The `authenticate` tool isn't loaded (Claude Code) | The MCP server isn't registered, or the session started before it was. Run `claude mcp list` and confirm `outsystems` appears. If it does, restart Claude Code. If it doesn't, re-run Step 4 of the Claude Code recipe. |
 | Auth fails with `OAuth callback port <port> is already in use ...` (Claude Code) | An earlier setup step pinned a fixed callback port, and the pin sits in your own config, so updating the plugin does not clear it. Run `claude mcp get outsystems` and note the reported URL, which you need to re-add. If it reports a `callback_port`, unpin it in the reset below. If it does not, the pin is not in your MCP config: check for a callback-port override in your environment, then for another process holding the port with `lsof -nP -iTCP:<port> -sTCP:LISTEN`, or `netstat -ano \| findstr :<port>` on Windows. |
 | Auth never triggers in a non-interactive session | The OAuth flow needs a browser and a loopback callback, so it cannot complete in a headless or piped session. Authenticate once in an interactive session first; the token is reused afterwards. |
+| No browser window opens (Claude Desktop), or you can't tell if one did | The `mcp-remote` local proxy may need a moment before it opens the sign-in window on the first tool call, or after a token expires. Retry the request once. If a window still never appears, check the `npx` PATH row below first — a proxy that can't resolve `npx` never opens a window at all. If that isn't it, remove and re-add the `outsystems` entry in your MCP config, restart Claude Desktop, and try again; if it persists, open an issue here. |
 | "Server Disconnected" or "failed authorization" | Usually a stale or partial OAuth grant. Run the reset below. If it persists, the tenant hostname is likely wrong: confirm it resolves and that `https://<my-tenant>/mcp` returns `401` rather than `404`. |
-| Nothing connects on Windows, or `npx` is "not found" | Applies to the Claude Desktop local-proxy install only. Claude Desktop launches processes with a minimal PATH. Substitute the absolute path from `where npx` for the `npx` token inside the `/c` string (see the note under the Claude Desktop recipe). |
+| Nothing connects on Windows, or `npx` is "not found" | Applies to the Claude Desktop local-proxy install only. Claude Desktop launches processes with a minimal PATH, and a broken, stale, or mistyped `"command"` value looks identical to Desktop. macOS/Linux: replace whatever the `"command"` value currently is with the full path from `which npx`. Windows: if the entry is `cmd`-shaped (its `args` begin with `/c`), ensure `"command"` is `"cmd"` — restore it if it is anything else — then replace whatever token stands in for `npx` inside the `/c` argument string with the `.cmd` path from `where npx` (the line ending in `.cmd`), quoting it if it contains a space (e.g. `"C:\Program Files\nodejs\npx.cmd"`); if instead the entry invokes `npx` directly (its `args` begin with `mcp-remote`), apply the macOS/Linux remedy above using the `.cmd` path from `where npx` as the `"command"` value, without converting it to the `cmd`-shaped form. Restart Claude Desktop again after any change and retry. |
 | Browser windows keep reopening, and the proxy log shows `EADDRINUSE` | Applies whenever you reach the server through the `mcp-remote` proxy, which is the Claude Desktop install above and any harness you wired up that way. The proxy reuses the callback port saved in its own client registration and exits before sign-in completes, so the host restarts it and no token is ever stored. Clear the saved registration, in the reset below. |
 | The Cursor agent ignores the OutSystems conventions | An earlier version of the Cursor CLI recipe saved the conventions file to `.cursor/rules/outsystems.md`. Cursor's rules loader only enumerates `.mdc` files carrying rule frontmatter, so a plain `.md` there never loaded. Move it to `AGENTS.md` in your workspace root, which Cursor loads verbatim, and delete the old copy. |
 | Tools are listed but greyed out (Visual Studio) | MCP tools are disabled by default. Enable them in the Tools picker. |
 | Nothing appears at all on a Copilot Business or Enterprise plan | An admin must enable the "MCP servers in Copilot" policy. |
 | No "Add custom connector" button in Claude Desktop | The native connector flow is not a working install path today regardless of button visibility; use the local-proxy steps in the Claude Desktop section. |
+| Can't find a plugin-install option in Claude Desktop | Plugins require a paid plan (Pro, Max, Team, Enterprise); on Free there is no plugin install surface. On a paid plan, an Enterprise admin may also restrict which plugins install. |
+| The agent isn't asking for confirmation before a destructive tenant operation on Claude Desktop | Usually the plugin isn't installed, or you're on the Free plan where plugins aren't available: install the plugin above, or read [SKILL.md](SKILL.md) manually and apply the conventions yourself. If the plugin is installed and this still happens, Desktop's Chat tab may not be applying the skill doc's Rules; open an issue here with what you observed. |
 
 ### Reset
 
 When an install is wedged and updates don't stick, do a clean cycle rather than reinstalling on top:
 
-1. Write down the whole `outsystems` entry first, on any harness, because removing it destroys the only record of your tenant URL and of any extra proxy arguments, and later steps need both. On Claude Code, `claude mcp get outsystems` prints the URL and the scope. Then remove the server: `claude mcp remove outsystems`, or delete the `outsystems` entry from the relevant config file on other harnesses. Removing it is also what drops a callback port pinned by an earlier setup step. Omitting `-s` clears whichever scope holds the entry; if the name exists in more than one the command removes nothing and lists them, so repeat it per scope with `-s <scope>`, and leave a `project` scope alone if the config is shared with other people. On Claude Desktop, if you previously added a native custom connector for this tenant, also remove it in **Settings > Connectors**: it is a separate registration from the config file and keeps failing authorization on its own.
+1. Write down the whole `outsystems` entry first, on any harness, because removing it destroys the only record of your tenant URL and of any extra proxy arguments, and later steps need both. On Claude Code, `claude mcp get outsystems` prints the URL and the scope. Then remove the server: `claude mcp remove outsystems`, or delete the `outsystems` entry from the relevant config file on other harnesses. Removing it is also what drops a callback port pinned by an earlier setup step. Omitting `-s` clears whichever scope holds the entry; if the name exists in more than one the command removes nothing and lists them, so repeat it per scope with `-s <scope>`, and leave a `project` scope alone if the config is shared with other people.
 2. Uninstall the plugin or Power, if you installed one.
 3. Clear the host's cache (in Claude Desktop: **Help > Troubleshooting > Clear cache**). If you reach the server through the `mcp-remote` proxy, also do the following before restarting.
 
@@ -231,9 +239,7 @@ When an install is wedged and updates don't stick, do a clean cycle rather than 
 
    1. Quit the host, so it stops relaunching the proxy while you work.
    2. Pick a port nothing is using. `lsof -nP -iTCP:<port> -sTCP:LISTEN` on macOS or Linux, `netstat -ano | findstr :<port>` on Windows, should print nothing for it.
-   3. Add that port as the last argument of the `outsystems` entry in the host's config, after the URL:
-      - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp", "<free port>"]}`
-      - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp <free port>"]}`
+   3. Add that port as the last argument of the `outsystems` entry in the host's config, after the URL, for example `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp", "<free port>"]}`.
    4. Continue with step 4 of the reset. On the next launch the proxy sees a port that disagrees with its saved registration, deletes that registration, and registers again on the port you gave it.
 
    The proxy always records some port, so this replaces a stuck one rather than switching pinning off; that is an upstream limitation rather than a setting. Removing the argument again later just makes the proxy reuse the port it last recorded. Expect one extra sign-in, because the saved token belonged to the registration that was replaced.
@@ -245,7 +251,7 @@ When an install is wedged and updates don't stick, do a clean cycle rather than 
    </details>
 
 4. Restart the host.
-5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
+5. Refresh the plugin or Power source so you get the current recipe, if you installed from one: `claude plugin marketplace update outsystems` (Claude Code), refresh the marketplace source from Claude Desktop's plugin management UI if it exposes one, or otherwise uninstall the plugin, remove and re-add the marketplace, and reinstall (Claude Desktop), or update the Power from Kiro's Powers panel (`git pull` in your clone if you installed from a local registry file). Reinstalling from a stale source re-applies the old setup command.
 6. Reinstall from the recipe above.
 
 ### Getting logs

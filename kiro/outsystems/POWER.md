@@ -156,7 +156,7 @@ Workflows below show MCP tool form. Identity (tenant + user) is derived from the
 
 ### Tool errors
 
-Errors carry a structured category in `data.category` (`AuthError`, `ValidationError`, `UpstreamError`, `InternalError`); upstream errors also include `data.upstream_status`. Use these for retry decisions, not the message text. Two named exceptions: the external-library `Server is busy, retry shortly` case, which is transient and worth retrying, and a rejection naming `tenant_not_allowed`, which no retry or re-setup clears, covered under Conventions.
+Errors carry a structured category in `data.category` (`AuthError`, `ValidationError`, `UpstreamError`, `InternalError`); upstream errors also include `data.upstream_status`. Use these for retry decisions, not the message text. Three named exceptions: the external-library `Server is busy, retry shortly` case, which is transient and worth retrying; a rejection naming `tenant_not_allowed`, which no retry or re-setup clears, covered under Conventions; and a `tenant not configured` error, a setup fault covered under MCP server unreachable above, not a retry target.
 
 ## Limitations
 

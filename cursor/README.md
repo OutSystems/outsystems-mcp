@@ -86,7 +86,7 @@ The Cursor skill doc is included in the plugin and deployed via `cursor/.cursor-
 - `copilot/skill.md` (GitHub Copilot)
 - `SKILL.md` (root, generic)
 
-All five files carry a `## Rules` section that is identical but for one wording drift in the "Go straight to the task" bullet, and broadly the same `## Tools at a glance`, `### Caveats`, `## Workflows`, and `## Feedback` sections. Any behavioral change to one must be applied to all five, and to `kiro/outsystems/POWER.md`, whose `## Conventions` section carries the same rules for Kiro operators while sitting outside the grep below.
+All five files carry a `## Rules` section that is identical but for two wording drifts: the "Go straight to the task" bullet, and the `data.category` bullet's third named exception (root necessarily differs there, since it has no `## First use / setup` section to point at). Otherwise broadly the same `## Tools at a glance`, `### Caveats`, `## Workflows`, and `## Feedback` sections. Any behavioral change to one must be applied to all five, and to `kiro/outsystems/POWER.md`, whose `## Conventions` section carries the same rules for Kiro operators while sitting outside the grep below.
 
 Use the lockstep grep check before opening a PR:
 ```bash

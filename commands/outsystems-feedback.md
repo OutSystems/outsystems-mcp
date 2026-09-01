@@ -52,7 +52,7 @@ Do NOT offer numeric ratings ("4", "5") or booleans ("true", "false") in the pic
 
 Wait for the user's next message. Treat that message as the raw feedback body (subject to the redaction step below). If the user replies "none" / "skip" / an empty line, use an empty rationale.
 
-**Step 2b -- expected-vs-actual (bug-report only).** If the category picked in Step 1 was "Bug report", ask ONE follow-up question after Step 2:
+**Step 2b -- expected-vs-actual (bug-report only).** If the category is "Bug report" (picked at Step 1, or pre-filled by the skill doc's bounded-exception entry point that skips Step 1), ask ONE follow-up question after Step 2:
 
 > "Quick tip: a good bug report has three parts -- what you did, what happened, what you expected. To help the team reproduce: what did you expect to happen instead? (Optional -- reply 'skip' if the message above already covers it.)"
 
@@ -66,9 +66,8 @@ If they skipped, use the Step 2 message alone. This step fires ONLY for bug repo
 
 **Step 3 -- optional agent_context clarification (skip when the feedback is clearly general).** After Step 2's message lands, decide whether the message is about a specific tool interaction (e.g., "the deploy failed", "the publish returned garbage", "the diagram tool crashed on merge") vs general sentiment ("love it", "thumbs-up", "not intuitive"). If specific:
 
-- Summarize in ONE sentence what you would attach as `agent_context` (e.g., "I'll include: your last three tool calls were env_info, publish_start (error OS-BEW-1234), and app_traces on app-1").
-- Ask "Attach this context to help the team reproduce? [yes / no]".
-- If yes, build the JSON blob from your actual tool-call history and use it as `agent_context`. If no, omit `agent_context`.
+- Entering from the skill doc's bounded exception: skip the yes/no ask below -- the prompt already asked and the user already agreed. Build the JSON blob directly from the failing tool call: `error_details.step` is the tool name, `error_details.message` is the verbatim error text (including its error code and any pod/build identifier it carried), redacted per the redaction step, so the prompt's promise is honored.
+- Otherwise: summarize in ONE sentence what you would attach as `agent_context` (e.g., "I'll include: your last three tool calls were env_info, publish_start (error OS-BEW-1234), and app_traces on app-1"), ask "Attach this context to help the team reproduce? [yes / no]", and build the JSON blob from your actual tool-call history only if yes. If no, omit `agent_context`.
 
 **Step 3b -- progressive disclosure of correlation ids (only when the message hints at them).** After Step 3, scan the user's message for keywords that suggest they know or care about a specific correlation id:
 - "session" / "mentor session" → offer to attach `mentor_session_id` if you have a UUID from a recent mentor tool call in this conversation.
@@ -125,10 +124,10 @@ Scope rules:
 Call the OutSystems `submit_feedback` MCP tool with:
 
 - `name`: `"user_feedback"` -- always for this command. `agent_observation` self-reports go through `submit_feedback` directly per the SKILL.md guidance, not through this command.
-- `value`: a one-word categorical tag: `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`. In guided-form mode this comes from Step 1's pick (the mapping is fixed). In direct mode pick the tag that best matches the user's message; default to `"bug-report"` if you cannot tell. **Do NOT** put the user's prose into `value`; the value field is a discrete grouping key. Numeric ratings (`"4"`) and booleans (`"true"`, `"false"`) are accepted by the server for schema flexibility, but do NOT surface them to the user or emit them from this command; users find rating scales less intuitive than named tags. Cap 256 bytes (server rejects longer); single-word tags are well under.
+- `value`: a one-word categorical tag: `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`. In guided-form mode this comes from Step 1's pick (the mapping is fixed), or from the skill doc's pre-fill when entering at Step 2 per the Scope section's bounded exception. In direct mode pick the tag that best matches the user's message; default to `"bug-report"` if you cannot tell. **Do NOT** put the user's prose into `value`; the value field is a discrete grouping key. Numeric ratings (`"4"`) and booleans (`"true"`, `"false"`) are accepted by the server for schema flexibility, but do NOT surface them to the user or emit them from this command; users find rating scales less intuitive than named tags. Cap 256 bytes (server rejects longer); single-word tags are well under.
 - `rationale`: the full redacted message body (cap 4096 bytes; truncate the tail and tell the user if it was longer). If the guided-form user replied "skip" / "none" / empty at Step 2, omit `rationale` entirely.
 - `mentor_session_id`: if there is a `mentor_session_id` you have been working with in this conversation, include it so the OutSystems maintainers can co-locate the feedback with the relevant mentor trace. **Must be a UUID** (the server rejects non-UUID strings). Otherwise omit it and the server auto-falls-back to the user's most-recent mentor session on this pod.
-- `agent_context`: OPTIONAL structured recap of what you were doing when the user invoked `/outsystems-feedback`. Include it when the message clearly refers to a specific tool-call that misbehaved (e.g., "the deploy failed", "the publish returned garbage") -- the recap makes downstream debug much faster. Shape: JSON string ≤2048 bytes with keys like `recent_tool_calls`, `app_key`, `env_key`. Redact secrets / PII (same rule as `rationale`). Skip when the feedback is general ("love the agent", "thumbs-up") -- no tool-call context is relevant.
+- `agent_context`: OPTIONAL structured recap of what you were doing when the user invoked `/outsystems-feedback`, or of the failing tool call when entering from the skill doc's bounded exception (Step 3 above). Include it when the message clearly refers to a specific tool-call that misbehaved (e.g., "the deploy failed", "the publish returned garbage") -- the recap makes downstream debug much faster. Shape: JSON string ≤2048 bytes with keys like `recent_tool_calls`, `app_key`, `env_key`, and an `error_details` sub-key (`step`: the tool name, `message`: the verbatim error text including its error code and any pod/build identifier) per `skills/outsystems/SKILL.md`'s `agent_context` convention. Redact secrets / PII (same rule as `rationale`). Skip when the feedback is general ("love the agent", "thumbs-up") -- no tool-call context is relevant.
 
 ## Handle the response
 
@@ -148,4 +147,4 @@ Call the OutSystems `submit_feedback` MCP tool with:
 
 ## Scope
 
-Do not volunteer this command. Do not proactively ask "would you like to submit feedback?". Only run this `/outsystems-feedback` flow when the user explicitly types it. `agent_observation` self-reports go through `submit_feedback` directly per the SKILL.md guidance, not through this command.
+Do not volunteer this command. Do not proactively ask "would you like to submit feedback?". Only run this `/outsystems-feedback` flow when the user explicitly types it. Two exceptions, both defined in the skill doc: the once-per-session bounded prompt after a clearly-broken failure (enter at Step 2 with `value` pre-filled to `bug-report`), and a user who asks how to give feedback. `agent_observation` self-reports go through `submit_feedback` directly per the SKILL.md guidance, not through this command.
