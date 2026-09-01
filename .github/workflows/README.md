@@ -1,18 +1,16 @@
 # AI PR Review
 
-Every push to a PR triggers an AI code review. Unlike
-`OutSystems/rd-ai-ase-toolkit`, this repo does not call the shared panel
-at [`OutSystems/rd-ai-review-panel`](https://github.com/OutSystems/rd-ai-review-panel)
-as a reusable workflow: this repo is public and does not share the
-internal `GIT_HUB_CLONE_TOKEN` org secret the panel's cross-repo checkout
-needs, so `ai-review.yml` runs standalone and the critic panel is
-vendored directly into `.claude/agents/`.
+Every push to a PR triggers an AI code review. This repo is public and
+does not share the org-wide credential a centralized, reusable review
+workflow elsewhere in the org would need for its cross-repo checkout, so
+`ai-review.yml` runs standalone and the critic panel is vendored directly
+into `.claude/agents/`.
 
 - `ai-review.yml` - the full workflow: trigger gating, SHA pinning, OIDC
   Bedrock auth, and the inline review prompt.
-- `.claude/agents/*.md` - the critic panel, adapted from the shared
-  panel's composed output for this repo's shape (skill docs, slash
-  commands, plugin manifests - no compiled language, no CI to gate on).
+- `.claude/agents/*.md` - a critic panel adapted for this repo's shape
+  (skill docs, slash commands, plugin manifests - no compiled language,
+  no CI to gate on).
 
 ## What this repo runs
 

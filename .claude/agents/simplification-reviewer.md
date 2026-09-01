@@ -168,8 +168,8 @@ The repository is already checked out at the correct HEAD commit. Run
 the Read tool for full file contents beyond the diff, and Grep/Glob to
 search the repo for the reuse candidates category 1 depends on.
 
-If a plan or ticket reference is available (branch name `RAOPST-XXXX`,
-the PR body, a file under `.claude/plans/`), read it. A seam the plan
+If a plan or ticket reference is available (branch name, the PR body,
+a file under `.claude/plans/`), read it. A seam the plan
 justifies is not speculative generality, and a plan that names the
 second consumer settles category 4 in the author's favor.
 

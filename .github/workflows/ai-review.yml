@@ -20,13 +20,12 @@ name: AI PR Review
 #   (event: COMMENT) with inline comments. It NEVER approves or requests
 #   changes: a human stays the approval gate.
 #
-# This repo is public and does not share the internal
-# `GIT_HUB_CLONE_TOKEN` org secret, so it cannot call
-# `OutSystems/rd-ai-review-panel`'s reusable workflow the way an internal
-# repo would; the panel is vendored directly into `.claude/agents/`
-# instead. There is also no sibling CI to gate on (no compiled language,
-# no test suite), so there is no wait-for-ci job: the review runs
-# directly once `resolve` clears a trigger.
+# This repo is public and does not share the org-wide credential a
+# centralized, reusable review workflow elsewhere in the org would need
+# for its cross-repo checkout, so the panel is vendored directly into
+# `.claude/agents/` instead. There is also no sibling CI to gate on (no
+# compiled language, no test suite), so there is no wait-for-ci job: the
+# review runs directly once `resolve` clears a trigger.
 #
 # Required repo configuration (see .github/workflows/README.md):
 #   secrets.AI_REVIEW_AWS_ROLE_ARN  - IAM role to assume (Bedrock InvokeModel only)
@@ -346,7 +345,7 @@ jobs:
               is exported in this step's env: block; do not substitute it via
               the Actions expression syntax here because branch names may
               contain shell metacharacters.)
-            - If the branch name carries a ticket (e.g. RAOPST-XXXX), state the
+            - If the branch name carries a ticket reference, state the
               scope the review is bound to. Out-of-scope findings are still
               reportable but labelled as such.
 

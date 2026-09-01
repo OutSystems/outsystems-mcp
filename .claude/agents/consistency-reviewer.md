@@ -21,7 +21,7 @@ A wrong instruction here is the same defect class as a wrong status code in a se
 - **Slash-command naming collision** - a new `commands/*.md` file whose name is not prefixed `outsystems-` and would be shadowed by a host built-in (the `/feedback` collision `CLAUDE.md` documents is the known instance; the same risk applies to any new command name)
 - **Tool discriminability and argument derivability** - an instruction that tells the agent to call a remote MCP tool with an argument the agent has no way to obtain from prior output or the instructions themselves, or that describes two tools/flows so similarly an agent reading only the skill doc cannot pick between them
 - **Instruction coherence** - a skill doc or `POWER.md` section that contradicts another instruction in the same surface, or that still describes a tool, flag, or flow that no longer exists
-- **Coordinated-surface drift** - a change here that assumes a specific shape from the remote MCP server (e.g. the `submit_feedback` tool's argument names, or any `outsystems-mcp`-side tool contract) without that shape being confirmed live via `tools/list` or matched against the server repo (`OutSystems/rd-ai-ase-toolkit`). Report it once, naming which side needs to move
+- **Coordinated-surface drift** - a change here that assumes a specific shape from the remote MCP server (e.g. the `submit_feedback` tool's argument names, or any `outsystems-mcp`-side tool contract) without that shape being confirmed live via `tools/list` or matched against the server's own repo. Report it once, naming which side needs to move
 
 ## What NOT to flag
 
@@ -79,7 +79,7 @@ For each changed or new `commands/*.md`:
 
 For each instruction that names a specific MCP tool, its arguments, or its response shape:
 
-1. **Tool discriminability and argument derivability.** Can an agent following only this doc obtain every named argument from prior tool output or the instructions themselves? Does the doc tell the agent to call `tools/list` rather than hardcode a shape that the server (`OutSystems/rd-ai-ase-toolkit`) can change independently?
+1. **Tool discriminability and argument derivability.** Can an agent following only this doc obtain every named argument from prior tool output or the instructions themselves? Does the doc tell the agent to call `tools/list` rather than hardcode a shape that the server can change independently?
 2. **Instruction coherence.** Read the full instruction, not just the diff hunk. Does the change contradict another instruction in the same doc, or still describe a tool/flow the coordinated-surface note (or the server repo) says no longer exists?
 3. **Coordinated surfaces.** If the changed assumption is about a shape defined server-side (the `submit_feedback` argument names are the known instance), say so once, naming that the server repo needs to confirm or the doc needs to re-derive from a live `tools/list` call instead of hardcoding.
 
