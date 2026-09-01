@@ -33,14 +33,14 @@ Paste into Claude Desktop (requires Node.js with `npx` available on your machine
 Install the OutSystems MCP server in Claude Desktop via a local proxy.
 Step 1: install `mcp-remote` globally: `npm install -g mcp-remote`. This is idempotent, safe to run even if already installed.
 Step 2: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 3: locate the Claude Desktop config file. macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
+Step 3: locate the Claude Desktop config file. macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`, Linux: `~/.config/Claude/claude_desktop_config.json`. Read the file (start from `{}` if it doesn't exist). Preserve every existing key. Patch the top-level `mcpServers` object by adding or replacing the `outsystems` entry:
   - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp"]}`
   - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp"]}`
 Substitute my actual tenant hostname for `<my-tenant>`. Write the file back.
 Step 4: tell me to restart Claude Desktop. After restarting, the first OutSystems tool call will open a browser window for OAuth sign-in; complete the sign-in when prompted.
 ```
 
-Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in your terminal. If the server fails to connect after restart, find the full path to `npx` (run `which npx` on macOS/Linux or `where npx` on Windows) and replace `"npx"` in the config with that full path (e.g. `/opt/homebrew/bin/npx`).
+Claude Desktop launches processes with a minimal PATH, so `npx` may not be found even if it works in your terminal. If the server fails to connect after restart, find the full path to `npx` (run `which npx` on macOS/Linux or `where npx` on Windows) and substitute it for `npx` in the config: on macOS/Linux that is the `"command"` value; on Windows it is the `npx` token inside the `/c` string (e.g. `/opt/homebrew/bin/npx`, or the full path `where npx` reports on Windows).
 
 <details>
 <summary>Native "Add custom connector" steps (not currently working, kept for reference)</summary>
@@ -52,7 +52,7 @@ Claude Desktop launches processes with a minimal PATH, so `npx` may not be found
 
 Available on Free, Pro, Max, Team and Enterprise, with Free limited to one custom connector. A custom connector is also reached from Anthropic's cloud rather than from your machine, so it cannot reach a tenant that is VPN-only or IP-allowlisted; the local proxy is required there too.
 
-If the flow starts working: on a Team or Enterprise plan you may not see "Add custom connector" at all, because adding custom connectors is an organization-level permission. An Owner adds the connector in **Admin settings > Connectors** and members then click **Connect** on it. If your organization has custom connectors disabled entirely, no member can add one and neither can an Owner without changing that policy.
+On a Team or Enterprise plan you may not see "Add custom connector" at all, because adding custom connectors is an organization-level permission. An Owner adds the connector in **Admin settings > Connectors** and members then click **Connect** on it. If your organization has custom connectors disabled entirely, no member can add one and neither can an Owner without changing that policy.
 
 </details>
 
@@ -220,7 +220,7 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 
 When an install is wedged and updates don't stick, do a clean cycle rather than reinstalling on top:
 
-1. Write down the whole `outsystems` entry first, on any harness, because removing it destroys the only record of your tenant URL and of any extra proxy arguments, and later steps need both. On Claude Code, `claude mcp get outsystems` prints the URL and the scope. Then remove the server: `claude mcp remove outsystems`, or delete the `outsystems` entry from the relevant config file on other harnesses. Removing it is also what drops a callback port pinned by an earlier setup step. Omitting `-s` clears whichever scope holds the entry; if the name exists in more than one the command removes nothing and lists them, so repeat it per scope with `-s <scope>`, and leave a `project` scope alone if the config is shared with other people.
+1. Write down the whole `outsystems` entry first, on any harness, because removing it destroys the only record of your tenant URL and of any extra proxy arguments, and later steps need both. On Claude Code, `claude mcp get outsystems` prints the URL and the scope. Then remove the server: `claude mcp remove outsystems`, or delete the `outsystems` entry from the relevant config file on other harnesses. Removing it is also what drops a callback port pinned by an earlier setup step. Omitting `-s` clears whichever scope holds the entry; if the name exists in more than one the command removes nothing and lists them, so repeat it per scope with `-s <scope>`, and leave a `project` scope alone if the config is shared with other people. On Claude Desktop, if you previously added a native custom connector for this tenant, also remove it in **Settings > Connectors** — it is a separate registration from the config file and keeps failing authorization on its own.
 2. Uninstall the plugin or Power, if you installed one.
 3. Clear the host's cache (in Claude Desktop: **Help > Troubleshooting > Clear cache**). If you reach the server through the `mcp-remote` proxy, also do the following before restarting.
 
@@ -231,7 +231,9 @@ When an install is wedged and updates don't stick, do a clean cycle rather than 
 
    1. Quit the host, so it stops relaunching the proxy while you work.
    2. Pick a port nothing is using. `lsof -nP -iTCP:<port> -sTCP:LISTEN` on macOS or Linux, `netstat -ano | findstr :<port>` on Windows, should print nothing for it.
-   3. Add that port as the last argument of the `outsystems` entry in the host's config, after the URL, for example `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp", "<free port>"]}`.
+   3. Add that port as the last argument of the `outsystems` entry in the host's config, after the URL:
+      - macOS/Linux: `{"command": "npx", "args": ["mcp-remote", "https://<my-tenant>/mcp", "<free port>"]}`
+      - Windows: `{"command": "cmd", "args": ["/c", "npx mcp-remote https://<my-tenant>/mcp <free port>"]}`
    4. Continue with step 4 of the reset. On the next launch the proxy sees a port that disagrees with its saved registration, deletes that registration, and registers again on the port you gave it.
 
    The proxy always records some port, so this replaces a stuck one rather than switching pinning off; that is an upstream limitation rather than a setting. Removing the argument again later just makes the proxy reuse the port it last recorded. Expect one extra sign-in, because the saved token belonged to the registration that was replaced.
