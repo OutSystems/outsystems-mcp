@@ -171,7 +171,7 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 1. First turn: start a mentor run with the `app_key` and your prompt (e.g. "Add a due date field to Task"). It returns a `runId`; poll the run with its `cursor` until terminal, then pull `mentor_session_id` + `mentor_session_token` out of the result.
 2. Optional follow-up turns: start another run passing `mentor_session_id` + `mentor_session_token` and your next prompt, and poll the same way. Each terminal result returns a fresh token; use the newest one next.
 3. Publish the edited OML with `mentor_session_id` + `mentor_session_token` + `env_key`; it returns a publication id. An optional `message` (max 500 chars) attaches a publish note to the created revision — the same note ODC Studio's "1-Click Publish with message" sets; over-length is rejected up front, and attaching the note is best-effort so a failure to attach it doesn't fail the publish.
-4. Poll the publication status until terminal. Pull the publication logs for messages on failure. **A `failed` carrying `indeterminate: true` is not a confirmed failure** — the server lost sight of the publish, so it may still be building and may yet succeed. Do NOT re-publish on that (a second publish on the same app while the first is still running is what wedges an app); re-poll `publish_status` with the `publication_key` from the payload, or verify with `env_app`, and only then decide.
+4. Poll the publication status until terminal. Pull the publication logs for messages on failure. **A `failed` carrying `indeterminate: true` is not a confirmed failure** — the server lost sight of the publish, so it may still be building and may yet succeed. Do NOT re-publish on that (a second publish on the same app while the first is still running is what wedges an app); re-poll the publish status with the `publication_key` from the payload, or verify via the environment's app info, and only then decide.
 
 **Promote a build across environments:**
 1. Start a deployment with the asset key, the target `env_key`, and `from_env` for the source (or pin with `build_key` + `revision`); it returns an operation key.
@@ -193,7 +193,7 @@ The context lookups index by **visibility**, not ownership: app-scoped queries r
 
 ## Feedback
 
-A `submit_feedback` MCP tool lets you push signal to the OutSystems maintainers about what's working and what isn't. Use it for two reasons.
+A feedback tool lets you push signal to the OutSystems maintainers about what's working and what isn't. Use it for two reasons.
 
 **Redaction rule (applies to BOTH `value` and `rationale` on every call).** Before passing any text into either field, scan it for and replace each with `[redacted]`:
 - Bearer tokens, JWTs, API keys, passwords, OAuth client secrets
@@ -203,7 +203,7 @@ A `submit_feedback` MCP tool lets you push signal to the OutSystems maintainers 
 
 When you redact, tell the user what you replaced.
 
-**User-initiated.** When the user explicitly asks to report something, expand to a `submit_feedback` call:
+**User-initiated.** When the user explicitly asks to report something, expand to a feedback call:
 - `name`: `"user_feedback"`
 - `value`: a one-word categorical tag: `"bug-report"`, `"feature-request"`, `"thumbs-up"`, or `"thumbs-down"`. Pick the tag that best matches the user's message; if it's ambiguous, default to `"bug-report"`. Cap at 256 bytes. **Do NOT** put free-form prose here; the value field is a discrete grouping key. Numeric ratings ("4") and booleans ("true"/"false") are accepted by the server for downstream flexibility, but do not surface them as options in a picker or prompt; users find rating scales less intuitive than named tags.
 - `rationale`: the user's words (or your summary if they were verbose), after applying the redaction rule. Cap at 4096 bytes; truncate the tail and tell the user if it was longer.
@@ -214,7 +214,7 @@ When you redact, tell the user what you replaced.
   ```json
   {
     "recent_tool_calls": [
-      {"tool": "context_search", "status": "ok"},
+      {"tool": "context", "status": "ok"},
       {"tool": "publish", "status": "error", "code": "OS-BEW-1234"}
     ],
     "app_key": "...",
@@ -225,7 +225,7 @@ When you redact, tell the user what you replaced.
     }
   }
   ```
-  The `error_details` sub-key is a convention (not enforced by the server): when the feedback is about a specific failure, include the verbatim error message + which step it fired on. Downstream triage can slice by `error_details.step` without paraphrasing loss. Redact secrets / PII in `error_details.message` per the redaction step. **Clarify with the user before including.** When the feedback is about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (env_info, the publish call that returned code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. Skip this ask when you arrived here from the bounded exception below: that prompt already named what would be attached and the user already agreed, so build `error_details` directly from the failing tool call. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach.
+  The `error_details` sub-key is a convention (not enforced by the server): when the feedback is about a specific failure, include the verbatim error message + which step it fired on. Downstream triage can slice by `error_details.step` without paraphrasing loss. Redact secrets / PII in `error_details.message` per the redaction step. **Clarify with the user before including.** When the feedback is about a specific tool interaction (e.g., "the deploy failed"), tell the user "I'll attach a recap of the recent tool calls (an environment lookup, the publish call that returned code OS-BEW-1234) to help the team reproduce — OK?" and wait for confirmation. Skip this ask when you arrived here from the bounded exception below: that prompt already named what would be attached and the user already agreed, so build `error_details` directly from the failing tool call. When the feedback is general ("love the agent", "thumbs-up"), skip agent_context entirely; there's no useful context to attach.
 
 **Correlation-id offer (mandatory when the user's message hints).** When the user's feedback message contains `session` / `mentor session` (hint for `mentor_session_id`) or `turn` / `mentor turn` / `trace` / `runId` / `run` (hint for `mentor_turn_id`), the agent MUST include an offer in its reply. Silently omitting the correlation without acknowledging the hint is not acceptable.
 
@@ -247,7 +247,7 @@ Scope rules for the offer:
 - Skip the offer when you already have the id in scope from a mentor tool call earlier in this conversation — attach it directly and confirm in the reply which id you attached.
 - Do NOT invent or guess ids. If the user replies with a value that isn't shaped like an id (e.g., not a UUID for `mentor_session_id`), tell them and skip the field rather than pass junk.
 
-**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call `submit_feedback` on your own when a situation clearly matches one of the six defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
+**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call the feedback tool on your own when a situation clearly matches one of the six defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
 
 **Scope.** `agent_observation` reports on how OutSystems tools composed to fulfill a specific user request in the current turn. An OutSystems tool is any tool from the connected OutSystems MCP server — the ones that let you inspect and change tenant state. Three invariants must all hold before you fire:
 
@@ -259,7 +259,7 @@ If any invariant fails, do NOT fire — silence is correct, regardless of how we
 
 The six valid values for `agent_observation` (listed in disambiguation-precedence order — first-match wins when a situation could match multiple):
 - `shorter-path-available` — after a multi-step task lands successfully, you spot that a shorter tool sequence would have reached the same result. Fires ONLY post-success; NEVER on a one-step task that already took the direct path. **Threshold**: reserve for shortcuts that generalize to the task PATTERN — a step you took would be unnecessary for anyone doing this KIND of task, given tools that already exist. Do NOT fire for execution-only variance (a call you happened to make more times than needed for this specific input, an ordering that was fine but not optimal). If the shortcut depends on knowing this particular input's shape or size, it's execution detail, not composition insight — skip. **Tie-break vs `unexpected_shape`**: if any step you took returned only data already present in a prior step's output (i.e., that step was redundant in retrospect), this fires — even if the redundant step's response also had a shape quirk. "Missing expected fields" on the redundant step is a symptom; the higher-order insight is that the step wasn't needed.
-- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different tool ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same. **Tie-break vs `builder_retry_friction`**: this is about YOUR OWN outer tool choice (you picked the wrong `context_search`/`app_list`/etc., or the wrong resource entirely). If your own tool picks were correct and the friction happened *inside* a single successful Mentor turn, that's `builder_retry_friction`, not this.
+- `wrong_path` — you picked a suboptimal first tool composition and had to pivot to a different one, OR the user had to explicitly redirect you to a different tool ("just use X directly", "no, try Y instead") because your first pick was wrong, OR your first tool errored because it was fundamentally the wrong tool for the intent. A user redirect after a wrong first pick counts as much as a self-pivot — the signal is the same. **Tie-break vs `builder_retry_friction`**: this is about YOUR OWN outer tool choice (you picked the wrong lookup or listing call, or the wrong resource entirely). If your own tool picks were correct and the friction happened *inside* a single successful Mentor turn, that's `builder_retry_friction`, not this.
 - `builder_retry_friction` — a single Mentor turn (a run start or a poll reaching terminal) reports `internal_retry_count >= 3` in its terminal `result`, regardless of whether the turn ultimately succeeded. Fires once per terminal Mentor result that crosses the threshold; a `succeeded` status with `validation.error_count: 0` does NOT mean skip — a clean final state can still carry a nonzero count worth reporting. Do NOT fire below the threshold and do NOT fire per-retry — one observation per terminal result, using the final count.
 - `repeated_clarification` — the same user intent required 3+ back-and-forth turns of ambiguous user replies before you could act (or you gave up because ambiguity persisted).
 - `unexpected_shape` — a tool response was well-formed but lacked expected fields or had an unexpected structure that made it hard to chain into the next call. NOT this if the "missing field" happened on a step that turned out to be redundant post-success — that's `shorter-path-available` (see tie-break above).
@@ -295,9 +295,9 @@ Rules for the exception:
 - Fires at most once per session, no matter how many failures happen.
 - Skip when the failure was expected (dry-run, deliberate misconfiguration test, or the user just told you they're testing failure paths).
 - Skip when a `server_failure` auto-emit was NOT triggered — those cases aren't "clearly broken", they're user errors.
-- If the user says yes, ask for a one-line description, and submit via `submit_feedback` with `name: "user_feedback"`, `value: "bug-report"` (already known, don't ask), `rationale` set to their description, and `agent_context` built from the failing tool call (its name, error code, and any pod/build identifier the error carried) so the prompt's promise is honored, per the user-initiated field rules above.
+- If the user says yes, ask for a one-line description, and submit via the feedback tool with `name: "user_feedback"`, `value: "bug-report"` (already known, don't ask), `rationale` set to their description, and `agent_context` built from the failing tool call (its name, error code, and any pod/build identifier the error carried) so the prompt's promise is honored, per the user-initiated field rules above.
 - If the user says no or ignores the ask, DO NOT re-ask this session.
 
-**User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that `submit_feedback` is the surface AND offer to invoke it directly. This is an exception to "don't volunteer" — the user asked; walking them through it is helpful, not manipulative.
+**User asking how to give feedback.** When the user asks "how do I file a bug?" / "how do I give feedback?" / "how do I report a problem?", explain that a feedback tool is the surface AND offer to invoke it directly. This is an exception to "don't volunteer" — the user asked; walking them through it is helpful, not manipulative.
 
 **Reserved names.** The server rejects `name=server_failure` from client submissions; it's reserved for the server's own auto-emit on tool failures. Use `agent_observation` for agent-initiated failure reports. Other `name` values are accepted as forward compatibility, but stick to `user_feedback` and `agent_observation` unless you have a reason.

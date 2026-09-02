@@ -9,8 +9,8 @@ The user typed `/outsystems-feedback $ARGUMENTS`. They want to report something 
 
 Parse and strip leading flags from `$ARGUMENTS` before deciding the mode:
 
-- `--dry-run` -- Show the exact `submit_feedback` tool call that WOULD be made (name, value, rationale, agent_context, mentor_session_id, mentor_turn_id, experiment_id) as a code block, but do NOT invoke the tool. Reply with the preview and ask the user to confirm ("send it? [y / n]") before firing. On "n" or silence, do not send and say "OK, discarded."
-- `--quiet` -- Fire the `submit_feedback` call as normal but skip the confirmation narration on success. On `status: "accepted"`, reply with a single-word acknowledgment ("sent.") instead of the full "Thanks..." block. Errors and `not_configured` still surface with their normal text. Useful for CI-driven or scripted callers.
+- `--dry-run` -- Show the exact feedback tool call that WOULD be made (name, value, rationale, agent_context, mentor_session_id, mentor_turn_id, experiment_id) as a code block, but do NOT invoke the tool. Reply with the preview and ask the user to confirm ("send it? [y / n]") before firing. On "n" or silence, do not send and say "OK, discarded."
+- `--quiet` -- Fire the feedback call as normal but skip the confirmation narration on success. On `status: "accepted"`, reply with a single-word acknowledgment ("sent.") instead of the full "Thanks..." block. Errors and `not_configured` still surface with their normal text. Useful for CI-driven or scripted callers.
 
 Both flags may be combined (`--dry-run --quiet` shows the preview without narration decoration). Flags are only recognized in direct mode; the guided-form flow ignores them.
 
@@ -36,7 +36,7 @@ Run these steps IN ORDER. Do not batch them into one `AskUserQuestion` call -- t
   - `label`: "Bug report" -- `description`: "Something is broken and should not be. Example: 'the publish call returned OS-BEW-1234 and never recovered'."
   - `label`: "Feature request" -- `description`: "You would like the OutSystems agent to do something it does not currently do. Example: 'I want an env-diff tool that compares two environments'."
 
-Map the user's pick to the `value` argument of `submit_feedback`:
+Map the user's pick to the `value` argument of the feedback call:
 
 - "Thumbs up" -> `"thumbs-up"`
 - "Thumbs down" -> `"thumbs-down"`
@@ -67,7 +67,7 @@ If they skipped, use the Step 2 message alone. This step fires ONLY for bug repo
 **Step 3 -- optional agent_context clarification (skip when the feedback is clearly general).** After Step 2's message lands, decide whether the message is about a specific tool interaction (e.g., "the deploy failed", "the publish returned garbage", "the diagram tool crashed on merge") vs general sentiment ("love it", "thumbs-up", "not intuitive"). If specific:
 
 - Entering from the skill doc's bounded exception: skip the yes/no ask below -- the prompt already asked and the user already agreed. Build the JSON blob directly from the failing tool call: `error_details.step` is the tool name, `error_details.message` is the verbatim error text (including its error code and any pod/build identifier it carried), redacted per the redaction step, so the prompt's promise is honored.
-- Otherwise: summarize in ONE sentence what you would attach as `agent_context` (e.g., "I'll include: your last three tool calls were env_info, the publish call (error OS-BEW-1234), and app_traces on app-1"), ask "Attach this context to help the team reproduce? [yes / no]", and build the JSON blob from your actual tool-call history only if yes. If no, omit `agent_context`.
+- Otherwise: summarize in ONE sentence what you would attach as `agent_context` (e.g., "I'll include: your last three tool calls were an environment lookup, the publish call (error OS-BEW-1234), and an app-traces lookup on app-1"), ask "Attach this context to help the team reproduce? [yes / no]", and build the JSON blob from your actual tool-call history only if yes. If no, omit `agent_context`.
 
 **Step 3b -- progressive disclosure of correlation ids (only when the message hints at them).** After Step 3, scan the user's message for keywords that suggest they know or care about a specific correlation id:
 - "session" / "mentor session" → offer to attach `mentor_session_id` if you have a UUID from a recent mentor tool call in this conversation.
@@ -121,9 +121,9 @@ Scope rules:
 
 ## Construct the call
 
-Call the OutSystems `submit_feedback` MCP tool with:
+Call the OutSystems feedback tool with:
 
-- `name`: `"user_feedback"` -- always for this command. `agent_observation` self-reports go through `submit_feedback` directly per the SKILL.md guidance, not through this command.
+- `name`: `"user_feedback"` -- always for this command. `agent_observation` self-reports go through the feedback tool directly per the SKILL.md guidance, not through this command.
 - `value`: a one-word categorical tag: `"bug-report"`, `"feature-request"`, `"thumbs-up"`, `"thumbs-down"`. In guided-form mode this comes from Step 1's pick (the mapping is fixed), or from the skill doc's pre-fill when entering at Step 2 per the Scope section's bounded exception. In direct mode pick the tag that best matches the user's message; default to `"bug-report"` if you cannot tell. **Do NOT** put the user's prose into `value`; the value field is a discrete grouping key. Numeric ratings (`"4"`) and booleans (`"true"`, `"false"`) are accepted by the server for schema flexibility, but do NOT surface them to the user or emit them from this command; users find rating scales less intuitive than named tags. Cap 256 bytes (server rejects longer); single-word tags are well under.
 - `rationale`: the full redacted message body (cap 4096 bytes; truncate the tail and tell the user if it was longer). If the guided-form user replied "skip" / "none" / empty at Step 2, omit `rationale` entirely.
 - `mentor_session_id`: if there is a `mentor_session_id` you have been working with in this conversation, include it so the OutSystems maintainers can co-locate the feedback with the relevant mentor trace. **Must be a UUID** (the server rejects non-UUID strings). Otherwise omit it and the server auto-falls-back to the user's most-recent mentor session on this pod.
@@ -147,4 +147,4 @@ Call the OutSystems `submit_feedback` MCP tool with:
 
 ## Scope
 
-Do not volunteer this command. Do not proactively ask "would you like to submit feedback?". Only run this `/outsystems-feedback` flow when the user explicitly types it. Two exceptions, both defined in the skill doc: the once-per-session bounded prompt after a clearly-broken failure (enter at Step 2 with `value` pre-filled to `bug-report`), and a user who asks how to give feedback. `agent_observation` self-reports go through `submit_feedback` directly per the SKILL.md guidance, not through this command.
+Do not volunteer this command. Do not proactively ask "would you like to submit feedback?". Only run this `/outsystems-feedback` flow when the user explicitly types it. Two exceptions, both defined in the skill doc: the once-per-session bounded prompt after a clearly-broken failure (enter at Step 2 with `value` pre-filled to `bug-report`), and a user who asks how to give feedback. `agent_observation` self-reports go through the feedback tool directly per the SKILL.md guidance, not through this command.

@@ -10,7 +10,7 @@ author: "OutSystems AI Platform"
 
 ## Overview
 
-OutSystems is a cloud-native low-code platform where apps are built from OML (OutSystems Model Language) — a binary format describing entities, screens, actions, and logic. This Power connects Kiro to the **OutSystems MCP server**: a hosted, multi-tenant HTTP transport that exposes the full OutSystems tool surface (`mentor_*`, `app_*`, `context_*`, `deploy_*`, `publish_*`, `extlib_*`, `env_*`).
+OutSystems is a cloud-native low-code platform where apps are built from OML (OutSystems Model Language) — a binary format describing entities, screens, actions, and logic. This Power connects Kiro to the **OutSystems MCP server**: a hosted, multi-tenant HTTP transport that exposes the full OutSystems tool surface across apps, context lookups, mentor-driven editing, publishing, deployments, external libraries, and environments.
 
 There is no CLI to install. There is no OML on disk. OML stays server-side; you edit through the mentor flow (start a run, then poll it to terminal) and ship via the publish tool.
 
@@ -89,17 +89,17 @@ Just tell Kiro Chat "switch OutSystems to a different tenant" (or similar). The 
 
 ## Common Workflows
 
-Workflows below show MCP tool form. Identity (tenant + user) is derived from the validated bearer JWT — none of the tools take a `tenant` argument.
+Workflows below describe the call sequence in prose; read the live `tools/list` for exact tool names, arguments, and response shapes — this Power names domains, not tools. Identity (tenant + user) is derived from the validated bearer JWT — none of the tools take a `tenant` argument.
 
 ### Workflow 1: Describe an existing app
 
-1. Resolve the app: `app_list { search: "<name>" }` → app key.
+1. Resolve the app: search for it by name, or pass the name directly where an app is expected and let it resolve to a key.
 2. In parallel, gather context (independent calls):
-   - `context_screens { app: "<key>" }` → UI surface
-   - `context_entities { app: "<key>" }` → data model
-   - `context_actions { app: "<key>" }` → logic
-   - `context_roles { app: "<key>" }` → security
-   - `app_refs { key: "<key>" }` → dependencies on libraries / other modules
+   - the UI surface (screens)
+   - the data model (entities)
+   - the logic (actions)
+   - security (roles)
+   - dependencies on libraries / other modules (the app's references)
 3. Synthesize for the user.
 
 ### Workflow 2: Edit an app and ship it
@@ -107,28 +107,28 @@ Workflows below show MCP tool form. Identity (tenant + user) is derived from the
 1. Start a mentor run with `app_key: "<key>"` and a prompt describing the change (e.g. "Add a due date field to Task") → returns `runId`. Poll the run (`runId`, plus `cursor` once you have one) until terminal; pull `mentor_session_id` + `mentor_session_token` out of `result`. On a failed/cancelled terminal the `error` carries `mentor_session_id` + `mentor_session_token` (and a `hint` on `OS-AISA-40001`) — resume the same session with those rather than starting fresh, unless the error `code` is `session_not_found` or this first `app_key` turn failed to initialize (a bare error with no credentials, e.g. `oml_download_failed`); in either case start a fresh `app_key` session.
 2. (Optional) Follow-up turns: resume with `mentor_session_id`, `mentor_session_token`, and a new `prompt`, and poll the same way. Each terminal result returns a fresh token; use the newest one next. If the conversation hits its max length (`OS-AISA-40001`) or mentor starts hallucinating, add `fresh_context: true` to the resume call — it starts a new conversation over the session's *current* OML while keeping the session slot and any unpublished edits (boolean, JSON `true`; ignored on a first `app_key` turn; a server that predates the flag rejects the call). Start a run *without* `mentor_session_*` only to reset the OML to pristine or move to an unrelated app.
 3. Publish with `mentor_session_id`, `mentor_session_token`, `env_key: "<env>"`, and an optional `message: "<publish note>"` → returns `publication_id`. The `message` attaches a publish note to the created revision (ODC Studio's "1-Click Publish with message"; max 500 chars — over-length is rejected up front; attaching the note is best-effort, so a failure to attach it does not fail the publish).
-4. Poll `publish_status { publication_id }` until terminal. On failure, `publish_logs { pub_key: publication_id }`. **A `failed` carrying `indeterminate: true` is not a confirmed failure** — the server lost sight of the publish, so it may still be building and may yet succeed. Do NOT re-publish on that (a second publish on the same app while the first is still running is what wedges an app); re-poll `publish_status` with the `publication_key` from the payload, or verify with `env_app`, and only then decide.
+4. Poll the publication status until terminal. On failure, pull the publication logs. **A `failed` carrying `indeterminate: true` is not a confirmed failure** — the server lost sight of the publish, so it may still be building and may yet succeed. Do NOT re-publish on that (a second publish on the same app while the first is still running is what wedges an app); re-poll the publish status with the `publication_key` from the payload, or verify via the environment's app info, and only then decide.
 
 ### Workflow 3: Promote a build across environments
 
-1. `deploy_start { asset_key: "<key>", env_key: "<target>", from_env: "<source>" }` (or pin with `build_key` + `revision`) → returns operation key.
-2. Poll `deploy_status { operation_key }` until terminal.
-3. On failure: `deploy_messages { operation_key }`.
+1. Start a deployment with the asset key, the target `env_key`, and `from_env` for the source (or pin with `build_key` + `revision`) → returns operation key.
+2. Poll the deployment status until terminal.
+3. On failure: pull the deployment messages for diagnostics.
 
 ### Workflow 4: Publish a new external library
 
 1. Build a .NET 8 lib with `[OSInterface(Name = "<UniqueName>")]`. `dotnet publish -c Release`, zip `.dll` + `.deps.json` at the zip root, base64-encode it.
-2. `extlib_upload { zip_b64: "<base64>" }` → returns operation key.
-3. Poll `extlib_status { operation_key }` until `ReadyForReview`. Use `extlib_logs` on validation failure.
-4. `extlib_publish { operation_key }`, then poll `extlib_status` until `Published`.
+2. Upload the library with `zip_b64` → returns operation key.
+3. Poll the external-library status until `ReadyForReview`. On validation failure, pull the operation logs.
+4. Publish the operation with that same operation key, then poll the status until `Published`.
 
 ## Conventions
 
-- **OML is server-side.** No `app_download`. Use `app_refs` + `context_*` for inspection; the mentor flow (start a run, then poll it to terminal) for edits. When a user asks for the OML on disk, say plainly that the remote MCP transport does not expose a file-to-local-disk download (the server has no local filesystem to write to), and where useful offer the partially answerable portion (e.g. `app_revisions` for the latest version number).
+- **OML is server-side.** There is no download tool. Use the app's references plus the context lookups for inspection; the mentor flow (start a run, then poll it to terminal) for edits. When a user asks for the OML on disk, say plainly that the remote MCP transport does not expose a file-to-local-disk download (the server has no local filesystem to write to), and where useful offer the partially answerable portion (e.g. the app's revision history for the latest version number).
 - **No selected environment.** Every environment-scoped tool takes `env_key` per call; the transport is stateless by design. When a user asks for a session-persistent `env select` style toggle, say so explicitly rather than refusing silently, and reframe the request so they pass `env_key` per call.
-- **No local CWD.** The server has no view of the caller's filesystem. When a user asks about local paths, working directories, or CWD-relative artifacts, state the limit plainly and surface the closest server-side data inline (e.g. paste the `env_list` payload back so the user can save it themselves) instead of attempting the operation. Don't silently route a write or a read through a non-MCP tool; the architectural fact has to reach the user.
-- **Operations return immediately.** `deploy_start`, `deploy_rollback`, `deploy_impact`, the publish tool, `extlib_upload`, `extlib_publish`, `extlib_download_source` all return an operation/publication/analysis id; poll the matching `*_status` tool.
-- **Never invent IDs.** App keys, env keys, build keys, operation keys are opaque. Resolve them via `app_list`, `env_list`, etc., or ask the user.
+- **No local CWD.** The server has no view of the caller's filesystem. When a user asks about local paths, working directories, or CWD-relative artifacts, state the limit plainly and surface the closest server-side data inline (e.g. paste the environment-list payload back so the user can save it themselves) instead of attempting the operation. Don't silently route a write or a read through a non-MCP tool; the architectural fact has to reach the user.
+- **Operations return immediately.** Every deployment operation, publishing, and every external-library operation returns an id; poll the matching status surface until it's terminal.
+- **Never invent IDs.** App keys, env keys, build keys, operation keys are opaque. Resolve them via the listing and lookup calls, or ask the user.
 - **Only `status` says a run finished.** `complete` is an event name that appears while the run is still going, and `cancelling` is non-terminal too, so neither means the turn is done. A run abandoned before `status` reaches `succeeded`, `failed`, or `cancelled` loses the `mentor_session_token` that only the terminal payload carries, which is what a follow-up turn and the publish call both need. An error on a poll is not a dead run either: a `cursor_dropped` just means the cursor went stale over a long pause, and re-polling with the cursor omitted picks the run back up.
 - **A `tenant_not_allowed` rejection is a server-side per-tenant allowlist gate, not a lapsed sign-in.** The token is valid, so re-authenticating, re-registering, and removing and re-adding the server all fail identically while risking a working configuration. Confirm with the user which host the server is pointed at, because a right account on the wrong tenant gets this same rejection and is fixed by pointing it at the right one. If the host is right, tell the user to ask their OutSystems contact to have the tenant enabled.
 
@@ -160,9 +160,9 @@ Errors carry a structured category in `data.category` (`AuthError`, `ValidationE
 
 ## Limitations
 
-- **No `app_download` on this transport.** OML stays in the server-side mentor session and never crosses the wire as bytes.
+- **No OML download on this transport.** OML stays in the server-side mentor session and never crosses the wire as bytes.
 - **No per-session "selected environment".** Every environment-scoped tool takes `env_key` per call.
-- **Long-running tools return immediately.** `deploy_start`, `deploy_rollback`, `deploy_impact`, the publish tool, `extlib_upload`, `extlib_publish`, `extlib_download_source` all return an operation/publication/analysis id; you must poll the matching `*_status` tool.
+- **Long-running tools return immediately.** Every deployment operation, publishing, and every external-library operation returns an id; you must poll the matching status surface until it's terminal.
 - **Mentor session GC after 30 min idle.** Resuming after GC transparently re-downloads OML (sticky-miss recovery), but the first turn after that pause is slower.
 
 ## Configuration files
