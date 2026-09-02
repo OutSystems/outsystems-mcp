@@ -33,7 +33,7 @@ Run these steps IN ORDER. Do not batch them into one `AskUserQuestion` call -- t
 - `options` (in this order, each with a concrete example to help disambiguate):
   - `label`: "Thumbs up" -- `description`: "Something worked well or is delightful. Example: 'the mentor turn was fast and the OML edit was exactly what I wanted'."
   - `label`: "Thumbs down" -- `description`: "Something felt off but is not a full bug. Example: 'the deploy took 3 minutes, felt slow' or 'the output was correct but not what I hoped for'."
-  - `label`: "Bug report" -- `description`: "Something is broken and should not be. Example: 'publish_start returned OS-BEW-1234 and never recovered'."
+  - `label`: "Bug report" -- `description`: "Something is broken and should not be. Example: 'the publish call returned OS-BEW-1234 and never recovered'."
   - `label`: "Feature request" -- `description`: "You would like the OutSystems agent to do something it does not currently do. Example: 'I want an env-diff tool that compares two environments'."
 
 Map the user's pick to the `value` argument of `submit_feedback`:
@@ -67,7 +67,7 @@ If they skipped, use the Step 2 message alone. This step fires ONLY for bug repo
 **Step 3 -- optional agent_context clarification (skip when the feedback is clearly general).** After Step 2's message lands, decide whether the message is about a specific tool interaction (e.g., "the deploy failed", "the publish returned garbage", "the diagram tool crashed on merge") vs general sentiment ("love it", "thumbs-up", "not intuitive"). If specific:
 
 - Entering from the skill doc's bounded exception: skip the yes/no ask below -- the prompt already asked and the user already agreed. Build the JSON blob directly from the failing tool call: `error_details.step` is the tool name, `error_details.message` is the verbatim error text (including its error code and any pod/build identifier it carried), redacted per the redaction step, so the prompt's promise is honored.
-- Otherwise: summarize in ONE sentence what you would attach as `agent_context` (e.g., "I'll include: your last three tool calls were env_info, publish_start (error OS-BEW-1234), and app_traces on app-1"), ask "Attach this context to help the team reproduce? [yes / no]", and build the JSON blob from your actual tool-call history only if yes. If no, omit `agent_context`.
+- Otherwise: summarize in ONE sentence what you would attach as `agent_context` (e.g., "I'll include: your last three tool calls were env_info, the publish call (error OS-BEW-1234), and app_traces on app-1"), ask "Attach this context to help the team reproduce? [yes / no]", and build the JSON blob from your actual tool-call history only if yes. If no, omit `agent_context`.
 
 **Step 3b -- progressive disclosure of correlation ids (only when the message hints at them).** After Step 3, scan the user's message for keywords that suggest they know or care about a specific correlation id:
 - "session" / "mentor session" → offer to attach `mentor_session_id` if you have a UUID from a recent mentor tool call in this conversation.
