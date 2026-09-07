@@ -232,7 +232,7 @@ Use:
 - A tool's response is missing fields its description explicitly promised, and you needed those fields to proceed → fire `unexpected_shape`.
 - You are on the 3rd back-and-forth clarification about the same user intent → fire `repeated_clarification`.
 
-**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer feedback", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-BEW-*` or `OS-DPL-*` failure code, you MAY ask the user a single terse question:
+**Bounded exception: proactive prompt after a clearly-broken failure.** The default rule is "don't volunteer feedback", but a real, unexpected failure is signal that would otherwise be lost. Exactly ONCE per user session, after a tool call that returns a 5xx / `MentorTurnOutcome::SubprocessError` / any `OS-*` platform build-engine failure code (such as `OS-BEW-*`, `OS-DPL-*` or `OS-RDBS-GEN-*`), you MAY ask the user a single terse question:
 
 > "That failed unexpectedly. Want to send feedback about it? I'd include the tool call, error code, and pod version to help the team reproduce."
 
