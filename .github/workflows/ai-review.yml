@@ -333,12 +333,14 @@ jobs:
       # tag so the context step's `git merge-base origin/<base>` has the
       # base ref locally without a separate `git fetch`.
       #
-      # `persist-credentials: false` keeps the job token out of
-      # .git/config: the agent has an unrestricted Read/Grep grant over
-      # the workspace, which would otherwise read a write-scoped token as
-      # plain text out of the http.extraheader entry. Nothing here needs
-      # git remote auth - the fetch is already done, and merge-base, diff
-      # and checkout are local.
+      # `persist-credentials: false` drops the http.extraheader entry, but
+      # .git/config does not stay token-free: in agent mode the review
+      # action re-adds the same write-scoped token to remote.origin.url
+      # unless `allowed_non_write_users` is set, and the agent's Read/Grep
+      # grant over the workspace can read it as plain text. Containment is
+      # the tool allowlist below, which leaves the session nothing that
+      # can spend a token. Nothing here needs git remote auth - the fetch
+      # is already done, and merge-base and diff are local.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ needs.resolve.outputs.head_sha }}
@@ -353,12 +355,14 @@ jobs:
       # all. Ordered before the AWS step so no step holding Bedrock
       # credentials also holds a live GitHub session.
       #
-      # Nothing in this step may exit non-zero. The agent step carries no
-      # `if:`, so a failed prerequisite would skip it and leave the
+      # Nothing in this step may exit non-zero. The agent step's only
+      # condition is the no-review marker written below, so a step failure
+      # would skip the agent for an unintended reason and leave the
       # `!cancelled()` posting steps publishing a "did not complete"
       # notice for a review that was never attempted. Each degraded input
       # is logged and falls back instead.
       - name: Collect the review context
+        id: context
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -378,17 +382,6 @@ jobs:
 
           printf '%s\n' "$HEAD_REF" > "$CTX/head-ref.txt"
 
-          # `git checkout` is granted to the agent, and git executes the
-          # program named by repo-local config keys such as
-          # `core.fsmonitor`, so a writable .git/config turns that one
-          # grant into arbitrary code execution: the agent holds Write over
-          # the workspace. Read-only defeats it, since no granted tool can
-          # restore the mode, and every git read this job still needs works
-          # on a read-only config. The checkout action's post step only
-          # unsets config keys that exist, which `persist-credentials:
-          # false` already removed, and treats a failed unset as a warning.
-          chmod a-w "$(git rev-parse --git-dir)/config" || echo "::warning::could not make .git/config read-only; the agent's git grant is no longer confined to it."
-
           if ! BASE_SHA=$(git merge-base "origin/${BASE_REF}" "$HEAD_SHA"); then
             echo "::warning::git merge-base origin/${BASE_REF} ${HEAD_SHA} failed; diffing the base branch tip directly, which can include lines this PR did not change."
             BASE_SHA=$(git rev-parse "origin/${BASE_REF}") || BASE_SHA=""
@@ -402,13 +395,22 @@ jobs:
             echo "::warning::git diff ${BASE_SHA} ${HEAD_SHA} failed; there is nothing for the agent to review."
             : > "$CTX/pr.diff"
           fi
-          # An unresolvable base leaves no diff, and a review of no diff
-          # is indistinguishable from a clean review once posted. The
-          # marker makes the payload step post the notice instead, so the
-          # failure is visible on the PR and not only in this log.
-          if [ -z "$BASE_SHA" ] || [ ! -s "$CTX/pr.diff" ]; then
-            printf 'base_sha=%s, pr.diff is empty\n' "${BASE_SHA:-unresolved}" > "$CTX/context-error.txt"
-            echo "::warning::the review context could not be prepared (base_sha='${BASE_SHA}', empty diff); this run posts a notice instead of a review."
+          # A review of no diff is indistinguishable from a clean review
+          # once posted, so both routes to one post a notice instead, and
+          # the notice names which route it was: an unresolvable base is a
+          # failure, a head that carries no change against its base is
+          # not. The file holds the text the payload step posts verbatim,
+          # and its presence also skips the agent, whose output would be
+          # discarded either way.
+          if [ -z "$BASE_SHA" ]; then
+            printf 'The AI review did not run: the review context could not be prepared, because the base ref %s could not be resolved, so no diff was reviewed. See the run log for this job. Do not read the absence of findings here as a clean review.\n' "$BASE_REF" > "$CTX/no-review.txt"
+            echo "::warning::the base ref ${BASE_REF} could not be resolved; this run posts a notice instead of a review."
+          elif [ ! -s "$CTX/pr.diff" ]; then
+            printf 'The AI review did not run: this pull request has no changes against %s, so there was nothing to review.\n' "$BASE_SHA" > "$CTX/no-review.txt"
+            echo "::notice::the diff against ${BASE_SHA} is empty; this run posts a notice instead of a review."
+          fi
+          if [ -e "$CTX/no-review.txt" ]; then
+            echo "skip_review=1" >> "$GITHUB_OUTPUT"
           fi
 
           # A missing prior-findings list degrades the re-review scorecard
@@ -462,7 +464,12 @@ jobs:
           role-to-assume: ${{ secrets.AI_REVIEW_AWS_ROLE_ARN }}
           aws-region: ${{ vars.AI_REVIEW_AWS_REGION }}
 
+      # Skipped when there is no diff to review: the payload step posts
+      # the context step's notice either way, so running the panel would
+      # buy a full Bedrock session whose output is discarded, and hold the
+      # concurrency group while it runs.
       - name: Critic-loop review
+        if: ${{ steps.context.outputs.skip_review != '1' }}
         uses: anthropics/claude-code-action@51705da45eecce209d4700538bf8377d5b5fc695 # v1
         env:
           CLAUDE_CODE_USE_BEDROCK: "1"
@@ -475,19 +482,21 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # The allowlist is the containment boundary, so each grant is
           # earned: Task spawns the critic panel, Write emits the review
-          # payload, and Edit plus `git checkout` are the edit-and-revert
-          # cycle .claude/agents/simplification-reviewer.md prescribes.
-          # `git diff` is not granted: the critics get the prepared diff to
-          # Read, and a `git diff` grant is arbitrary code execution given
-          # Write over the workspace, because git runs the program named by
-          # `diff.external` in .git/config. `git checkout` runs
-          # `core.fsmonitor` the same way, which is why the context step
-          # makes that file read-only.
-          # Subagents inherit this grant, so a critic told to run a shell
-          # form outside these prefixes is denied silently inside its own
-          # session. The value is quoted because the action collapses an
-          # unquoted `Bash(...)` pattern to bare `Bash`, which would widen
-          # the grant with no visible signal.
+          # payload, and Edit is how the simplification critic tries a
+          # replacement it then reads back.
+          # No Bash prefix is granted, `git` included: paired with Write in
+          # the same session, any git invocation is arbitrary code
+          # execution, because git runs the program named by
+          # `diff.external` or `core.fsmonitor` in .git/config, by a
+          # `.git/hooks/` script, and by the same keys in the runner's
+          # global config - three writable locations, so no permission on
+          # one file contains it. The critics Read the prepared diff
+          # instead, and the prompt redirects every other shell form a
+          # critic contract states to Grep and Read; subagents inherit the
+          # allowlist, so one that tries a shell is denied silently inside
+          # its own session. A future `Bash(...)` grant must be quoted: the
+          # action collapses an unquoted pattern to bare `Bash`, widening
+          # it with no visible signal.
           #
           # `--add-dir` is what lets the session reach the context
           # directory at all: file tools are scoped to the working
@@ -498,7 +507,7 @@ jobs:
             --model ${{ vars.AI_REVIEW_BEDROCK_MODEL }}
             --max-turns 200
             --add-dir ${{ runner.temp }}/ai-review
-            --allowedTools "Read,Grep,Glob,Task,Write,Edit,Bash(git checkout:*)"
+            --allowedTools "Read,Grep,Glob,Task,Write,Edit"
           prompt: |
             You are orchestrating a rigorous code review of pull request
             #${{ needs.resolve.outputs.pr_number }} in ${{ github.repository }}. The PR head is already checked out in the
@@ -548,14 +557,17 @@ jobs:
                  - the diff is CONTEXT/pr.diff, to Read. No critic may run
                    `git diff`; that grant does not exist in this session.
                    BASE_SHA is for citing commits, not for diffing.
-                 - the PR title and body are not available. Pass the branch
-                   name from CONTEXT/head-ref.txt as the only scope reference,
-                   plus any `.claude/plans/` file in the repo.
-                 - shell is not available beyond `git checkout`. Verification
-                   a contract states as a shell command runs through Grep and
-                   Read instead: the cross-harness lockstep counts come from
-                   `Grep` over the five skill-doc paths, not from the
-                   `grep -c` loop `CLAUDE.md` writes.
+                 - the PR title and body are not available. The branch name
+                   in CONTEXT/head-ref.txt is the only scope reference; a
+                   critic whose contract reads a plan or ticket source has
+                   none in this repo.
+                 - there is no shell. Verification a contract states as a
+                   shell command runs through Grep and Read instead: the
+                   cross-harness lockstep counts come from `Grep` over the
+                   five skill-doc paths, not from the `grep -c` loop
+                   `CLAUDE.md` writes. A measurement or a build, lint or
+                   test step a contract prescribes has nothing to run in
+                   this repo; reason from the text and say so.
 
                Run conditionally - decide from the diff BEFORE spawning, and
                state in the run log which conditional critics you spawned and
@@ -641,9 +653,13 @@ jobs:
               - "comments": inline comments anchored to changed (new-side)
                 lines only; compute new-side line numbers from CONTEXT/pr.diff
                 hunks. A finding whose code is not a changed line goes in the
-                summary "body" instead. Each inline comment carries severity,
-                what + why + concrete fix, and the verifying quote for runtime
-                claims. Use [] when there are none.
+                summary "body" instead. Use [] when there are none. Each
+                element is exactly {"path": "<repo-relative path as it
+                appears in CONTEXT/pr.diff>", "line": <new-side line
+                number>, "body": "<severity, what + why + concrete fix, and
+                the verifying quote for a runtime claim>"} - no other keys,
+                and never "position". The posting step drops the whole
+                review to a notice if an element carries any other shape.
             Do NOT set "event" or "commit_id". The posting step sets both.
 
             ## Hard rules
@@ -660,8 +676,9 @@ jobs:
               acquire any.
             - Do not leave working-tree edits behind. Verification may modify
               files (the simplification critic writes a replacement to inspect
-              it); the tree must be back at HEAD before the review is posted,
-              and no commit or push is ever made from this job.
+              it); undo each one with Edit, since this session has no
+              `git checkout` to revert with, so every later critic reads the
+              code under review. Nothing is committed or pushed from this job.
             - No Claude / AI / "generated with" attribution anywhere in the
               posted review or comments.
             - Never use the em-dash character in posted text.
@@ -699,11 +716,10 @@ jobs:
         run: |
           set -u
           CTX="${RUNNER_TEMP}/ai-review"
-          if [ -f "$CTX/context-error.txt" ]; then
-            echo "::warning::the context step reported $(cat "$CTX/context-error.txt"); posting a notice in place of the review."
-            jq -n --arg sha "$HEAD_SHA" --arg why "$(cat "$CTX/context-error.txt")" \
-              '{event:"COMMENT", commit_id:$sha, body:("The AI review did not run: the review context could not be prepared (" + $why + "), so no diff was reviewed. See the run log for this job. Do not read the absence of findings here as a clean review.")}' \
-              > "$CTX/review-final.json"
+          if [ -f "$CTX/no-review.txt" ]; then
+            echo "::warning::the context step found nothing to review; posting its notice in place of the review."
+            jq -n --arg sha "$HEAD_SHA" --arg body "$(cat "$CTX/no-review.txt")" \
+              '{event:"COMMENT", commit_id:$sha, body:$body}' > "$CTX/review-final.json"
             exit 0
           fi
           if jq -e 'type=="object" and (.body|type=="string") and (.body|length>0)
@@ -728,6 +744,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
         run: |
           set -u
           CTX="${RUNNER_TEMP}/ai-review"
@@ -735,13 +752,40 @@ jobs:
             echo "::error::${CTX}/review-final.json is missing, so the payload step never produced one. No review was posted for this run."
             exit 1
           fi
-          if gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --input "$CTX/review-final.json"; then
+          # `--include` keeps the status line, which is the only thing that
+          # tells a payload the API refuses (422, an inline comment that
+          # cannot be anchored) apart from a transport failure. Folding a
+          # 502 would publish a body-only review for a payload that was
+          # valid, so the two get different recoveries.
+          post() {
+            gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+              --input "$1" --include > "$CTX/post-response.txt" 2>&1
+            status=$?
+            cat "$CTX/post-response.txt"
+            return $status
+          }
+          if post "$CTX/review-final.json"; then
             exit 0
+          fi
+          if ! grep -qiE '^HTTP/[0-9.]+ 422' "$CTX/post-response.txt"; then
+            # A dropped response can follow a review the server already
+            # created, and the run promises exactly one review, so the
+            # retry checks before it repeats itself. The pause is for a
+            # secondary rate limit, which rejects an immediate retry.
+            sleep 30
+            if gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --paginate --slurp \
+              | jq -e --arg sha "$HEAD_SHA" 'add | any(.user.login=="github-actions[bot]" and .commit_id==$sha)' >/dev/null; then
+              echo "::notice::the review was created despite the failed response; not posting a second one."
+              exit 0
+            fi
+            echo "::warning::posting the review failed with no validation error; retrying the same payload once."
+            post "$CTX/review-final.json"
+            exit $?
           fi
           # One unanchorable inline comment rejects the whole review, and
           # the summary body does not repeat the findings, so the retry
           # folds them in rather than dropping their text.
-          echo "::warning::posting with inline comments failed; retrying once with every inline finding folded into the summary body."
+          echo "::warning::posting with inline comments was rejected; retrying once with every inline finding folded into the summary body."
           # The fold must not become the single point of failure for a
           # comment shape nobody enumerated: if it errors, the summary
           # body still posts on its own.

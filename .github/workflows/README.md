@@ -55,21 +55,25 @@ workflow-level grant is `contents: read`.
 Every GitHub API call happens in a shell step, never in the prompt. The
 agent session receives the diff, this bot's own prior reviews and inline
 comments (filtered to `github-actions[bot]` at fetch time), and the branch
-name, and the checkout does not persist the job token into `.git/config`.
-Containment is the tool allowlist, not the environment: the action passes
-its whole process environment to the CLI, so the session's env does hold
-the Bedrock credentials and a copy of the workflow token, but the session
-has no tool that can reach the GitHub API or the network, no `gh`, no MCP
-server and no unrestricted shell, so it holds nothing it can spend. The
+name. `.git/config` is not token-free: the checkout runs with
+`persist-credentials: false`, but the review action re-adds the job token
+to `remote.origin.url` in agent mode, where the session's Read grant can
+see it. Containment is the tool allowlist, not the environment: the
+action passes its whole process environment to the CLI, so the session's
+env does hold the Bedrock credentials and a copy of the workflow token,
+but the session has no tool that can reach the GitHub API or the network,
+no `gh`, no MCP server and no shell, so it holds nothing it can spend. The
 posting step shares this job and its `pull-requests: write`, so widening
 `--allowedTools` toward any network- or `gh`-capable tool restores the
 write primitive and requires moving the post into a job of its own. The
-one shell grant is `git checkout`, and the context step makes
-`.git/config` read-only before the agent runs, because git executes the
-program named by repo-local keys such as `core.fsmonitor` and the session
-holds `Write` over the workspace. PR text written by a third party
-therefore reaches the agent only as diff content, and a base ref that
-cannot be resolved posts a notice rather than an empty-diff review that
+session holds no shell at all, `git` included: with `Write` in the same
+session, any git invocation executes the program named by
+`diff.external` or `core.fsmonitor`, out of the repo config, the runner's
+global config or a `.git/hooks/` script, so no permission on one of those
+files contains it. PR text written by a third party therefore reaches the
+agent only as diff content. A base ref that cannot be resolved, and a
+head with no diff against a base that did resolve, each post a notice
+naming which of the two happened, rather than an empty-diff review that
 would read as clean. The agent writes a review payload to a file;
 a later shell step validates its shape and posts it with `event` and
 `commit_id` set by the workflow, so the bot cannot approve a PR even if
@@ -85,13 +89,15 @@ diff and the branch name.
 The vendored critics in `.claude/agents/` run no shell command of their
 own: the orchestrator prompt hands each one the prepared diff to `Read`,
 so the `git diff <base_sha>...HEAD` their files prescribe is not needed,
-and every other verification a critic file prescribes as a shell form
-(the lockstep count loop `CLAUDE.md` writes as a `for`/`grep -c` loop is
-the one instance) is served by `Grep` and `Read`. `git checkout` is the
-only shell grant, for the simplification critic's edit-and-revert cycle.
-A critic file that needs any other shell form needs the matching grant
-added in the same change; without it that critic is denied inside its own
-subagent, which degrades the review silently instead of failing the job.
+and the shell forms a critic file still prescribes - the `for`/`grep -c`
+lockstep loop from `CLAUDE.md`, plus `simplification-reviewer.md`'s
+`wc -c` measurement and its build/lint/test step - are redirected by the
+orchestrator prompt to `Grep` and `Read`, or to inspection where this
+repo, markdown and JSON with no build system, has nothing to run. The
+session holds no shell grant at all, so a critic file that starts
+prescribing a shell form needs that override extended in the same change;
+without it the critic is denied inside its own subagent, which degrades
+the review silently instead of failing the job.
 
 ## Required repo configuration
 
