@@ -13,6 +13,8 @@ into `.claude/agents/`.
 - `.claude/agents/*.md` - a critic panel adapted for this repo's shape
   (skill docs, slash commands, plugin manifests - no compiled language,
   no CI to gate on).
+- `.github/tests/` - the test suite for this workflow's shell steps and
+  for the guarantees its structure makes. See "Tests" below.
 
 ## What this repo runs
 
@@ -36,8 +38,10 @@ decided in the prompt before the panel spawns):
 
 Not run at all: `security-reviewer`, `test-reviewer`, `robustness-reviewer`,
 `architecture-reviewer`, `compliance-reviewer`. The repo ships no service
-code: no test suite, no deploy artifact or ring, no module-boundary
-complexity worth a dedicated pass, and no PRC or threat-model artifacts.
+code: no deploy artifact or ring, no module-boundary complexity worth a
+dedicated pass, and no PRC or threat-model artifacts. The one body of
+executable content is this workflow's own shell, which has its own suite
+under `.github/tests/` rather than a critic seat.
 The one privileged surface is `ai-review.yml` itself, whose security
 properties are recorded below rather than delegated to a critic that does
 not run.
@@ -98,6 +102,40 @@ session holds no shell grant at all, so a critic file that starts
 prescribing a shell form needs that override extended in the same change;
 without it the critic is denied inside its own subagent, which degrades
 the review silently instead of failing the job.
+
+## Tests
+
+```bash
+.github/tests/run.sh
+```
+
+Needs `bash`, `git`, `jq` and `python3` with PyYAML. Nothing invokes it
+automatically: this repo runs no CI beyond the review itself, so run it
+before pushing a change to `ai-review.yml`.
+
+Each suite extracts the `run:` bodies from the committed workflow and
+executes them under the shell Actions gives them, with `gh` and `sleep`
+replaced by stubs, so the code under test is the code that ships. What
+the suites pin down:
+
+- `workflow-contract.test.sh` - the guarantees that live in the
+  structure: per-job token scope, an agent allowlist with no shell and
+  nothing that reaches the network, a checkout that persists no
+  credentials, the step order, and the trigger surface.
+- `resolve-step.test.sh` - the per-trigger gate and the five outputs the
+  review job runs on, including the branch name.
+- `context-step.test.sh` - the files the agent is allowed to read, the
+  filtering that keeps third-party text out of them, and the degraded
+  inputs that must warn rather than fail the job.
+- `payload-step.test.sh` - every payload shape that reaches the API as
+  one review, and every shape that reaches it as the notice instead.
+- `post-step.test.sh` - one review per run, and the two recoveries: a
+  rejected payload keeps its findings in the body, a transport failure
+  keeps its payload and does not publish twice.
+
+A case that needs `gh` behaviour the stub does not have belongs in the
+stub, not in a mock of the step: a test that reimplements the step
+proves the test.
 
 ## Required repo configuration
 
