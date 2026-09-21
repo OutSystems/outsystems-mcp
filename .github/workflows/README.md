@@ -7,7 +7,9 @@ workflow elsewhere in the org would need for its cross-repo checkout, so
 into `.claude/agents/`.
 
 - `ai-review.yml` - the full workflow: trigger gating, SHA pinning, OIDC
-  Bedrock auth, and the inline review prompt.
+  Bedrock auth, a shell step that prepares the review context, the inline
+  review prompt the agent runs against it, and the shell steps that
+  validate the agent's payload and post the one review.
 - `.claude/agents/*.md` - a critic panel adapted for this repo's shape
   (skill docs, slash commands, plugin manifests - no compiled language,
   no CI to gate on).
@@ -33,13 +35,47 @@ decided in the prompt before the panel spawns):
   every agent that reads it. Spawned when the diff adds or changes code.
 
 Not run at all: `security-reviewer`, `test-reviewer`, `robustness-reviewer`,
-`architecture-reviewer`, `compliance-reviewer`. This repo has no
-secrets/injection/authz surface, no test suite, no deploy artifact or ring,
-no module-boundary complexity worth a dedicated pass, and no PRC or
-threat-model artifacts.
+`architecture-reviewer`, `compliance-reviewer`. The repo ships no service
+code: no test suite, no deploy artifact or ring, no module-boundary
+complexity worth a dedicated pass, and no PRC or threat-model artifacts.
+The one privileged surface is `ai-review.yml` itself, whose security
+properties are recorded below rather than delegated to a critic that does
+not run.
 
 Max 3 review rounds; MUST and SHOULD findings post inline, COULD and
 lower collapse into the review body.
+
+## Security properties of the review workflow
+
+The repo holds `AI_REVIEW_AWS_ROLE_ARN` and an OIDC trust relationship.
+Both are reachable only from the `ai-review` job, which is also the only
+job granted `id-token: write` and `pull-requests: write`; the
+workflow-level grant is `contents: read`.
+
+Every GitHub API call happens in a shell step, never in the prompt. The
+agent session receives the diff, this bot's own prior reviews and inline
+comments (filtered to `github-actions[bot]` at fetch time), and the branch
+name. It holds no GitHub token, no network-capable tool, and no
+unrestricted shell, and the checkout does not persist the job token into
+`.git/config`. PR text written by a third party therefore reaches the
+agent only as diff content. The agent writes a review payload to a file;
+a later shell step validates its shape and posts it with `event` and
+`commit_id` set by the workflow, so the bot cannot approve a PR even if
+the prompt is subverted, and a crashed agent yields a visible notice
+rather than silence.
+
+Two consequences of dropping the untrusted inputs. The review cannot dedup
+against human review comments, since those are the untrusted channel and
+are no longer fetched, so it may repeat a point a reviewer already made.
+And the PR title and body are out of context: the review is bound to the
+diff and the branch name.
+
+The vendored critics in `.claude/agents/` may run only the shell forms
+`ai-review.yml`'s `--allowedTools` names, today `git diff` and
+`git checkout`. A critic file that tells its agent to run anything else
+needs the matching grant added in the same change; without it that critic
+is denied inside its own subagent, which degrades the review silently
+instead of failing the job.
 
 ## Required repo configuration
 
