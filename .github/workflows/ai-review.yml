@@ -24,7 +24,8 @@ name: AI PR Review
 #   approval gate.
 #
 # Every GitHub API call lives in a shell step, never in the prompt, and
-# the agent holds no GitHub token and no unrestricted shell. PR text
+# the agent holds no GitHub-API-capable tool and no unrestricted shell
+# grant (the credentials are in its process env; no tool spends them). PR text
 # written by a third party therefore reaches the agent only as diff
 # content, and the `event` and `commit_id` of the posted review are set
 # by the workflow rather than by the model.
@@ -316,8 +317,9 @@ jobs:
     if: needs.resolve.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     # The only job granted OIDC and a write scope. `pull-requests: write`
-    # is consumed by the posting step, not by the agent step: the agent
-    # holds no GitHub token and no tool that could reach the API.
+    # is consumed by the posting step, not by the agent step, which shares
+    # the job: the agent's env holds the token, and its tool allowlist is
+    # what leaves it with nothing that can reach the GitHub API.
     permissions:
       contents: read
       pull-requests: write
@@ -368,11 +370,24 @@ jobs:
           # this script.
           HEAD_REF: ${{ needs.resolve.outputs.head_ref }}
         run: |
-          set -u
+          # `pipefail` is the runner default; it is set here too because a
+          # fetch below is a pipeline whose fallback depends on it.
+          set -uo pipefail
           CTX="${RUNNER_TEMP}/ai-review"
           mkdir -p "$CTX"
 
           printf '%s\n' "$HEAD_REF" > "$CTX/head-ref.txt"
+
+          # `git checkout` is granted to the agent, and git executes the
+          # program named by repo-local config keys such as
+          # `core.fsmonitor`, so a writable .git/config turns that one
+          # grant into arbitrary code execution: the agent holds Write over
+          # the workspace. Read-only defeats it, since no granted tool can
+          # restore the mode, and every git read this job still needs works
+          # on a read-only config. The checkout action's post step only
+          # unsets config keys that exist, which `persist-credentials:
+          # false` already removed, and treats a failed unset as a warning.
+          chmod a-w "$(git rev-parse --git-dir)/config" || echo "::warning::could not make .git/config read-only; the agent's git grant is no longer confined to it."
 
           if ! BASE_SHA=$(git merge-base "origin/${BASE_REF}" "$HEAD_SHA"); then
             echo "::warning::git merge-base origin/${BASE_REF} ${HEAD_SHA} failed; diffing the base branch tip directly, which can include lines this PR did not change."
@@ -384,19 +399,34 @@ jobs:
           # The right-hand side is the pinned SHA, not HEAD, so the diff
           # cannot widen to a head that moved after the trigger.
           if ! git diff "$BASE_SHA" "$HEAD_SHA" > "$CTX/pr.diff"; then
-            echo "::warning::git diff ${BASE_SHA} ${HEAD_SHA} failed; the agent reviews an empty diff and says so in the review it posts."
+            echo "::warning::git diff ${BASE_SHA} ${HEAD_SHA} failed; there is nothing for the agent to review."
             : > "$CTX/pr.diff"
+          fi
+          # An unresolvable base leaves no diff, and a review of no diff
+          # is indistinguishable from a clean review once posted. The
+          # marker makes the payload step post the notice instead, so the
+          # failure is visible on the PR and not only in this log.
+          if [ -z "$BASE_SHA" ] || [ ! -s "$CTX/pr.diff" ]; then
+            printf 'base_sha=%s, pr.diff is empty\n' "${BASE_SHA:-unresolved}" > "$CTX/context-error.txt"
+            echo "::warning::the review context could not be prepared (base_sha='${BASE_SHA}', empty diff); this run posts a notice instead of a review."
           fi
 
           # A missing prior-findings list degrades the re-review scorecard
           # into a first review; it does not invalidate the review.
+          # The filter runs in a pipe, not in `--jq`: gh rejects
+          # `--slurp` combined with `--jq`, and `--paginate --jq` without
+          # `--slurp` applies the filter per page and emits one array per
+          # page. `pipefail` is on, so a failed fetch still reaches the
+          # fallback, and the raw response never touches disk - only the
+          # filtered result, which is why no third-party text is written
+          # to a directory the agent can read.
           if ! gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --paginate --slurp \
-            --jq 'add | [.[] | select(.user.login=="github-actions[bot]")]' > "$CTX/prior-reviews.json"; then
+            | jq 'add | [.[] | select(.user.login=="github-actions[bot]")]' > "$CTX/prior-reviews.json"; then
             echo "::warning::could not fetch prior reviews for PR #${PR_NUMBER}; treating this run as a first review."
             echo "[]" > "$CTX/prior-reviews.json"
           fi
           if ! gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" --paginate --slurp \
-            --jq 'add | [.[] | select(.user.login=="github-actions[bot]")]' > "$CTX/prior-comments.json"; then
+            | jq 'add | [.[] | select(.user.login=="github-actions[bot]")]' > "$CTX/prior-comments.json"; then
             echo "::warning::could not fetch prior inline comments for PR #${PR_NUMBER}; the review cannot dedup against earlier runs."
             echo "[]" > "$CTX/prior-comments.json"
           fi
@@ -438,13 +468,21 @@ jobs:
           CLAUDE_CODE_USE_BEDROCK: "1"
         with:
           use_bedrock: "true"
-          # Consumed by the action's own actor check. The session itself
-          # gets no GitHub token and no tool that could spend one.
+          # Consumed by the action's own actor check. The action passes its
+          # whole process environment to the CLI, so this token and the
+          # Bedrock credentials are in the session's env; what the session
+          # has no tool for is spending them.
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # The allowlist is the containment boundary, so each grant is
           # earned: Task spawns the critic panel, Write emits the review
           # payload, and Edit plus `git checkout` are the edit-and-revert
           # cycle .claude/agents/simplification-reviewer.md prescribes.
+          # `git diff` is not granted: the critics get the prepared diff to
+          # Read, and a `git diff` grant is arbitrary code execution given
+          # Write over the workspace, because git runs the program named by
+          # `diff.external` in .git/config. `git checkout` runs
+          # `core.fsmonitor` the same way, which is why the context step
+          # makes that file read-only.
           # Subagents inherit this grant, so a critic told to run a shell
           # form outside these prefixes is denied silently inside its own
           # session. The value is quoted because the action collapses an
@@ -460,7 +498,7 @@ jobs:
             --model ${{ vars.AI_REVIEW_BEDROCK_MODEL }}
             --max-turns 200
             --add-dir ${{ runner.temp }}/ai-review
-            --allowedTools "Read,Grep,Glob,Task,Write,Edit,Bash(git diff:*),Bash(git checkout:*)"
+            --allowedTools "Read,Grep,Glob,Task,Write,Edit,Bash(git checkout:*)"
           prompt: |
             You are orchestrating a rigorous code review of pull request
             #${{ needs.resolve.outputs.pr_number }} in ${{ github.repository }}. The PR head is already checked out in the
@@ -471,7 +509,7 @@ jobs:
             GitHub API calls and has no network access; read these files
             instead. CONTEXT = ${{ runner.temp }}/ai-review
             - CONTEXT/pr.diff - the diff under review.
-            - CONTEXT/base-sha.txt - BASE_SHA. Pass it to every critic.
+            - CONTEXT/base-sha.txt - BASE_SHA.
             - CONTEXT/head-ref.txt - the PR's branch name. May be empty.
             - If the branch name carries a ticket reference, state the
               scope the review is bound to. Out-of-scope findings are still
@@ -500,11 +538,24 @@ jobs:
             Keep a `seen` set of confirmed findings keyed by file:line + claim.
 
             1. PANEL: spawn these subagents IN PARALLEL (one message, multiple
-               Task calls), each given BASE_SHA and told to cite file:line and
-               return only actionable findings. Each agent's full contract
-               lives in its `.claude/agents/<name>.md` file; do not re-derive
-               scope from a critic's short description, read the agent file
-               if a boundary is unclear.
+               Task calls), each told to cite file:line and return only
+               actionable findings. Each agent's full contract lives in its
+               `.claude/agents/<name>.md` file; do not re-derive scope from a
+               critic's short description, read the agent file if a boundary
+               is unclear. Override these three points of every contract in
+               the Task prompt you write, because the contracts assume a
+               session this one is not:
+                 - the diff is CONTEXT/pr.diff, to Read. No critic may run
+                   `git diff`; that grant does not exist in this session.
+                   BASE_SHA is for citing commits, not for diffing.
+                 - the PR title and body are not available. Pass the branch
+                   name from CONTEXT/head-ref.txt as the only scope reference,
+                   plus any `.claude/plans/` file in the repo.
+                 - shell is not available beyond `git checkout`. Verification
+                   a contract states as a shell command runs through Grep and
+                   Read instead: the cross-harness lockstep counts come from
+                   `Grep` over the five skill-doc paths, not from the
+                   `grep -c` loop `CLAUDE.md` writes.
 
                Run conditionally - decide from the diff BEFORE spawning, and
                state in the run log which conditional critics you spawned and
@@ -631,9 +682,12 @@ jobs:
       # The gate is a shape check, not a parse check: `jq empty` also
       # accepts an array, a bare string, `null`, and `{"comments":"none"}`,
       # each of which either aborts the transform and leaves no file or
-      # reaches the API and is rejected there. Everything that is not the
-      # expected shape routes to the same notice, so a run always has
-      # exactly one thing to post.
+      # reaches the API and is rejected there. It reaches into the
+      # elements too, because `"comments":["text"]` and an empty `body`
+      # both pass a container-only check and are then rejected by the
+      # API, which would leave the run with no review at all. Everything
+      # that is not the expected shape routes to the same notice, so a
+      # run always has exactly one thing to post.
       #
       # `!cancelled()` rather than `always()`: a concurrency cancellation
       # means a newer push is already reviewing this PR, and that run
@@ -645,7 +699,16 @@ jobs:
         run: |
           set -u
           CTX="${RUNNER_TEMP}/ai-review"
-          if jq -e 'type=="object" and (.body|type=="string") and ((.comments // [])|type=="array")' \
+          if [ -f "$CTX/context-error.txt" ]; then
+            echo "::warning::the context step reported $(cat "$CTX/context-error.txt"); posting a notice in place of the review."
+            jq -n --arg sha "$HEAD_SHA" --arg why "$(cat "$CTX/context-error.txt")" \
+              '{event:"COMMENT", commit_id:$sha, body:("The AI review did not run: the review context could not be prepared (" + $why + "), so no diff was reviewed. See the run log for this job. Do not read the absence of findings here as a clean review.")}' \
+              > "$CTX/review-final.json"
+            exit 0
+          fi
+          if jq -e 'type=="object" and (.body|type=="string") and (.body|length>0)
+                    and ((.comments // [])|type=="array")
+                    and ((.comments // [])|all(type=="object" and has("path") and has("line") and (.body|type=="string")))' \
                "$CTX/review.json" >/dev/null 2>&1 \
             && jq --arg sha "$HEAD_SHA" \
                '{event:"COMMENT", commit_id:$sha, body:.body, comments:(.comments // [])}' \
@@ -679,7 +742,13 @@ jobs:
           # the summary body does not repeat the findings, so the retry
           # folds them in rather than dropping their text.
           echo "::warning::posting with inline comments failed; retrying once with every inline finding folded into the summary body."
-          jq 'if ((.comments // []) | length) == 0 then {event, commit_id, body}
+          # The fold must not become the single point of failure for a
+          # comment shape nobody enumerated: if it errors, the summary
+          # body still posts on its own.
+          if ! jq 'if ((.comments // []) | length) == 0 then {event, commit_id, body}
               else {event, commit_id, body: (.body + "\n\n## Findings that could not be anchored inline\n\n" + ([.comments[] | "- `\(.path):\(.line)`\n\n\(.body)"] | join("\n\n")))}
-              end' "$CTX/review-final.json" > "$CTX/review-folded.json"
+              end' "$CTX/review-final.json" > "$CTX/review-folded.json"; then
+            echo "::warning::folding the inline findings into the body failed; posting the summary body alone."
+            jq '{event, commit_id, body}' "$CTX/review-final.json" > "$CTX/review-folded.json"
+          fi
           gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --input "$CTX/review-folded.json"

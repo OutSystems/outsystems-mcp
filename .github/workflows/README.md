@@ -55,10 +55,22 @@ workflow-level grant is `contents: read`.
 Every GitHub API call happens in a shell step, never in the prompt. The
 agent session receives the diff, this bot's own prior reviews and inline
 comments (filtered to `github-actions[bot]` at fetch time), and the branch
-name. It holds no GitHub token, no network-capable tool, and no
-unrestricted shell, and the checkout does not persist the job token into
-`.git/config`. PR text written by a third party therefore reaches the
-agent only as diff content. The agent writes a review payload to a file;
+name, and the checkout does not persist the job token into `.git/config`.
+Containment is the tool allowlist, not the environment: the action passes
+its whole process environment to the CLI, so the session's env does hold
+the Bedrock credentials and a copy of the workflow token, but the session
+has no tool that can reach the GitHub API or the network, no `gh`, no MCP
+server and no unrestricted shell, so it holds nothing it can spend. The
+posting step shares this job and its `pull-requests: write`, so widening
+`--allowedTools` toward any network- or `gh`-capable tool restores the
+write primitive and requires moving the post into a job of its own. The
+one shell grant is `git checkout`, and the context step makes
+`.git/config` read-only before the agent runs, because git executes the
+program named by repo-local keys such as `core.fsmonitor` and the session
+holds `Write` over the workspace. PR text written by a third party
+therefore reaches the agent only as diff content, and a base ref that
+cannot be resolved posts a notice rather than an empty-diff review that
+would read as clean. The agent writes a review payload to a file;
 a later shell step validates its shape and posts it with `event` and
 `commit_id` set by the workflow, so the bot cannot approve a PR even if
 the prompt is subverted, and a crashed agent yields a visible notice
@@ -70,12 +82,16 @@ are no longer fetched, so it may repeat a point a reviewer already made.
 And the PR title and body are out of context: the review is bound to the
 diff and the branch name.
 
-The vendored critics in `.claude/agents/` may run only the shell forms
-`ai-review.yml`'s `--allowedTools` names, today `git diff` and
-`git checkout`. A critic file that tells its agent to run anything else
-needs the matching grant added in the same change; without it that critic
-is denied inside its own subagent, which degrades the review silently
-instead of failing the job.
+The vendored critics in `.claude/agents/` run no shell command of their
+own: the orchestrator prompt hands each one the prepared diff to `Read`,
+so the `git diff <base_sha>...HEAD` their files prescribe is not needed,
+and every other verification a critic file prescribes as a shell form
+(the lockstep count loop `CLAUDE.md` writes as a `for`/`grep -c` loop is
+the one instance) is served by `Grep` and `Read`. `git checkout` is the
+only shell grant, for the simplification critic's edit-and-revert cycle.
+A critic file that needs any other shell form needs the matching grant
+added in the same change; without it that critic is denied inside its own
+subagent, which degrades the review silently instead of failing the job.
 
 ## Required repo configuration
 
