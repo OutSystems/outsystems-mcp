@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "outsystems": {
+      "type": "http",
+      "url": "https://${user_config.tenant_hostname}/mcp"
+    }
+  }
+}
