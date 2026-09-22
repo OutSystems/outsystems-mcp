@@ -239,6 +239,8 @@ Version lives in five places and must stay in sync:
 
 Bump all five in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
 
+The same lockstep applies to the other shared manifest fields (`description`, `author`, `keywords`, `license`, `homepage`, `repository`, and `displayName` where the host supports it), to the description in both `marketplace.json` entries, and to the description and keywords in `kiro/outsystems/POWER.md`'s frontmatter. See CLAUDE.md's "Manifest version lockstep" for the field-by-field rule.
+
 For Claude Code, `claude plugin update` compares the version in `.claude-plugin/plugin.json`. Leave that one behind and users are told "already at the latest version" and never pull the new content, even after `claude plugin marketplace update`. The marketplace entry is what a user browses before installing, so keeping it in step matters for what a release advertises rather than for whether the update fires.
 
 Cursor's resolution has not been verified the same way. Bump both Cursor manifests together and do not rely on one covering for the other.

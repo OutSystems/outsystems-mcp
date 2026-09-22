@@ -1,8 +1,8 @@
 ---
 name: "outsystems"
 displayName: "OutSystems - MCP"
-description: "Drive OutSystems from Kiro over the MCP HTTP transport: edit apps, publish, deploy, search tenant elements, manage external libraries."
-keywords: [outsystems, low-code, oml, deployment, mcp]
+description: "Edit, publish, deploy, and search OutSystems apps, and manage external libraries, from your AI assistant. Connects to your own OutSystems tenant's MCP server over OAuth."
+keywords: ["outsystems", "odc", "outsystems developer cloud", "odc studio", "oml", "outsystems mentor"]
 author: "OutSystems AI Platform"
 ---
 
