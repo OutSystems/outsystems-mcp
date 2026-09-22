@@ -78,11 +78,16 @@ files contains it. PR text written by a third party therefore reaches the
 agent only as diff content. A base ref that cannot be resolved, and a
 head with no diff against a base that did resolve, each post a notice
 naming which of the two happened, rather than an empty-diff review that
-would read as clean. The agent writes a review payload to a file;
-a later shell step validates its shape and posts it with `event` and
+would read as clean. That route is taken from the context step's outputs,
+never from a file in the directory the agent can write. The agent writes
+a review payload to a file; a later shell step validates its shape and
+posts it with `event` and
 `commit_id` set by the workflow, so the bot cannot approve a PR even if
 the prompt is subverted, and a crashed agent yields a visible notice
-rather than silence.
+rather than silence. Every notice ends with a hidden
+`<!-- ai-review:notice -->` marker, and the next run never takes a
+notice's head as the last reviewed one, so the changes at that head still
+count as new.
 
 Two consequences of dropping the untrusted inputs. The review cannot dedup
 against human review comments, since those are the untrusted channel and
@@ -127,16 +132,18 @@ the suites pin down:
   review job runs on, including the branch name.
 - `context-step.test.sh` - the files the agent is allowed to read, the
   filtering that keeps third-party text out of them, the delta staying
-  inside the diff under review, and the degraded inputs that must warn
-  rather than fail the job.
+  inside the diff under review, a notice never standing in for the last
+  review, and the degraded inputs that must warn rather than fail the job.
 - `payload-step.test.sh` - every payload whose keys reach the API as one
-  review, and every one that reaches it as the notice instead. The gate
+  review, every one that reaches it as the notice instead, and a notice
+  route that only the context step's outputs can select. The gate
   checks keys, not value types: an element with the right keys and a
   wrong value type reaches the API, and the post step's fold is what
   keeps its finding.
 - `post-step.test.sh` - one review per run, and the two recoveries: a
   rejected payload keeps its findings in the body, a transport failure
-  keeps its payload and does not publish twice.
+  keeps its payload and does not publish twice, and an earlier run's
+  review of the same head is not mistaken for this run's.
 - `spec_untrusted_input_port.test.sh` - the properties that keep
   untrusted input away from the privileged agent: the comment fetch and
   the review POST are shell steps and not prompt instructions, the tool

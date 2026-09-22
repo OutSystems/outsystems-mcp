@@ -130,9 +130,11 @@ section "the shell steps take their inputs from the resolved SHA, not the run's"
 check "the context step's env pins the resolved PR context" \
   "$(step_field ai-review "Collect the review context" env)" \
   '{"BASE_REF":"${{ needs.resolve.outputs.base_ref }}","GH_TOKEN":"${{ secrets.GITHUB_TOKEN }}","HEAD_REF":"${{ needs.resolve.outputs.head_ref }}","HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","PR_NUMBER":"${{ needs.resolve.outputs.pr_number }}","REPO":"${{ github.repository }}"}'
-check "the payload step stamps the resolved SHA onto the review" \
+# The notice route is read from the context step's outputs, which the
+# agent cannot write, never from a file in its write scope.
+check "the payload step stamps the resolved SHA and routes on the context step's outputs" \
   "$(step_field ai-review "Build the review payload" env)" \
-  '{"HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}"}'
+  '{"HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","NO_REVIEW_NOTICE":"${{ steps.context.outputs.no_review_notice }}","SKIP_REVIEW":"${{ steps.context.outputs.skip_review }}"}'
 check "the post step probes for a duplicate against the resolved SHA" \
   "$(step_field ai-review "Post the review (exactly one, event=COMMENT)" env)" \
   '{"GH_TOKEN":"${{ secrets.GITHUB_TOKEN }}","HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","PR_NUMBER":"${{ needs.resolve.outputs.pr_number }}","REPO":"${{ github.repository }}"}'

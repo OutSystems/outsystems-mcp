@@ -91,11 +91,32 @@ check "the retry carries the same payload, findings included" \
   "$(sent 2 '.comments|length')" 1
 check "the secondary rate limit is waited out first" "$(paused)" yes
 
-ALREADY=$(reviews_file already '[[{"user":{"login":"github-actions[bot]"},"commit_id":"'"$HEAD_SHA"'"}]]')
+BOT_AT_HEAD='{"user":{"login":"github-actions[bot]"},"commit_id":"'"$HEAD_SHA"'"}'
+ALREADY=$(reviews_file already "[[$BOT_AT_HEAD]]")
 post transport-failure-already-posted "$WITH_FINDING" GH_POST_CODES=502,201 \
-  GH_REVIEWS_FILE="$ALREADY"
+  GH_REVIEWS_AFTER_POST_FILE="$ALREADY"
 check "step succeeds" "$STEP_RC" 0
 check "a review the server already created is not duplicated" "$(post_attempts)" 1
+check_match "and that is said out loud" "$STEP_OUT" \
+  '::notice::the review was created despite the failed response'
+
+# A re-run on a head an earlier run already reviewed: that review is
+# there before this run posts anything, so only a new one proves the
+# failed POST landed.
+PRIOR_RUN=$(reviews_file prior-run "[[$BOT_AT_HEAD]]")
+post transport-failure-same-head-rerun "$WITH_FINDING" GH_POST_CODES=502,201 \
+  GH_REVIEWS_FILE="$PRIOR_RUN"
+check "step succeeds" "$STEP_RC" 0
+check "an earlier run's review of the same head does not count as this run's" \
+  "$(post_attempts)" 2
+check_no_match "and the run does not claim its own POST landed" "$STEP_OUT" \
+  'the review was created despite the failed response'
+
+PRIOR_AND_LANDED=$(reviews_file prior-and-landed "[[$BOT_AT_HEAD,$BOT_AT_HEAD]]")
+post transport-failure-same-head-landed "$WITH_FINDING" GH_POST_CODES=502,201 \
+  GH_REVIEWS_FILE="$PRIOR_RUN" GH_REVIEWS_AFTER_POST_FILE="$PRIOR_AND_LANDED"
+check "a POST that landed on top of an earlier run's review is not duplicated" \
+  "$(post_attempts)" 1
 check_match "and that is said out loud" "$STEP_OUT" \
   '::notice::the review was created despite the failed response'
 
@@ -116,6 +137,16 @@ check "a probe that cannot answer fails the job" "$([ "$STEP_RC" -ne 0 ] && echo
 check "rather than risk a second review" "$(post_attempts)" 1
 check_match "and the run says the outcome is unknown" "$STEP_OUT" \
   '::error::posting the review failed and the check for a review it may still have created could not be made'
+
+post transport-failure-probe-down-after-post "$WITH_FINDING" GH_POST_CODES=502,201 \
+  GH_FAIL_AFTER_POST=1
+check "a probe that fails after a readable baseline fails the job too" \
+  "$([ "$STEP_RC" -ne 0 ] && echo yes)" yes
+check "without a second attempt" "$(post_attempts)" 1
+
+post baseline-down-post-ok "$WITH_FINDING" GH_FAIL_ENDPOINTS=reviews
+check "an unreadable baseline does not stop a POST that succeeds" "$STEP_RC" 0
+check "which is posted once" "$(post_attempts)" 1
 
 post transport-failure-twice "$WITH_FINDING" GH_POST_CODES=502,502
 check "a second transport failure fails the job" "$([ "$STEP_RC" -ne 0 ] && echo yes)" yes

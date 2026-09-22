@@ -28,6 +28,8 @@ context() { # case name, then VAR=VAL overrides
     GH_STUB_DIR="$GH_STUB_DIR" "$@"
 }
 
+output() { sed -n "s/^$1=//p" "$RT/step-output.txt"; }
+
 section "happy path: the five files the prompt reads, and nothing else"
 
 context happy
@@ -40,8 +42,8 @@ check "a first review has no previous head" "$(cat "$CTX/prev-sha.txt")" ""
 check "and no delta" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
 check "prior reviews default to an empty list" "$(cat "$CTX/prior-reviews.json")" "[]"
 check "prior inline comments default to an empty list" "$(cat "$CTX/prior-comments.json")" "[]"
-check_file_absent "nothing suppresses the review" "$CTX/no-review.txt"
-check "so the agent step is not skipped" "$(cat "$RT/step-output.txt")" ""
+check "nothing suppresses the review, so the agent step is not skipped" \
+  "$(cat "$RT/step-output.txt")" ""
 # Anything left in the checkout is inside the agent's Read/Grep scope and
 # would read as a repository change.
 check "the step leaves the workspace untouched" \
@@ -157,6 +159,30 @@ check "re-reviewing the same head does not fail the step" "$STEP_RC" 0
 check_match "it is reported" "$STEP_OUT" '::notice::the last review already covered'
 check "and the full diff is reviewed again" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
 
+section "a notice is not a review, so it never becomes the previous head"
+
+# A run that posted "did not complete" reviewed nothing at that head, so
+# diffing the next run from it would hide every change that head made.
+NOTICE_BODY='The AI review did not complete: the review job produced no usable review payload.\n\n<!-- ai-review:notice -->'
+NOTICE_ONLY=$(reviews_file notice-only '[[{"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"'"$FIRST"'","body":"'"$NOTICE_BODY"'"}]]')
+context notice-only GH_REVIEWS_FILE="$NOTICE_ONLY"
+check "step succeeds" "$STEP_RC" 0
+check "a head that only carries a notice is not a previous head" "$(cat "$CTX/prev-sha.txt")" ""
+check "so there is no delta to narrow the review" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
+check "the notice stays in the prior reviews the agent reads" \
+  "$(jq length "$CTX/prior-reviews.json")" 1
+
+REVIEW_THEN_NOTICE=$(reviews_file review-then-notice '[[
+  {"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"'"$FIRST"'","body":"## Review"},
+  {"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-02T00:00:00Z","commit_id":"'"$HEAD_SHA"'","body":"'"$NOTICE_BODY"'"}
+]]')
+context review-then-notice GH_REVIEWS_FILE="$REVIEW_THEN_NOTICE"
+check "step succeeds" "$STEP_RC" 0
+check "the previous head is the last real review, not the newer notice" \
+  "$(cat "$CTX/prev-sha.txt")" "$FIRST"
+check_match "so the delta keeps what the notice's head changed" \
+  "$(cat "$CTX/delta.diff")" '\+\+\+ b/two.txt'
+
 section "a failed fetch degrades the scorecard, it does not fail the run"
 
 context fetch-down GH_FAIL_ENDPOINTS=reviews,comments
@@ -177,19 +203,20 @@ check "base-sha.txt holds no ref string a critic could mistake for a SHA" \
   "$(cat "$CTX/base-sha.txt")" ""
 check "the diff is empty" "$(wc -c < "$CTX/pr.diff" | tr -d ' ')" 0
 check_match "the notice says the context could not be prepared" \
-  "$(cat "$CTX/no-review.txt")" 'the review context could not be prepared'
+  "$(output no_review_notice)" 'the review context could not be prepared'
 check_match "and warns against reading it as a clean review" \
-  "$(cat "$CTX/no-review.txt")" 'Do not read the absence of findings here as a clean review'
-check "the agent step is skipped" "$(cat "$RT/step-output.txt")" "skip_review=1"
+  "$(output no_review_notice)" 'Do not read the absence of findings here as a clean review'
+check "the agent step is skipped" "$(output skip_review)" 1
+check_file_absent "the notice text is not left where the agent could write" "$CTX/no-review.txt"
 
 context no-changes HEAD_SHA="$BASE"
 check "a head with no changes does not fail the step" "$STEP_RC" 0
 check_match "it is a notice, not a warning" "$STEP_OUT" '::notice::the diff against'
 check_match "the notice says there was nothing to review" \
-  "$(cat "$CTX/no-review.txt")" 'no changes against'
+  "$(output no_review_notice)" 'no changes against'
 check_no_match "and does not blame the context" \
-  "$(cat "$CTX/no-review.txt")" 'could not be prepared'
-check "the agent step is skipped" "$(cat "$RT/step-output.txt")" "skip_review=1"
+  "$(output no_review_notice)" 'could not be prepared'
+check "the agent step is skipped" "$(output skip_review)" 1
 
 section "a base ref that exists but shares no history with the head"
 

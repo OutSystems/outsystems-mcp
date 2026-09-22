@@ -28,6 +28,8 @@ check_notice() { # label
   check_match "$1: says the review did not complete" "$(final .body)" \
     'The AI review did not complete'
   check "$1: carries no inline comments" "$(final 'has("comments")')" false
+  check_match "$1: carries the marker the next run's delta skips" "$(final .body)" \
+    '<!-- ai-review:notice -->$'
 }
 
 section "a valid payload keeps its findings and loses its event"
@@ -114,17 +116,32 @@ check_match "and counted as accepted" "$STEP_OUT" 'payload accepted: 1 inline co
 section "when the context step already decided there is nothing to review"
 
 new_case notice-wins
-printf 'The AI review did not run: this pull request has no changes against abc.\n' > "$CTX/no-review.txt"
 printf '%s' '{"body":"I reviewed nothing and found nothing.","comments":[]}' > "$CTX/review.json"
-run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$HEAD_SHA" GH_STUB_DIR="$GH_STUB_DIR"
+run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$HEAD_SHA" GH_STUB_DIR="$GH_STUB_DIR" \
+  SKIP_REVIEW=1 NO_REVIEW_NOTICE='The AI review did not run: this pull request has no changes against abc.'
 check "step succeeds" "$STEP_RC" 0
-check "the context step's notice is what gets posted" "$(final .body)" \
-  'The AI review did not run: this pull request has no changes against abc.'
+check_match "the context step's notice is what gets posted" "$(final .body)" \
+  '^The AI review did not run: this pull request has no changes against abc\.'
 check "an agent payload written anyway is discarded" "$(final 'has("comments")')" false
 check "still a COMMENT on the pinned head" "$(final '.event + " " + .commit_id')" \
   "COMMENT $HEAD_SHA"
 check_match "and the substitution is logged" "$STEP_OUT" \
   '::warning::the context step found nothing to review'
+check_match "the notice carries the marker the next run's delta skips" "$(final .body)" \
+  '<!-- ai-review:notice -->$'
+
+section "only the context step can route a run to its notice"
+
+# The context directory is inside the agent's write scope, so a file
+# there proves nothing about who wrote it.
+new_case agent-written-notice
+printf '%s' '{"body":"real findings","comments":[{"path":"a","line":1,"body":"x"}]}' > "$CTX/review.json"
+printf 'arbitrary text the agent chose' > "$CTX/no-review.txt"
+run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$HEAD_SHA" GH_STUB_DIR="$GH_STUB_DIR"
+check "step succeeds" "$STEP_RC" 0
+check "the agent's payload still goes through the shape gate" "$(final .body)" "real findings"
+check "with its findings" "$(final '.comments|length')" 1
+check_no_match "a notice file the agent wrote is ignored" "$(final .body)" 'arbitrary text'
 
 section "when the context step never ran"
 

@@ -352,11 +352,15 @@ jobs:
       # the workspace so the tooling's own state can never be mistaken for
       # a repository change. The two fetches filter to this bot's own
       # output at fetch time, so no third-party text is written to disk at
-      # all. Ordered before the AWS step so no step holding Bedrock
-      # credentials also holds a live GitHub session.
+      # all. It runs before the Bedrock role is assumed, so this step
+      # never holds AWS credentials. Order gives no such separation
+      # later: configure-aws-credentials exports AWS_* to every step after
+      # it, and the agent session's env holds those alongside a GitHub
+      # token, so containment there rests on the tool allowlist, not on
+      # step order.
       #
       # Nothing in this step may exit non-zero. The agent step's only
-      # condition is the no-review marker written below, so a step failure
+      # condition is the skip_review output written below, so a step failure
       # would skip the agent for an unintended reason and leave the
       # `!cancelled()` posting steps publishing a "did not complete"
       # notice for a review that was never attempted. Each degraded input
@@ -399,18 +403,22 @@ jobs:
           # once posted, so both routes to one post a notice instead, and
           # the notice names which route it was: an unresolvable base is a
           # failure, a head that carries no change against its base is
-          # not. The file holds the text the payload step posts verbatim,
-          # and its presence also skips the agent, whose output would be
-          # discarded either way.
+          # not. The decision and the notice text leave as step outputs,
+          # not files: the context directory is inside the agent's write
+          # scope, so a file there could route a real review to a notice.
+          # skip_review also skips the agent, whose output would be
+          # discarded either way. A git ref name cannot contain a newline,
+          # so the notice fits the single-line output form.
+          NO_REVIEW_NOTICE=""
           if [ -z "$BASE_SHA" ]; then
-            printf 'The AI review did not run: the review context could not be prepared, because the base ref %s could not be resolved, so no diff was reviewed. See the run log for this job. Do not read the absence of findings here as a clean review.\n' "$BASE_REF" > "$CTX/no-review.txt"
+            NO_REVIEW_NOTICE="The AI review did not run: the review context could not be prepared, because the base ref ${BASE_REF} could not be resolved, so no diff was reviewed. See the run log for this job. Do not read the absence of findings here as a clean review."
             echo "::warning::the base ref ${BASE_REF} could not be resolved; this run posts a notice instead of a review."
           elif [ ! -s "$CTX/pr.diff" ]; then
-            printf 'The AI review did not run: this pull request has no changes against %s, so there was nothing to review.\n' "$BASE_SHA" > "$CTX/no-review.txt"
+            NO_REVIEW_NOTICE="The AI review did not run: this pull request has no changes against ${BASE_SHA}, so there was nothing to review."
             echo "::notice::the diff against ${BASE_SHA} is empty; this run posts a notice instead of a review."
           fi
-          if [ -e "$CTX/no-review.txt" ]; then
-            echo "skip_review=1" >> "$GITHUB_OUTPUT"
+          if [ -n "$NO_REVIEW_NOTICE" ]; then
+            printf 'skip_review=1\nno_review_notice=%s\n' "$NO_REVIEW_NOTICE" >> "$GITHUB_OUTPUT"
           fi
 
           # A missing prior-findings list degrades the re-review scorecard
@@ -433,7 +441,12 @@ jobs:
             echo "[]" > "$CTX/prior-comments.json"
           fi
 
-          PREV_SHA=$(jq -r 'sort_by(.submitted_at) | last | .commit_id // ""' "$CTX/prior-reviews.json") || PREV_SHA=""
+          # A notice reviewed nothing at its head, so it is skipped here:
+          # taking its commit as PREV_SHA would drop that head's changes
+          # from the next delta. The payload step stamps the marker on
+          # every notice it builds.
+          PREV_SHA=$(jq -r '[.[] | select((.body // "") | contains("<!-- ai-review:notice -->") | not)]
+                            | sort_by(.submitted_at) | last | .commit_id // ""' "$CTX/prior-reviews.json") || PREV_SHA=""
           printf '%s\n' "$PREV_SHA" > "$CTX/prev-sha.txt"
 
           # The delta is a filter over this PR's own commits, so a
@@ -720,6 +733,10 @@ jobs:
       # that is not the expected shape routes to the same notice, so a
       # run always has exactly one thing to post.
       #
+      # Every notice body ends with NOTICE_MARKER, which is how the next
+      # run's context step tells a notice from a review when it picks the
+      # previously reviewed head.
+      #
       # `!cancelled()` rather than `always()`: a concurrency cancellation
       # means a newer push is already reviewing this PR, and that run
       # posts its own review.
@@ -727,17 +744,20 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          SKIP_REVIEW: ${{ steps.context.outputs.skip_review }}
+          NO_REVIEW_NOTICE: ${{ steps.context.outputs.no_review_notice }}
         run: |
           set -u
           CTX="${RUNNER_TEMP}/ai-review"
+          NOTICE_MARKER='<!-- ai-review:notice -->'
           # The context step creates this directory, and a failed checkout
           # skips that step while this one still runs. Without the mkdir
           # the notice below cannot be written and the run goes quiet,
           # which is the one outcome the notice exists to prevent.
           mkdir -p "$CTX"
-          if [ -f "$CTX/no-review.txt" ]; then
+          if [ "${SKIP_REVIEW:-}" = 1 ]; then
             echo "::warning::the context step found nothing to review; posting its notice in place of the review."
-            jq -n --arg sha "$HEAD_SHA" --arg body "$(cat "$CTX/no-review.txt")" \
+            jq -n --arg sha "$HEAD_SHA" --arg body "${NO_REVIEW_NOTICE:-}"$'\n\n'"$NOTICE_MARKER" \
               '{event:"COMMENT", commit_id:$sha, body:$body}' > "$CTX/review-final.json"
             exit 0
           fi
@@ -752,8 +772,8 @@ jobs:
             echo "payload accepted: $(jq '.comments | length' "$CTX/review-final.json") inline comment(s)"
           else
             echo "::warning::the review agent left no usable payload at ${CTX}/review.json; posting a notice in its place."
-            jq -n --arg sha "$HEAD_SHA" \
-              '{event:"COMMENT", commit_id:$sha, body:"The AI review did not complete: the review job produced no usable review payload. See the run log for this job. Do not read the absence of findings here as a clean review."}' \
+            jq -n --arg sha "$HEAD_SHA" --arg marker "$NOTICE_MARKER" \
+              '{event:"COMMENT", commit_id:$sha, body:("The AI review did not complete: the review job produced no usable review payload. See the run log for this job. Do not read the absence of findings here as a clean review.\n\n" + $marker)}' \
               > "$CTX/review-final.json"
           fi
 
@@ -783,6 +803,18 @@ jobs:
             cat "$CTX/post-response.txt"
             return $status
           }
+          # `pipefail` makes a failed fetch fail the count instead of
+          # reading as zero.
+          reviews_at_head() {
+            gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --paginate --slurp \
+              | jq --arg sha "$HEAD_SHA" \
+                  '[(add // [])[] | select(.user.login=="github-actions[bot]" and .commit_id==$sha)] | length'
+          }
+          # A re-run on an already reviewed head finds this bot's earlier
+          # review there, so only growth past this baseline shows that a
+          # failed POST landed anyway. An unreadable baseline stays empty
+          # and makes that question unanswerable below.
+          BASELINE=$(reviews_at_head) || BASELINE=""
           if post "$CTX/review-final.json"; then
             exit 0
           fi
@@ -792,17 +824,14 @@ jobs:
             # retry checks before it repeats itself. The pause is for a
             # secondary rate limit, which rejects an immediate retry.
             sleep 30
-            # The check is fetched before it is read, so a probe that
-            # errors is not mistaken for a probe that found nothing: on
-            # the first the run cannot tell whether the POST landed, and
-            # retrying blind is the one way to end with two reviews.
-            if ! gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --paginate --slurp \
-              | jq 'add // []' > "$CTX/post-probe.json"; then
+            # When either count is unavailable the run cannot tell whether
+            # the POST landed, and retrying blind is the one way to end
+            # with two reviews.
+            if [ -z "$BASELINE" ] || ! AFTER=$(reviews_at_head); then
               echo "::error::posting the review failed and the check for a review it may still have created could not be made. Not retrying, because a second attempt is how this run ends with two reviews."
               exit 1
             fi
-            if jq -e --arg sha "$HEAD_SHA" 'any(.user.login=="github-actions[bot]" and .commit_id==$sha)' \
-              "$CTX/post-probe.json" >/dev/null; then
+            if [ "$AFTER" -gt "$BASELINE" ]; then
               echo "::notice::the review was created despite the failed response; not posting a second one."
               exit 0
             fi

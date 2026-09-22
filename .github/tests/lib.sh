@@ -129,6 +129,9 @@ install_stubs() {
 #   GH_POST_CODES     comma-separated HTTP status per POST attempt (default 201)
 #   GH_FAIL_ENDPOINTS comma-separated endpoint substrings whose reads fail hard
 #   GH_REVIEWS_FILE / GH_COMMENTS_FILE / GH_PR_FILE  canned responses
+#   GH_REVIEWS_AFTER_POST_FILE  reviews served once any POST was attempted,
+#                     which is how a case models a POST that landed
+#   GH_FAIL_AFTER_POST  when set, every read after a POST fails hard
 dir="${GH_STUB_DIR:?GH_STUB_DIR is required}"
 slurp=0; use_jq=0; include=0; method=""; endpoint=""; input=""; jq_expr=""
 prev=""
@@ -164,6 +167,11 @@ if [ -n "${GH_FAIL_ENDPOINTS:-}" ] && [ "$method" != POST ]; then
   done
 fi
 
+if [ -n "${GH_FAIL_AFTER_POST:-}" ] && [ "$method" != POST ] && [ -f "$dir/post-count" ]; then
+  echo "gh: HTTP 500 on $endpoint" >&2
+  exit 1
+fi
+
 if [ "$method" = POST ]; then
   n=$(cat "$dir/post-count" 2>/dev/null || echo 0)
   n=$((n + 1))
@@ -181,7 +189,12 @@ if [ "$method" = POST ]; then
 fi
 
 case "$endpoint" in
-  */reviews)  body="${GH_REVIEWS_FILE:-$dir/empty-pages.json}" ;;
+  */reviews)
+    body="${GH_REVIEWS_FILE:-$dir/empty-pages.json}"
+    if [ -n "${GH_REVIEWS_AFTER_POST_FILE:-}" ] && [ -f "$dir/post-count" ]; then
+      body="$GH_REVIEWS_AFTER_POST_FILE"
+    fi
+    ;;
   */comments) body="${GH_COMMENTS_FILE:-$dir/empty-pages.json}" ;;
   *)          body="${GH_PR_FILE:-$dir/empty-object.json}" ;;
 esac
