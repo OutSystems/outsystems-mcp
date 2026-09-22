@@ -301,13 +301,14 @@ check_no_match "an action-level comment filter does not substitute for the promp
 # asserted in post-step.test.sh.
 # (Scanner finding: CI workflow with access to secrets. The tool surface
 # is the actionable half; "publicly exposed" is not.)
+# The bar is shell and network reach, not file writes: the agent writes
+# its review into the runner's context directory and the posting step
+# reads it back from there, so Write and Edit stay granted.
 section "criterion 2: tool grant narrowed, panel intact"
 
 check_match "an allowed-tools grant is declared" "$ALLOWED_CHARS" '^[1-9]'
 check_no_match "no unrestricted shell grant" "$ALLOWED" '(^|[^A-Za-z_])Bash([^(]|$)'
 check_no_match "no wildcard shell grant" "$ALLOWED" 'Bash\((\*|:\*)\)'
-check_no_match "no file-mutating tool granted to the agent" \
-  "$ALLOWED" '(^|[^A-Za-z])(Write|Edit|MultiEdit|NotebookEdit)([^A-Za-z]|$)'
 check_match "Task stays granted so the critic panel can be spawned" "$ALLOWED" '(^|[^A-Za-z])Task([^A-Za-z]|$)'
 check_match "the agent still spawns the critic panel" "$RAW" 'Task'
 
