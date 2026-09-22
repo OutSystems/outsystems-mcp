@@ -81,6 +81,11 @@ check "ai-review is the only job with id-token: write and pull-requests: write" 
   '{"contents":"read","id-token":"write","pull-requests":"write"}'
 check "the issues: scope is granted nowhere" \
   "$(grep -cE '^ *issues:' "$WORKFLOW")" 0
+# Where the resolve step's fork and skip-label refusals take effect. Drop
+# this and a fork PR reaches the one job holding OIDC and the Bedrock
+# role, checked out at a fork-controlled SHA.
+check "the review job runs only on a resolve that said yes" \
+  "$(q jobs.ai-review.if)" "\"needs.resolve.outputs.should_run == 'true'\""
 
 section "agent session: no token in its env, no tool that can spend one"
 
@@ -151,6 +156,11 @@ check "the post step survives a crashed agent but not a cancellation" \
   '"${{ !cancelled() }}"'
 check_match "the agent is skipped when the context step found nothing to review" \
   "$(step_field ai-review "$AGENT" if)" "steps.context.outputs.skip_review != '1'"
+# The guard above resolves through this id. Rename the step's id and
+# `steps.context.outputs.skip_review` silently becomes the empty string,
+# which passes the `!= '1'` test and runs the panel on every no-diff run.
+check "the context step carries the id the agent's guard reads" \
+  "$(step_field ai-review "Collect the review context" id)" '"context"'
 
 section "trigger surface and concurrency are untouched by the port"
 
@@ -164,6 +174,8 @@ check_match "in-progress runs are cancelled for pushes only" \
   "$(q concurrency.cancel-in-progress)" "github.event_name == 'pull_request'"
 check "resolve exposes head_ref, the only remaining source of the branch name" \
   "$(q jobs.resolve.outputs.head_ref)" '"${{ steps.resolve.outputs.head_ref }}"'
+check "the resolve step carries the id those job outputs read" \
+  "$(step_field resolve "Resolve PR context and apply per-trigger gate" id)" '"resolve"'
 
 section "the harness runs what the runner runs"
 
