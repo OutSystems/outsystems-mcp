@@ -74,20 +74,50 @@ check_match "the delta covers only what changed since that review" \
   "$(cat "$CTX/delta.diff")" '\+\+\+ b/two.txt'
 check_no_match "and not what the previous review already saw" \
   "$(cat "$CTX/delta.diff")" 'b/one.txt'
+# The delta drives which conditional critics the panel spawns, so it is
+# only ever a filter over the diff under review, never wider than it.
+check "the delta stays inside the diff under review" \
+  "$([ "$(wc -l < "$CTX/delta.diff")" -le "$(wc -l < "$CTX/pr.diff")" ] && echo yes)" yes
 
-section "the delta is a two-point diff against the reviewed head"
+section "a reviewed head that is not a commit of this pull request"
 
-# The previously reviewed head is on a line that is no longer in the PR,
-# the shape a rebase or an amend leaves behind. A three-dot delta would
-# start at the merge-base and hide the file that head carried.
+# A review posted against a commit on the base branch: what a manual
+# trigger pinned to a base-branch SHA leaves behind. Diffing from it
+# reports every base-branch commit the PR never touched, and the result
+# can be larger than the diff under review.
+git -C "$REPO_DIR" checkout -q -b mainline "$BASE"
+MAIN_TIP=$(commit_file "$REPO_DIR" mainline.txt "mainline")
+git -C "$REPO_DIR" update-ref refs/remotes/origin/mainline "$MAIN_TIP"
+git -C "$REPO_DIR" checkout -q main
+MAIN_REVIEW=$(reviews_file main-tip '[[{"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"'"$MAIN_TIP"'"}]]')
+context base-branch-review BASE_REF=mainline GH_REVIEWS_FILE="$MAIN_REVIEW"
+check "step succeeds" "$STEP_RC" 0
+check "the previous head is still reported for the fix scorecard" \
+  "$(cat "$CTX/prev-sha.txt")" "$MAIN_TIP"
+check_match "the run says why it carries no delta" \
+  "$STEP_OUT" "::notice::previously reviewed head ${MAIN_TIP} is not a commit of this pull request"
+check "every line counts as changed" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
+check_no_match "so no base-branch history reaches the delta" \
+  "$(cat "$CTX/delta.diff")" 'mainline.txt'
+
+# The same rule over a superseded head, the shape a rebase or an amend
+# leaves behind: it is reachable here, but it is no longer one of the
+# commits this PR contributes.
 git -C "$REPO_DIR" checkout -q -b stale "$BASE"
 STALE=$(commit_file "$REPO_DIR" stale.txt "stale")
 git -C "$REPO_DIR" checkout -q main
 STALE_REVIEW=$(reviews_file stale '[[{"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"'"$STALE"'"}]]')
 context rebased GH_REVIEWS_FILE="$STALE_REVIEW"
 check "step succeeds" "$STEP_RC" 0
-check_match "the delta reports the file the reviewed head carried" \
-  "$(cat "$CTX/delta.diff")" 'a/stale.txt'
+check_match "the superseded head is reported the same way" \
+  "$STEP_OUT" "::notice::previously reviewed head ${STALE} is not a commit of this pull request"
+check "and the run re-reviews in full" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
+
+# The merge-base itself: diffing from it is the whole PR, not a delta.
+BASE_REVIEW=$(reviews_file base '[[{"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"'"$BASE"'"}]]')
+context base-review GH_REVIEWS_FILE="$BASE_REVIEW"
+check "step succeeds" "$STEP_RC" 0
+check "the merge-base is out of range too" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
 
 section "a previously reviewed head that is no longer in the clone"
 

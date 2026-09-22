@@ -436,20 +436,30 @@ jobs:
           PREV_SHA=$(jq -r 'sort_by(.submitted_at) | last | .commit_id // ""' "$CTX/prior-reviews.json") || PREV_SHA=""
           printf '%s\n' "$PREV_SHA" > "$CTX/prev-sha.txt"
 
+          # The delta is a filter over this PR's own commits, so a
+          # previously reviewed head earns one only while it is one of
+          # them: inside BASE_SHA..HEAD_SHA, which bounds delta.diff by
+          # pr.diff. Any other commit carrying a review of this PR - a
+          # manual trigger pinned to a base-branch SHA, a head a rebase
+          # superseded - would otherwise make the diff report repository
+          # history this PR never touched, and the panel decides which
+          # conditional critics to spawn from it. Out of range the run
+          # re-reviews in full, which is wider than needed, never wrong.
+          # In range PREV_SHA is an ancestor of HEAD_SHA, so the two-point
+          # diff below is also the three-dot one.
           : > "$CTX/delta.diff"
           if [ -n "$PREV_SHA" ]; then
             if [ "$PREV_SHA" = "$HEAD_SHA" ]; then
               echo "::notice::the last review already covered ${HEAD_SHA}; full re-review with no delta filter."
-            elif git cat-file -e "${PREV_SHA}^{commit}"; then
-              # Two-point, not three-dot: a three-dot delta starts at
-              # merge-base(PREV_SHA, HEAD), so a rebase between reviews
-              # would report base-branch lines the author never touched.
-              if ! git diff "$PREV_SHA" "$HEAD_SHA" > "$CTX/delta.diff"; then
-                echo "::warning::git diff ${PREV_SHA} ${HEAD_SHA} failed; treating every line as changed since the last review."
-                : > "$CTX/delta.diff"
-              fi
-            else
+            elif ! git cat-file -e "${PREV_SHA}^{commit}"; then
               echo "::notice::previously reviewed head ${PREV_SHA} is not in this clone (force-push); every line counts as changed."
+            elif [ -z "$BASE_SHA" ] \
+              || ! git merge-base --is-ancestor "$PREV_SHA" "$HEAD_SHA" \
+              || git merge-base --is-ancestor "$PREV_SHA" "$BASE_SHA"; then
+              echo "::notice::previously reviewed head ${PREV_SHA} is not a commit of this pull request (outside ${BASE_SHA}..${HEAD_SHA}); every line counts as changed."
+            elif ! git diff "$PREV_SHA" "$HEAD_SHA" > "$CTX/delta.diff"; then
+              echo "::warning::git diff ${PREV_SHA} ${HEAD_SHA} failed; treating every line as changed since the last review."
+              : > "$CTX/delta.diff"
             fi
           fi
 
@@ -532,9 +542,9 @@ jobs:
             - CONTEXT/prev-sha.txt is PREV_SHA, the head the last bot review
               covered. Empty means this is a first review. Non-empty means
               this run is a RE-REVIEW, and CONTEXT/delta.diff is what changed
-              since PREV_SHA - itself empty when the previous head is gone
-              from this clone after a force-push, in which case treat every
-              line as changed.
+              since PREV_SHA - itself empty whenever PREV_SHA is not one of
+              this PR's own commits, in which case treat every line as
+              changed.
             - On a re-review, build a fix scorecard: for each prior finding,
               read the current code at its location plus the delta, and mark
               it fixed / partially fixed / unfixed. Verify fixes by reasoning

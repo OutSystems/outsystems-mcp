@@ -126,8 +126,9 @@ the suites pin down:
 - `resolve-step.test.sh` - the per-trigger gate and the five outputs the
   review job runs on, including the branch name.
 - `context-step.test.sh` - the files the agent is allowed to read, the
-  filtering that keeps third-party text out of them, and the degraded
-  inputs that must warn rather than fail the job.
+  filtering that keeps third-party text out of them, the delta staying
+  inside the diff under review, and the degraded inputs that must warn
+  rather than fail the job.
 - `payload-step.test.sh` - every payload shape that reaches the API as
   one review, and every shape that reaches it as the notice instead.
 - `post-step.test.sh` - one review per run, and the two recoveries: a
@@ -164,6 +165,21 @@ The IAM role's trust policy must include a subject condition allowing
   exact head SHA to review.
 - Comment `/ai-review <40-char sha>` on the PR. Requires OWNER, MEMBER,
   or COLLABORATOR author association.
+
+Two of those three run the workflow file you are looking at; the comment
+one may not. `issue_comment` carries no ref, so GitHub resolves the
+workflow against the default branch, never the PR's version of it, while
+`workflow_dispatch` takes an explicit `--ref` and `pull_request` runs the
+PR's file. A comment-triggered run on an open PR therefore exercises the
+merged workflow, so it cannot confirm or refute a change to this file
+that has not landed yet: dispatch that change with `--ref <branch>`, and
+read its structural guarantees off `.github/tests/`, which take the
+committed file as their input.
+
+Pin a SHA that belongs to the PR. Both manual triggers take the SHA on
+trust, so a review posted against a commit from elsewhere in the
+repository stays on the PR as a review of a commit it does not contain.
+The next run notices and re-reviews in full rather than diffing from it.
 
 ## Skipping
 

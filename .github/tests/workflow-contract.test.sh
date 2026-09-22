@@ -81,6 +81,16 @@ check "ai-review is the only job with id-token: write and pull-requests: write" 
   '{"contents":"read","id-token":"write","pull-requests":"write"}'
 check "the issues: scope is granted nowhere" \
   "$(grep -cE '^ *issues:' "$WORKFLOW")" 0
+# What makes that grant droppable on every trigger, the comment one
+# included: nothing here reads an issues endpoint. A comment trigger
+# takes its command, its author association and its PR number from the
+# event payload, so the only API surface left is the pull. GitHub
+# resolves a comment-triggered run against the workflow file on the
+# default branch, so this property is provable here and not from a
+# pre-merge run of the comment path.
+check "every GitHub API path the workflow reaches is a pulls path" \
+  "$(grep -oE 'repos/\$\{REPO\}/[a-z]+' "$WORKFLOW" | sort -u | tr '\n' ' ')" \
+  'repos/${REPO}/pulls '
 # Where the resolve step's fork and skip-label refusals take effect. Drop
 # this and a fork PR reaches the one job holding OIDC and the Bedrock
 # role, checked out at a fork-controlled SHA.
