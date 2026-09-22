@@ -119,6 +119,30 @@ context base-review GH_REVIEWS_FILE="$BASE_REVIEW"
 check "step succeeds" "$STEP_RC" 0
 check "the merge-base is out of range too" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
 
+# The base branch reaching the PR through a merge rather than a rebase.
+# The merge-base moves to the base tip, so a head reviewed before the
+# merge is still an ancestor of HEAD_SHA, while diffing from it reports
+# the base-branch commits the merge brought along.
+git -C "$REPO_DIR" checkout -q -b merged "$FIRST"
+git -C "$REPO_DIR" checkout -q -b advanced "$BASE"
+ADVANCED=$(commit_file "$REPO_DIR" advanced.txt "advanced")
+git -C "$REPO_DIR" update-ref refs/remotes/origin/advanced "$ADVANCED"
+git -C "$REPO_DIR" checkout -q merged
+git -C "$REPO_DIR" merge -q --no-edit "$ADVANCED"
+MERGED_HEAD=$(commit_file "$REPO_DIR" three.txt "three")
+git -C "$REPO_DIR" checkout -q main
+MERGED_REVIEW=$(reviews_file merged '[[{"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"'"$FIRST"'"}]]')
+context merged-base BASE_REF=advanced HEAD_SHA="$MERGED_HEAD" GH_REVIEWS_FILE="$MERGED_REVIEW"
+check "step succeeds" "$STEP_RC" 0
+check "the base is the merged-in base tip" "$(cat "$CTX/base-sha.txt")" "$ADVANCED"
+check_match "a head predating the merge is reported the same way" \
+  "$STEP_OUT" "::notice::previously reviewed head ${FIRST} is not a commit of this pull request"
+check "and the run re-reviews in full" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
+check_no_match "so no merged-in base history reaches the delta" \
+  "$(cat "$CTX/delta.diff")" 'advanced.txt'
+check "the delta stays inside the diff under review" \
+  "$([ "$(wc -l < "$CTX/delta.diff")" -le "$(wc -l < "$CTX/pr.diff")" ] && echo yes)" yes
+
 section "a previously reviewed head that is no longer in the clone"
 
 GONE=$(reviews_file gone '[[{"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"1111111111111111111111111111111111111111"}]]')

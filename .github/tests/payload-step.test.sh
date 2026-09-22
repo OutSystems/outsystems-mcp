@@ -103,6 +103,14 @@ check_notice "an inline finding whose body is not a string"
 payload one-bad-comment '{"body":"s","comments":[{"path":"a.yml","line":3,"body":"ok"},{"path":"b.yml"}]}'
 check_notice "a batch where one finding is malformed"
 
+# The gate checks that the keys are there, not what they hold. A wrong
+# value type reaches the API instead, where the post step's fold keeps
+# the finding the notice would have thrown away.
+payload comment-wrong-types '{"body":"s","comments":[{"path":5,"line":null,"body":"MUST: the finding"}]}'
+check "an element with the right keys and wrong types is passed through" \
+  "$(final '.comments|length')" 1
+check_match "and counted as accepted" "$STEP_OUT" 'payload accepted: 1 inline comment'
+
 section "when the context step already decided there is nothing to review"
 
 new_case notice-wins
@@ -117,6 +125,16 @@ check "still a COMMENT on the pinned head" "$(final '.event + " " + .commit_id')
   "COMMENT $HEAD_SHA"
 check_match "and the substitution is logged" "$STEP_OUT" \
   '::warning::the context step found nothing to review'
+
+section "when the context step never ran"
+
+# A failed checkout skips the context step, so the directory it creates
+# is not there. This step still runs, and the notice is the run's only
+# way to say so.
+new_case no-context-dir
+rm -rf "$CTX"
+run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$HEAD_SHA" GH_STUB_DIR="$GH_STUB_DIR"
+check_notice "a skipped context step"
 
 section "text the agent writes is data, not shell"
 

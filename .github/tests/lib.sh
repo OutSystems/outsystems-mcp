@@ -127,7 +127,7 @@ install_stubs() {
 # Scriptable `gh api` stub.
 #   GH_STUB_DIR       where POST payloads and the attempt count are recorded
 #   GH_POST_CODES     comma-separated HTTP status per POST attempt (default 201)
-#   GH_FAIL_ENDPOINTS comma-separated endpoint substrings that fail hard
+#   GH_FAIL_ENDPOINTS comma-separated endpoint substrings whose reads fail hard
 #   GH_REVIEWS_FILE / GH_COMMENTS_FILE / GH_PR_FILE  canned responses
 dir="${GH_STUB_DIR:?GH_STUB_DIR is required}"
 slurp=0; use_jq=0; include=0; method=""; endpoint=""; input=""; jq_expr=""
@@ -153,7 +153,9 @@ if [ "$slurp" = 1 ] && [ "$use_jq" = 1 ]; then
   exit 1
 fi
 
-if [ -n "${GH_FAIL_ENDPOINTS:-}" ]; then
+# Reads only: a POST's outcome is scripted through GH_POST_CODES, which
+# is what lets a case fail the duplicate probe while the POST behaves.
+if [ -n "${GH_FAIL_ENDPOINTS:-}" ] && [ "$method" != POST ]; then
   IFS=, read -ra _pats <<<"$GH_FAIL_ENDPOINTS"
   for _p in "${_pats[@]}"; do
     case "$endpoint" in

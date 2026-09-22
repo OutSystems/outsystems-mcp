@@ -129,8 +129,11 @@ the suites pin down:
   filtering that keeps third-party text out of them, the delta staying
   inside the diff under review, and the degraded inputs that must warn
   rather than fail the job.
-- `payload-step.test.sh` - every payload shape that reaches the API as
-  one review, and every shape that reaches it as the notice instead.
+- `payload-step.test.sh` - every payload whose keys reach the API as one
+  review, and every one that reaches it as the notice instead. The gate
+  checks keys, not value types: an element with the right keys and a
+  wrong value type reaches the API, and the post step's fold is what
+  keeps its finding.
 - `post-step.test.sh` - one review per run, and the two recoveries: a
   rejected payload keeps its findings in the body, a transport failure
   keeps its payload and does not publish twice.

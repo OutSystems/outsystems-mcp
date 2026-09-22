@@ -110,6 +110,13 @@ post transport-failure-human-review "$WITH_FINDING" GH_POST_CODES=502,201 \
   GH_REVIEWS_FILE="$HUMAN"
 check "a human review of the same head does not count as this run's" "$(post_attempts)" 2
 
+post transport-failure-probe-down "$WITH_FINDING" GH_POST_CODES=502,201 \
+  GH_FAIL_ENDPOINTS=reviews
+check "a probe that cannot answer fails the job" "$([ "$STEP_RC" -ne 0 ] && echo yes)" yes
+check "rather than risk a second review" "$(post_attempts)" 1
+check_match "and the run says the outcome is unknown" "$STEP_OUT" \
+  '::error::posting the review failed and the check for a review it may still have created could not be made'
+
 post transport-failure-twice "$WITH_FINDING" GH_POST_CODES=502,502
 check "a second transport failure fails the job" "$([ "$STEP_RC" -ne 0 ] && echo yes)" yes
 check "after exactly two attempts" "$(post_attempts)" 2

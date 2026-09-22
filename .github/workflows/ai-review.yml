@@ -437,16 +437,17 @@ jobs:
           printf '%s\n' "$PREV_SHA" > "$CTX/prev-sha.txt"
 
           # The delta is a filter over this PR's own commits, so a
-          # previously reviewed head earns one only while it is one of
-          # them: inside BASE_SHA..HEAD_SHA, which bounds delta.diff by
-          # pr.diff. Any other commit carrying a review of this PR - a
+          # previously reviewed head earns one only while it sits on the
+          # path BASE_SHA -> PREV_SHA -> HEAD_SHA, which bounds delta.diff
+          # by pr.diff. Any other commit carrying a review of this PR - a
           # manual trigger pinned to a base-branch SHA, a head a rebase
-          # superseded - would otherwise make the diff report repository
-          # history this PR never touched, and the panel decides which
-          # conditional critics to spawn from it. Out of range the run
-          # re-reviews in full, which is wider than needed, never wrong.
-          # In range PREV_SHA is an ancestor of HEAD_SHA, so the two-point
-          # diff below is also the three-dot one.
+          # superseded, a head predating a merge of the base branch that
+          # moved the merge-base past it - would otherwise make the diff
+          # report repository history this PR never touched, and the panel
+          # decides which conditional critics to spawn from it. Out of
+          # range the run re-reviews in full, which is wider than needed,
+          # never wrong. In range PREV_SHA is an ancestor of HEAD_SHA, so
+          # the two-point diff below is also the three-dot one.
           : > "$CTX/delta.diff"
           if [ -n "$PREV_SHA" ]; then
             if [ "$PREV_SHA" = "$HEAD_SHA" ]; then
@@ -455,8 +456,9 @@ jobs:
               echo "::notice::previously reviewed head ${PREV_SHA} is not in this clone (force-push); every line counts as changed."
             elif [ -z "$BASE_SHA" ] \
               || ! git merge-base --is-ancestor "$PREV_SHA" "$HEAD_SHA" \
+              || ! git merge-base --is-ancestor "$BASE_SHA" "$PREV_SHA" \
               || git merge-base --is-ancestor "$PREV_SHA" "$BASE_SHA"; then
-              echo "::notice::previously reviewed head ${PREV_SHA} is not a commit of this pull request (outside ${BASE_SHA}..${HEAD_SHA}); every line counts as changed."
+              echo "::notice::previously reviewed head ${PREV_SHA} is not a commit of this pull request (not on the path from ${BASE_SHA} to ${HEAD_SHA}); every line counts as changed."
             elif ! git diff "$PREV_SHA" "$HEAD_SHA" > "$CTX/delta.diff"; then
               echo "::warning::git diff ${PREV_SHA} ${HEAD_SHA} failed; treating every line as changed since the last review."
               : > "$CTX/delta.diff"
@@ -668,8 +670,10 @@ jobs:
                 appears in CONTEXT/pr.diff>", "line": <new-side line
                 number>, "body": "<severity, what + why + concrete fix, and
                 the verifying quote for a runtime claim>"} - no other keys,
-                and never "position". The posting step drops the whole
-                review to a notice if an element carries any other shape.
+                and never "position". An element missing one of those keys
+                drops the whole review to a notice; a key whose value is
+                the wrong type is rejected by the API, which costs every
+                finding in the run its inline anchor.
             Do NOT set "event" or "commit_id". The posting step sets both.
 
             ## Hard rules
@@ -726,6 +730,11 @@ jobs:
         run: |
           set -u
           CTX="${RUNNER_TEMP}/ai-review"
+          # The context step creates this directory, and a failed checkout
+          # skips that step while this one still runs. Without the mkdir
+          # the notice below cannot be written and the run goes quiet,
+          # which is the one outcome the notice exists to prevent.
+          mkdir -p "$CTX"
           if [ -f "$CTX/no-review.txt" ]; then
             echo "::warning::the context step found nothing to review; posting its notice in place of the review."
             jq -n --arg sha "$HEAD_SHA" --arg body "$(cat "$CTX/no-review.txt")" \
@@ -783,8 +792,17 @@ jobs:
             # retry checks before it repeats itself. The pause is for a
             # secondary rate limit, which rejects an immediate retry.
             sleep 30
-            if gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --paginate --slurp \
-              | jq -e --arg sha "$HEAD_SHA" 'add | any(.user.login=="github-actions[bot]" and .commit_id==$sha)' >/dev/null; then
+            # The check is fetched before it is read, so a probe that
+            # errors is not mistaken for a probe that found nothing: on
+            # the first the run cannot tell whether the POST landed, and
+            # retrying blind is the one way to end with two reviews.
+            if ! gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --paginate --slurp \
+              | jq 'add // []' > "$CTX/post-probe.json"; then
+              echo "::error::posting the review failed and the check for a review it may still have created could not be made. Not retrying, because a second attempt is how this run ends with two reviews."
+              exit 1
+            fi
+            if jq -e --arg sha "$HEAD_SHA" 'any(.user.login=="github-actions[bot]" and .commit_id==$sha)' \
+              "$CTX/post-probe.json" >/dev/null; then
               echo "::notice::the review was created despite the failed response; not posting a second one."
               exit 0
             fi
