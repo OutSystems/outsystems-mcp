@@ -183,6 +183,30 @@ check "the previous head is the last real review, not the newer notice" \
 check_match "so the delta keeps what the notice's head changed" \
   "$(cat "$CTX/delta.diff")" '\+\+\+ b/two.txt'
 
+# The marker is written by the payload step and matched here, so the
+# pair is tested end to end: the notice the payload step builds, posted
+# as this bot's review, must never become the previous head.
+new_case built-notice
+run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$FIRST" GH_STUB_DIR="$GH_STUB_DIR" \
+  SKIP_REVIEW=1 NO_REVIEW_NOTICE='The AI review did not run: this pull request has no changes against abc.'
+BUILT_NOTICE="$WORK/reviews-built-notice.json"
+jq '[[{user:{login:"github-actions[bot]"}, submitted_at:"2026-01-01T00:00:00Z",
+       commit_id:.commit_id, body:.body}]]' "$CTX/review-final.json" > "$BUILT_NOTICE"
+context built-notice-round-trip GH_REVIEWS_FILE="$BUILT_NOTICE"
+check "step succeeds" "$STEP_RC" 0
+check "a notice the payload step built is not a previous head" "$(cat "$CTX/prev-sha.txt")" ""
+
+QUOTING=$(reviews_file quoting '[[{"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"'"$FIRST"'","body":"## Review\n\nThe payload step appends <!-- ai-review:notice --> to every notice.\n\nOne finding."}]]')
+context quoting-review GH_REVIEWS_FILE="$QUOTING"
+check "step succeeds" "$STEP_RC" 0
+check "a review that quotes the marker mid-body is still the previous head" \
+  "$(cat "$CTX/prev-sha.txt")" "$FIRST"
+
+TRAILING=$(reviews_file trailing '[[{"user":{"login":"github-actions[bot]"},"submitted_at":"2026-01-01T00:00:00Z","commit_id":"'"$FIRST"'","body":"'"$NOTICE_BODY"'\r\n"}]]')
+context notice-trailing-whitespace GH_REVIEWS_FILE="$TRAILING"
+check "a notice whose body gained trailing whitespace is still a notice" \
+  "$(cat "$CTX/prev-sha.txt")" ""
+
 section "a failed fetch degrades the scorecard, it does not fail the run"
 
 context fetch-down GH_FAIL_ENDPOINTS=reviews,comments

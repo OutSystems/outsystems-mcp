@@ -10,6 +10,8 @@ extract_steps
 install_stubs
 
 SHA=0123456789abcdef0123456789abcdef01234567
+OLDER=89abcdef0123456789abcdef0123456789abcdef
+FOREIGN=fedcba9876543210fedcba9876543210fedcba98
 
 resolve() { # case name, then VAR=VAL overrides
   local name="$1"
@@ -35,7 +37,8 @@ pr_json() { # name, response body -> echoes the canned-response path
   printf '%s' "$WORK/pr-$1.json"
 }
 
-FULL_PR=$(pr_json same-repo '{"base":{"ref":"main"},"head":{"repo":{"full_name":"o/r"},"ref":"feature/x"}}')
+FULL_PR=$(pr_json same-repo '{"base":{"ref":"main"},"head":{"repo":{"full_name":"o/r"},"ref":"feature/x","sha":"'"$SHA"'"}}')
+COMMITS=$(pr_json commits '[{"sha":"'"$OLDER"'"},{"sha":"'"$SHA"'"}]')
 
 section "pull_request: resolved from the event payload, with no API call"
 
@@ -88,11 +91,46 @@ resolve dispatch-api-down EVENT_NAME=workflow_dispatch SHA_INPUT="$SHA" \
 check "an API failure fails the job instead of reading as a fork" "$STEP_RC" 1
 check_match "with the reason" "$STEP_OUT" '::error::gh api call failed'
 
-NO_REF_PR=$(pr_json no-head-ref '{"base":{"ref":"main"},"head":{"repo":{"full_name":"o/r"}}}')
+NO_REF_PR=$(pr_json no-head-ref '{"base":{"ref":"main"},"head":{"repo":{"full_name":"o/r"},"sha":"'"$SHA"'"}}')
 resolve dispatch-no-head-ref EVENT_NAME=workflow_dispatch SHA_INPUT="$SHA" \
   PR_NUMBER_INPUT=7 GH_PR_FILE="$NO_REF_PR"
 check "a missing head_ref degrades the scope sentence, not the run" "$(out should_run)" true
 check "and resolves to empty rather than the string null" "$(out head_ref)" ""
+
+resolve dispatch-non-numeric-pr EVENT_NAME=workflow_dispatch SHA_INPUT="$SHA" \
+  PR_NUMBER_INPUT='7/../../other' GH_PR_FILE="$FULL_PR"
+check "a pr_number that is not digits fails the job" "$STEP_RC" 1
+check_match "with the reason" "$STEP_OUT" '::error::pr_number input must be a PR number'
+check "and resolves nothing" "$(out should_run)" ""
+
+resolve dispatch-multiline-sha EVENT_NAME=workflow_dispatch PR_NUMBER_INPUT=7 \
+  SHA_INPUT="$SHA"$'\nshould_run=true' GH_PR_FILE="$FULL_PR"
+check "a SHA input with a second line is rejected, not matched line by line" "$STEP_RC" 1
+check "so nothing it carries reaches the step outputs" "$(out should_run)" ""
+
+section "manual triggers: the SHA must belong to the PR it is posted to"
+
+resolve dispatch-older-commit EVENT_NAME=workflow_dispatch SHA_INPUT="$OLDER" \
+  PR_NUMBER_INPUT=7 GH_PR_FILE="$FULL_PR" GH_COMMITS_FILE="$COMMITS"
+check "an earlier commit of the PR runs" "$(out should_run)" true
+check "on that commit, not the current head" "$(out head_sha)" "$OLDER"
+
+resolve dispatch-foreign-sha EVENT_NAME=workflow_dispatch SHA_INPUT="$FOREIGN" \
+  PR_NUMBER_INPUT=7 GH_PR_FILE="$FULL_PR" GH_COMMITS_FILE="$COMMITS"
+check "a SHA that is not one of the PR's commits fails the job" "$STEP_RC" 1
+check_match "with the reason" "$STEP_OUT" \
+  "::error::${FOREIGN} is neither the head nor one of the commits of PR #7"
+check "and resolves nothing" "$(out should_run)" ""
+
+resolve dispatch-commits-down EVENT_NAME=workflow_dispatch SHA_INPUT="$OLDER" \
+  PR_NUMBER_INPUT=7 GH_PR_FILE="$FULL_PR" GH_FAIL_ENDPOINTS=/commits
+check "an unreadable commit list fails the job rather than trusting the SHA" "$STEP_RC" 1
+check_match "with the reason" "$STEP_OUT" '::error::gh api call failed listing the commits of PR #7'
+
+resolve comment-foreign-sha EVENT_NAME=issue_comment COMMENT_ASSOCIATION=MEMBER \
+  COMMENT_BODY="/ai-review $FOREIGN" GH_PR_FILE="$FULL_PR" GH_COMMITS_FILE="$COMMITS"
+check "the comment trigger refuses a foreign SHA too" "$STEP_RC" 1
+check_match "with the reason" "$STEP_OUT" "::error::${FOREIGN} is neither the head"
 
 section "issue_comment: authorization before SHA validation"
 
@@ -124,6 +162,21 @@ resolve comment-second-line EVENT_NAME=issue_comment COMMENT_ASSOCIATION=OWNER \
   COMMENT_BODY="please have a look
 /ai-review $SHA" GH_PR_FILE="$FULL_PR"
 check "the command is read from the first line only" "$(out should_run)" false
+
+# Longer than the pipe's capacity, so a writer piped into `head -n1`
+# would take a SIGPIPE, which pipefail turns into a failed step. The
+# capacity is 64 KiB on Linux and larger on macOS, and Linux caps one
+# environment string at 128 KiB, so the length depends on the platform.
+case "$(uname -s)" in
+  Darwin) LONG_LEN=200000 ;;
+  *)      LONG_LEN=100000 ;;
+esac
+LONG_TAIL=$(head -c "$LONG_LEN" /dev/zero | tr '\0' x)
+resolve comment-long-body EVENT_NAME=issue_comment COMMENT_ASSOCIATION=OWNER \
+  COMMENT_BODY="/ai-review $SHA
+$LONG_TAIL" GH_PR_FILE="$FULL_PR"
+check "a long comment body does not fail the step" "$STEP_RC" 0
+check "and its first-line command still runs" "$(out should_run)" true
 
 section "issue_comment: the comment body is data, never shell"
 

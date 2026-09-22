@@ -74,8 +74,17 @@ session holds no shell at all, `git` included: with `Write` in the same
 session, any git invocation executes the program named by
 `diff.external` or `core.fsmonitor`, out of the repo config, the runner's
 global config or a `.git/hooks/` script, so no permission on one of those
-files contains it. PR text written by a third party therefore reaches the
-agent only as diff content. A base ref that cannot be resolved, and a
+files contains it. Git does run in the workspace after the session:
+`actions/checkout`'s post-job cleanup calls `git config --local` and
+`git submodule foreach` there, with the job token, the AWS credentials and
+the OIDC request variables in its env, so a `core.fsmonitor` the session
+planted in `.git/config` would execute. Two measures close it: the
+session's `--disallowedTools "Edit(.git/**)"` keeps every file-editing
+tool, `Write` included, out of any `.git` directory under the workspace,
+and an `always()` step right after the session deletes the workspace's
+`.git`, so the cleanup finds no `.git/config` and returns early. PR text
+written by a third party therefore reaches the agent only as diff
+content. A base ref that cannot be resolved, and a
 head with no diff against a base that did resolve, each post a notice
 naming which of the two happened, rather than an empty-diff review that
 would read as clean. That route is taken from the context step's outputs,
@@ -85,9 +94,10 @@ posts it with `event` and
 `commit_id` set by the workflow, so the bot cannot approve a PR even if
 the prompt is subverted, and a crashed agent yields a visible notice
 rather than silence. Every notice ends with a hidden
-`<!-- ai-review:notice -->` marker, and the next run never takes a
-notice's head as the last reviewed one, so the changes at that head still
-count as new.
+`<!-- ai-review:notice -->` marker, which the payload step strips from
+the agent's own text, and the next run never takes the head of a review
+whose body ends with it as the last reviewed one, so the changes at a
+notice's head still count as new.
 
 Two consequences of dropping the untrusted inputs. The review cannot dedup
 against human review comments, since those are the untrusted channel and
@@ -119,27 +129,38 @@ automatically: this repo runs no CI beyond the review itself, so run it
 before pushing a change to `ai-review.yml`.
 
 The step suites extract the `run:` bodies from the committed workflow and
-execute them under the shell Actions gives them, with `gh` and `sleep`
-replaced by stubs, so the code under test is the code that ships. The
+execute them under the command the shell each step declares expands to.
+The workflow sets `defaults.run.shell: bash`, which GitHub expands to
+`bash --noprofile --norc -eo pipefail {0}`; the harness derives the same
+command from the same file, so a step body sees the options it ships
+with, `pipefail` included. `gh` and `sleep` are replaced by stubs, so the
+code under test is the code that ships. The
 contract and spec suites read the same committed workflow as data. What
 the suites pin down:
 
 - `workflow-contract.test.sh` - the guarantees that live in the
   structure: per-job token scope, an agent allowlist with no shell and
-  nothing that reaches the network, a checkout that persists no
-  credentials, the step order, and the trigger surface.
+  nothing that reaches the network, a deny on `.git` for the agent's
+  file-editing tools and the removal of `.git` right after the session, a
+  checkout that persists no credentials, the declared `bash` shell every
+  step runs under, the step order, and the trigger surface.
 - `resolve-step.test.sh` - the per-trigger gate and the five outputs the
-  review job runs on, including the branch name.
+  review job runs on, including the branch name, and the refusal of a
+  manual trigger whose PR number is not numeric or whose SHA is neither
+  the PR's head nor one of its commits.
 - `context-step.test.sh` - the files the agent is allowed to read, the
   filtering that keeps third-party text out of them, the delta staying
   inside the diff under review, a notice never standing in for the last
   review, and the degraded inputs that must warn rather than fail the job.
 - `payload-step.test.sh` - every payload whose keys reach the API as one
-  review, every one that reaches it as the notice instead, and a notice
-  route that only the context step's outputs can select. The gate
-  checks keys, not value types: an element with the right keys and a
-  wrong value type reaches the API, and the post step's fold is what
-  keeps its finding.
+  review, every one that reaches it as the notice instead, a notice route
+  that only the context step's outputs can select, a notice marker that
+  only this step can write, and a directory the agent plants at a path
+  the payload or post step writes not keeping the run from posting. The
+  gate checks each element's keys and that its `body` is a string: a
+  non-string `body` sends the run to the notice, while a wrong type in
+  `path` or `line` reaches the API, and the post step's fold is what
+  keeps that finding.
 - `post-step.test.sh` - one review per run, and the two recoveries: a
   rejected payload keeps its findings in the body, a transport failure
   keeps its payload and does not publish twice, and an earlier run's
@@ -147,7 +168,8 @@ the suites pin down:
 - `spec_untrusted_input_port.test.sh` - the properties that keep
   untrusted input away from the privileged agent: the comment fetch and
   the review POST are shell steps and not prompt instructions, the tool
-  grant keeps `Task` but no shell, `id-token: write`
+  grant keeps `Task` and holds no unrestricted or wildcard shell grant,
+  `id-token: write`
   is scoped to the `ai-review` job alone, no credential file is written
   on any trigger, and this README does not deny the surface.
 
@@ -186,10 +208,11 @@ that has not landed yet: dispatch that change with `--ref <branch>`, and
 read its structural guarantees off `.github/tests/`, which take the
 committed file as their input.
 
-Pin a SHA that belongs to the PR. Both manual triggers take the SHA on
-trust, so a review posted against a commit from elsewhere in the
-repository stays on the PR as a review of a commit it does not contain.
-The next run notices and re-reviews in full rather than diffing from it.
+Pin a SHA that belongs to the PR. Both manual triggers fail the run when
+the SHA is neither the PR's current head nor one of its commits, and
+`workflow_dispatch` also fails on a `pr_number` that is not digits only.
+GitHub lists at most 250 commits of a PR, so on a longer one only the
+current head and those 250 are accepted.
 
 ## Skipping
 

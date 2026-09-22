@@ -2,8 +2,9 @@
 # Shared harness for the `ai-review.yml` tests.
 #
 # The `run:` bodies are extracted from the committed workflow and executed
-# under the shell Actions gives them (`bash -e -o pipefail`), so a test
-# exercises the shipped script instead of a copy that can drift from it.
+# under the command GitHub expands each step's declared shell to, derived
+# from the same file, so a test exercises the shipped script, with the
+# shell options it ships with, instead of a copy that can drift from it.
 # `gh` and `sleep` are replaced by stubs on PATH: the stub reproduces the
 # two real-CLI behaviours the step bodies depend on (`--slurp` is rejected
 # together with `--jq`, and `--include` prints the status line the post
@@ -85,7 +86,11 @@ finish() {
 
 # --- step extraction --------------------------------------------------
 
-# Writes the `run:` body of each named step to $STEPS/<slug>.sh.
+# Writes the `run:` body of each named step to $STEPS/<slug>.sh, and the
+# command its shell expands to on a Linux runner to $STEPS/<slug>.shell.
+# The shell resolves the way Actions resolves it: the step's `shell:`,
+# then the job's `defaults.run.shell`, then the workflow's. The
+# expansions are the ones GitHub documents for each shell keyword.
 extract_steps() {
   python3 - "$WORKFLOW" "$STEPS" <<'PY'
 import sys
@@ -95,17 +100,37 @@ workflow, outdir = sys.argv[1], sys.argv[2]
 slugs = {
     "Resolve PR context and apply per-trigger gate": "resolve",
     "Collect the review context": "context",
+    "Remove the workspace git directory": "strip-git",
     "Build the review payload": "payload",
     "Post the review (exactly one, event=COMMENT)": "post",
 }
+expansions = {
+    None: "bash -e {0}",
+    "bash": "bash --noprofile --norc -eo pipefail {0}",
+    "sh": "sh -e {0}",
+}
+
+def default_shell(node):
+    return ((node or {}).get("defaults") or {}).get("run", {}).get("shell")
+
+wf = yaml.safe_load(open(workflow))
 found = set()
-for job in yaml.safe_load(open(workflow))["jobs"].values():
+for job in wf["jobs"].values():
     for step in job.get("steps", []):
         slug = slugs.get(step.get("name"))
         if slug is None:
             continue
+        shell = step.get("shell") or default_shell(job) or default_shell(wf)
+        if shell in expansions:
+            command = expansions[shell]
+        elif "{0}" in shell:
+            command = shell
+        else:
+            sys.exit(f"step {slug}: no known expansion for shell {shell!r}")
         with open(f"{outdir}/{slug}.sh", "w") as fh:
             fh.write(step["run"])
+        with open(f"{outdir}/{slug}.shell", "w") as fh:
+            fh.write(command + "\n")
         found.add(slug)
 missing = sorted(set(slugs.values()) - found)
 if missing:
@@ -129,6 +154,7 @@ install_stubs() {
 #   GH_POST_CODES     comma-separated HTTP status per POST attempt (default 201)
 #   GH_FAIL_ENDPOINTS comma-separated endpoint substrings whose reads fail hard
 #   GH_REVIEWS_FILE / GH_COMMENTS_FILE / GH_PR_FILE  canned responses
+#   GH_COMMITS_FILE   canned PR commit list, one page (a plain array)
 #   GH_REVIEWS_AFTER_POST_FILE  reviews served once any POST was attempted,
 #                     which is how a case models a POST that landed
 #   GH_FAIL_AFTER_POST  when set, every read after a POST fails hard
@@ -196,6 +222,7 @@ case "$endpoint" in
     fi
     ;;
   */comments) body="${GH_COMMENTS_FILE:-$dir/empty-pages.json}" ;;
+  */commits)  body="${GH_COMMITS_FILE:-$dir/empty-array.json}" ;;
   *)          body="${GH_PR_FILE:-$dir/empty-object.json}" ;;
 esac
 if [ "$use_jq" = 1 ]; then jq -r "$jq_expr" "$body"; else cat "$body"; fi
@@ -211,6 +238,7 @@ STUB
   chmod +x "$STUBS/gh" "$STUBS/sleep"
   printf '[[]]\n' > "$WORK/empty-pages.json"
   printf '{}\n' > "$WORK/empty-object.json"
+  printf '[]\n' > "$WORK/empty-array.json"
   export PATH="$STUBS:$PATH"
 }
 
@@ -221,7 +249,7 @@ new_case() { # case name -> sets RT, CTX, GH_STUB_DIR
   GH_STUB_DIR="$RT/stub"
   rm -rf "$RT"
   mkdir -p "$CTX" "$GH_STUB_DIR"
-  cp "$WORK/empty-pages.json" "$WORK/empty-object.json" "$GH_STUB_DIR/"
+  cp "$WORK/empty-pages.json" "$WORK/empty-object.json" "$WORK/empty-array.json" "$GH_STUB_DIR/"
   export GH_STUB_DIR
 }
 
@@ -236,21 +264,35 @@ reviews_file() { # name, JSON pages -> echoes the file path
 
 # --- running a step ---------------------------------------------------
 
-# Runs an extracted body with the runner's shell options. Output (stdout
-# and stderr, as the run log interleaves them) lands in STEP_OUT and the
-# exit status in STEP_RC.
+# The shell command extracted for a step, as an argv with `{0}` replaced
+# by the body's path. Word splitting is the point: the template is the
+# space-separated form GitHub documents.
+step_command() { # slug -> sets STEP_CMD
+  local template word
+  template=$(cat "$STEPS/$1.shell")
+  STEP_CMD=()
+  for word in $template; do
+    if [ "$word" = "{0}" ]; then STEP_CMD+=("$STEPS/$1.sh"); else STEP_CMD+=("$word"); fi
+  done
+}
+
+# Runs an extracted body under the shell its workflow declares. Output
+# (stdout and stderr, as the run log interleaves them) lands in STEP_OUT
+# and the exit status in STEP_RC.
 run_step() { # slug, [VAR=VAL ...]
   local slug="$1"
   shift
-  STEP_OUT=$(env "$@" bash --noprofile --norc -eo pipefail "$STEPS/$slug.sh" 2>&1)
+  step_command "$slug"
+  STEP_OUT=$(env "$@" "${STEP_CMD[@]}" 2>&1)
   STEP_RC=$?
 }
 
 run_step_in() { # dir, slug, [VAR=VAL ...]
   local dir="$1" slug="$2"
   shift 2
+  step_command "$slug"
   # shellcheck disable=SC2034  # read by the sourcing suite
-  STEP_OUT=$(cd "$dir" && env "$@" bash --noprofile --norc -eo pipefail "$STEPS/$slug.sh" 2>&1)
+  STEP_OUT=$(cd "$dir" && env "$@" "${STEP_CMD[@]}" 2>&1)
   # shellcheck disable=SC2034  # read by the sourcing suite
   STEP_RC=$?
 }

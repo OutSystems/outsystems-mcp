@@ -138,11 +138,18 @@ check "rather than risk a second review" "$(post_attempts)" 1
 check_match "and the run says the outcome is unknown" "$STEP_OUT" \
   '::error::posting the review failed and the check for a review it may still have created could not be made'
 
+# This case runs under the shell the workflow declares for the step. Under
+# the runner's undeclared default, `bash -e`, the failed re-count reads as
+# an empty count, the comparison errors to false, and the run retries.
+check "the post step runs under the declared bash, pipefail included" \
+  "$(cat "$STEPS/post.shell")" "bash --noprofile --norc -eo pipefail {0}"
 post transport-failure-probe-down-after-post "$WITH_FINDING" GH_POST_CODES=502,201 \
   GH_FAIL_AFTER_POST=1
 check "a probe that fails after a readable baseline fails the job too" \
   "$([ "$STEP_RC" -ne 0 ] && echo yes)" yes
 check "without a second attempt" "$(post_attempts)" 1
+check_match "and the run says the outcome is unknown" "$STEP_OUT" \
+  '::error::posting the review failed and the check for a review it may still have created could not be made'
 
 post baseline-down-post-ok "$WITH_FINDING" GH_FAIL_ENDPOINTS=reviews
 check "an unreadable baseline does not stop a POST that succeeds" "$STEP_RC" 0

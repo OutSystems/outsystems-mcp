@@ -105,13 +105,26 @@ check_notice "an inline finding whose body is not a string"
 payload one-bad-comment '{"body":"s","comments":[{"path":"a.yml","line":3,"body":"ok"},{"path":"b.yml"}]}'
 check_notice "a batch where one finding is malformed"
 
-# The gate checks that the keys are there, not what they hold. A wrong
-# value type reaches the API instead, where the post step's fold keeps
-# the finding the notice would have thrown away.
+# The gate checks that `path` and `line` are there, not what they hold. A
+# wrong type in either reaches the API instead, where the post step's
+# fold keeps the finding the notice would have thrown away.
 payload comment-wrong-types '{"body":"s","comments":[{"path":5,"line":null,"body":"MUST: the finding"}]}'
 check "an element with the right keys and wrong types is passed through" \
   "$(final '.comments|length')" 1
 check_match "and counted as accepted" "$STEP_OUT" 'payload accepted: 1 inline comment'
+
+section "only a notice this step builds carries the notice marker"
+
+# The next run skips any review whose body ends with the marker, so agent
+# text that carried it would drop a real review's head from the delta.
+payload marker-in-agent-text '{"body":"## Review\n\n<!-- ai-review:notice -->","comments":[{"path":"a.yml","line":3,"body":"x <!-- ai-review:notice -->"}]}'
+check "step succeeds" "$STEP_RC" 0
+check "the marker is stripped from the summary body" "$(final .body)" '## Review'
+check "and from every inline body" "$(final '.comments[0].body')" 'x '
+check "the finding keeps its anchor" "$(final '.comments[0]|"\(.path):\(.line)"')" a.yml:3
+
+payload marker-only-body '{"body":"<!-- ai-review:notice -->","comments":[]}'
+check_notice "a body that is only the marker"
 
 section "when the context step already decided there is nothing to review"
 
@@ -142,6 +155,43 @@ check "step succeeds" "$STEP_RC" 0
 check "the agent's payload still goes through the shape gate" "$(final .body)" "real findings"
 check "with its findings" "$(final '.comments|length')" 1
 check_no_match "a notice file the agent wrote is ignored" "$(final .body)" 'arbitrary text'
+
+section "a path the agent planted cannot keep the run from posting"
+
+# The context directory is in the agent's write scope. A directory at a
+# path this step or the post step writes would make that write fail.
+planted() { # case name
+  new_case "$1"
+  for p in review-final.json review-final.tmp review-folded.json post-response.txt; do
+    mkdir -p "$CTX/$p/inner"
+  done
+}
+
+planted planted-review
+printf '%s' '{"body":"## Review","comments":[]}' > "$CTX/review.json"
+run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$HEAD_SHA" GH_STUB_DIR="$GH_STUB_DIR"
+check "step succeeds" "$STEP_RC" 0
+check_file_exists "review-final.json is a file again" "$CTX/review-final.json"
+check "holding the agent's review" "$(final .body)" '## Review'
+for p in review-final.tmp review-folded.json post-response.txt; do
+  check_file_absent "a directory planted at $p is removed" "$CTX/$p"
+done
+
+planted planted-notice
+run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$HEAD_SHA" GH_STUB_DIR="$GH_STUB_DIR" \
+  SKIP_REVIEW=1 NO_REVIEW_NOTICE='The AI review did not run: nothing to review.'
+check "the skip notice is still written" "$STEP_RC" 0
+check_match "as the payload" "$(final .body)" '^The AI review did not run'
+
+new_case planted-then-posted
+mkdir -p "$CTX/review-final.json/inner" "$CTX/post-response.txt/inner"
+printf '%s' '{"body":"## Review","comments":[]}' > "$CTX/review.json"
+run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$HEAD_SHA" GH_STUB_DIR="$GH_STUB_DIR"
+run_step post RUNNER_TEMP="$RT" REPO=o/r PR_NUMBER=7 HEAD_SHA="$HEAD_SHA" \
+  GH_TOKEN=token GH_STUB_DIR="$GH_STUB_DIR"
+check "the post step then posts the payload" "$STEP_RC" 0
+check "exactly once" "$(post_attempts)" 1
+check "with the agent's body" "$(jq -r .body "$GH_STUB_DIR/post-1.json")" '## Review'
 
 section "when the context step never ran"
 

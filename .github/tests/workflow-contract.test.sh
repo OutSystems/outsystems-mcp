@@ -3,7 +3,8 @@
 # matter what the step bodies do at runtime, and that a later edit can
 # silently undo. Every check here is one externally observable guarantee
 # the workflow makes: what each job token may do, what the agent session
-# can reach, and the order the steps run in.
+# can reach, the shell every step runs under, and the order the steps run
+# in.
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
@@ -97,7 +98,7 @@ check "every GitHub API path the workflow reaches is a pulls path" \
 check "the review job runs only on a resolve that said yes" \
   "$(q jobs.ai-review.if)" "\"needs.resolve.outputs.should_run == 'true'\""
 
-section "agent session: no token in its env, no tool that can spend one"
+section "agent session: its step env adds only the Bedrock switch, and no tool can spend a token"
 
 check "the agent step's env carries only the Bedrock switch" \
   "$(step_field ai-review "$AGENT" env)" '{"CLAUDE_CODE_USE_BEDROCK":"1"}'
@@ -114,6 +115,11 @@ check "the grant is exactly the set the prompt and the payload step depend on" \
   'Read,Grep,Glob,Task,Write,Edit'
 check_match "the context directory is added to the file tools' scope" \
   "$claude_args" '--add-dir \$\{\{ runner.temp \}\}/ai-review'
+# `Edit` path rules cover every file-editing tool, Write included; a
+# `Write(...)` path rule is accepted by the CLI and never consulted.
+check_match "every file-editing tool is denied the workspace .git directory" \
+  "$claude_args" '--disallowedTools \\"Edit\(\.git/\*\*\)\\"'
+check_no_match "no Write path rule stands in for that deny" "$claude_args" 'Write\('
 
 prompt=$(step_field ai-review "$AGENT" with.prompt)
 check_no_match "the prompt makes no GitHub API call of its own" "$prompt" 'gh (api|pr) '
@@ -159,6 +165,15 @@ check "the agent runs after the context is on disk" \
 check "the payload is built, then posted, after the agent" \
   "$([ "$payload_i" -gt "$agent_i" ] && [ "$post_i" -gt "$payload_i" ] && echo yes)" yes
 
+section "the post-job git in the workspace finds no repository config to run"
+
+GIT_STRIP="Remove the workspace git directory"
+strip_i=$(index_of ai-review "$GIT_STRIP")
+check "the .git removal step runs immediately after the agent" \
+  "$([ -n "$strip_i" ] && [ "$strip_i" -eq $((agent_i + 1)) ] && echo yes)" yes
+check "and on every outcome of it, a cancelled or failed session included" \
+  "$(step_field ai-review "$GIT_STRIP" if)" '"${{ always() }}"'
+
 section "one review per run, including the runs where the agent does not finish"
 
 check "the payload step survives a crashed agent but not a cancellation" \
@@ -192,7 +207,32 @@ check "the resolve step carries the id those job outputs read" \
 section "the harness runs what the runner runs"
 
 extract_steps
-for slug in resolve context payload post; do
+
+check "the workflow declares bash as every step's default shell" \
+  "$(q defaults.run.shell)" '"bash"'
+check "no job overrides that default" \
+  "$(q jobs.resolve.defaults)$(q jobs.ai-review.defaults)" 'nullnull'
+check "no step declares a shell of its own" "$(grep -cE '^ +shell:' "$WORKFLOW")" 1
+# GitHub's documented expansion of `shell: bash`. The harness derives the
+# command from the workflow, so this pins the derivation as well.
+for slug in resolve context strip-git payload post; do
+  check "$slug step runs under bash --noprofile --norc -eo pipefail, here and on the runner" \
+    "$(cat "$STEPS/$slug.shell")" "bash --noprofile --norc -eo pipefail {0}"
+done
+
+# A planted fsmonitor is what the removal defends against, so the case
+# plants one and checks that the config holding it is gone.
+STRIP_WS="$WORK/strip-git"
+new_repo "$STRIP_WS"
+commit_file "$STRIP_WS" kept.txt "kept" > /dev/null
+git -C "$STRIP_WS" config core.fsmonitor "touch $WORK/fsmonitor-ran"
+run_step_in "$STRIP_WS" strip-git GITHUB_WORKSPACE="$STRIP_WS"
+check "the removal step succeeds" "$STEP_RC" 0
+check_file_absent "and leaves no .git/config for the checkout cleanup to act on" \
+  "$STRIP_WS/.git/config"
+check_file_exists "while the checked-out files stay" "$STRIP_WS/kept.txt"
+
+for slug in resolve context strip-git payload post; do
   if step_has_interpolation "$slug"; then
     check "$slug step body is plain shell, parameterised through env" \
       "carries a \${{ }} interpolation" "plain shell"
