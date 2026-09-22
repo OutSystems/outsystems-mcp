@@ -113,9 +113,10 @@ Needs `bash`, `git`, `jq` and `python3` with PyYAML. Nothing invokes it
 automatically: this repo runs no CI beyond the review itself, so run it
 before pushing a change to `ai-review.yml`.
 
-Each suite extracts the `run:` bodies from the committed workflow and
-executes them under the shell Actions gives them, with `gh` and `sleep`
-replaced by stubs, so the code under test is the code that ships. What
+The step suites extract the `run:` bodies from the committed workflow and
+execute them under the shell Actions gives them, with `gh` and `sleep`
+replaced by stubs, so the code under test is the code that ships. The
+contract and spec suites read the same committed workflow as data. What
 the suites pin down:
 
 - `workflow-contract.test.sh` - the guarantees that live in the
@@ -132,6 +133,12 @@ the suites pin down:
 - `post-step.test.sh` - one review per run, and the two recoveries: a
   rejected payload keeps its findings in the body, a transport failure
   keeps its payload and does not publish twice.
+- `spec_untrusted_input_port.test.sh` - the properties that keep
+  untrusted input away from the privileged agent: the comment fetch and
+  the review POST are shell steps and not prompt instructions, the tool
+  grant keeps `Task` but no shell and no network reach, `id-token: write`
+  is scoped to the `ai-review` job alone, no credential file is written
+  on any trigger, and this README does not deny the surface.
 
 A case that needs `gh` behaviour the stub does not have belongs in the
 stub, not in a mock of the step: a test that reimplements the step

@@ -212,6 +212,13 @@ new_case() { # case name -> sets RT, CTX, GH_STUB_DIR
 
 post_attempts() { cat "$GH_STUB_DIR/post-count" 2>/dev/null || echo 0; }
 
+# Canned paginated response for GH_REVIEWS_FILE / GH_COMMENTS_FILE. The
+# stub reads it through `jq`, so the outer array is the page list.
+reviews_file() { # name, JSON pages -> echoes the file path
+  printf '%s\n' "$2" > "$WORK/reviews-$1.json"
+  printf '%s' "$WORK/reviews-$1.json"
+}
+
 # --- running a step ---------------------------------------------------
 
 # Runs an extracted body with the runner's shell options. Output (stdout

@@ -16,11 +16,6 @@ git -C "$REPO_DIR" update-ref refs/remotes/origin/main main
 FIRST=$(commit_file "$REPO_DIR" one.txt "one")
 HEAD_SHA=$(commit_file "$REPO_DIR" two.txt "two")
 
-reviews_file() { # name, JSON pages
-  printf '%s\n' "$2" > "$WORK/reviews-$1.json"
-  printf '%s' "$WORK/reviews-$1.json"
-}
-
 context() { # case name, then VAR=VAL overrides
   local name="$1"
   shift

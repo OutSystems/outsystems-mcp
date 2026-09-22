@@ -29,11 +29,6 @@ sent() { # attempt number, jq filter
 
 paused() { [ -f "$GH_STUB_DIR/sleeps.txt" ] && echo yes || echo no; }
 
-reviews_file() { # name, JSON pages
-  printf '%s\n' "$2" > "$WORK/reviews-$1.json"
-  printf '%s' "$WORK/reviews-$1.json"
-}
-
 section "the accepted payload is posted once, unchanged"
 
 post accepted "$WITH_FINDING"
