@@ -4,9 +4,12 @@ Distribution repo for the OutSystems MCP. To install, paste the matching prompt 
 
 ## ⚠️ Disclaimer
 > Early Alpha. Please Read Before Using
+>
 > This project is in early alpha and is provided as-is, without warranties or guarantees of any kind. It is not production-ready, expect bugs, incomplete features, breaking changes, and unstable behaviors. Do not rely on it for critical, commercial, or production use.
-> No support, SLAs, or maintenance commitments are offered. We are sharing this publicly because we value community input, not because it is ready for broad adoption.
-> Bug reports, feature requests, and feedback are welcome, feel free to open an issue. Responses and fixes happen on a best-effort basis with no defined timeline.
+>
+> There is no service-level agreement (SLA), and fixes and updates ship when they are ready, with no promised schedule. Support is best-effort, through [GitHub issues](https://github.com/OutSystems/outsystems-mcp/issues), with no defined response time. We are sharing this publicly because we value community input, not because it is ready for broad adoption.
+>
+> Bug reports, feature requests, and feedback are welcome. See [Support and privacy](#support-and-privacy) to learn where to send them, which privacy policy applies, and which agreement covers your tenant data.
 
 ## Install - Claude Code
 
@@ -74,6 +77,8 @@ Install the Power yourself from the Powers panel: **Add Custom Power** > **Impor
 ```
 https://github.com/OutSystems/outsystems-mcp/tree/main/kiro/outsystems
 ```
+
+The Power uses Kiro's Agent Plugins format: `plugin.json` declares it and `skills/outsystems/SKILL.md` carries the agent instructions. `POWER.md` in the same folder is the human-readable guide to onboarding and troubleshooting.
 
 Then paste into Kiro Chat:
 
@@ -269,3 +274,15 @@ Attach these when opening an issue; they are what makes a report actionable.
 - **Kiro**: the Powers and MCP output channels.
 
 Redact your tenant hostname and any bearer tokens before posting.
+
+## Support and privacy
+
+### Support
+
+Open an issue in the [outsystems-mcp issue tracker](https://github.com/OutSystems/outsystems-mcp/issues) for bugs, feature requests, and setup problems, and attach the logs listed under [Getting logs](#getting-logs). Support is best-effort with no SLA, as the Disclaimer section says. For security vulnerabilities, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+
+### Privacy policy
+
+The OutSystems privacy policy is the [OutSystems Privacy Statement](https://www.outsystems.com/legal/terms-of-use/privacy-statement). It describes how OutSystems processes personal data.
+
+OutSystems hosts the MCP server. It signs you in through your own OutSystems tenant, takes your user and tenant identity from that sign-in, and acts on that tenant's apps and environments on your behalf. How OutSystems processes the data in your tenant is governed by your organization's agreement with OutSystems. For customers on the OutSystems Master Subscription Agreement, that includes the [Data Processing Agreement](https://www.outsystems.com/legal/outsystems-msa/data-processing-agreement/). Feedback that you send through the feedback tool goes to OutSystems so that the maintainers can act on it.

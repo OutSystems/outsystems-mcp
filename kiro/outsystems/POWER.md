@@ -18,7 +18,7 @@ There is no CLI to install. There is no OML on disk. OML stays server-side; you 
 
 ### Prerequisites
 
-- Kiro 0.11.133 or newer.
+- A Kiro version that supports the Agent Plugins power format (`plugin.json`). Checked against Kiro 1.1.14.
 - A web browser on the same machine as Kiro (Kiro picks an ephemeral local port for the OAuth callback after Dynamic Client Registration).
 - An OutSystems tenant hostname (e.g. `mycompany.outsystems.dev`).
 - Network access to the OutSystems tenant hostname (e.g. `*.outsystems.dev`).
@@ -79,9 +79,9 @@ cat > ~/.kiro/powers/registries/outsystems.json <<EOF
 EOF
 ```
 
-Restart Kiro after dropping the registry file. On startup Kiro auto-installs the Power: it copies `POWER.md` and `steering/skill.md` into `~/.kiro/powers/installed/outsystems/`. The Power appears in Kiro's Powers UI; the MCP server itself gets registered by the agent on first use (see the steering content).
+Restart Kiro after dropping the registry file. On startup Kiro auto-installs the Power: it copies the Power folder (`plugin.json`, `skills/outsystems/SKILL.md`, this file, and `icon.png`) into `~/.kiro/powers/installed/outsystems/`. The Power appears in Kiro's Powers UI; the MCP server itself gets registered by the agent on first use (see the skill content).
 
-Then open Kiro Chat and ask it for anything OutSystems-related; the steering content takes over and the agent walks you through the tenant prompt + OAuth on first use.
+Then open Kiro Chat and ask it for anything OutSystems-related; the skill content takes over and the agent walks you through the tenant prompt + OAuth on first use.
 
 ### Switching tenants
 
@@ -154,7 +154,7 @@ Workflows below describe the call sequence in prose; read the live `tools/list` 
 1. **Browser didn't open at all:** re-trigger the sign-in — ask Kiro Chat to retry the OutSystems action (the first tool call re-initiates OAuth), or authenticate the `outsystems` server from Kiro's MCP UI. Kiro owns the OAuth flow.
 2. **Callback page shows "site can't be reached":** Kiro listens on an ephemeral `localhost` port for the callback, so a browser must be reachable on the same machine as Kiro (see Prerequisites). On a remote/SSH session without a local browser, run Kiro where a browser can reach `localhost` and retry.
 3. **DCR or auth-handshake errors:** surface the error message verbatim and file an issue against `OutSystems/outsystems-mcp` with the symptoms.
-4. **Last resort:** remove and re-add the `outsystems` server in Kiro's MCP UI to wipe stale OAuth state, then ask Kiro Chat to redo the first-use steering flow. Do not do this for a `tenant_not_allowed` rejection: it discards a working configuration without affecting the tenant allowlist.
+4. **Last resort:** remove and re-add the `outsystems` server in Kiro's MCP UI to wipe stale OAuth state, then ask Kiro Chat to redo the first-use setup flow. Do not do this for a `tenant_not_allowed` rejection: it discards a working configuration without affecting the tenant allowlist.
 
 ### Tool errors
 
@@ -176,7 +176,8 @@ The Power's installed state (created by Kiro's auto-install when it processes th
 |---|---|
 | `~/.kiro/powers/registries/outsystems.json` | LocalRegistrySchema; points at the Power source. |
 | `~/.kiro/powers/installed.json` | Lists `outsystems` as installed. |
+| `~/.kiro/powers/installed/outsystems/plugin.json` | Power manifest (Agent Plugins format): name, display name, version, activation keywords, license. |
 | `~/.kiro/powers/installed/outsystems/POWER.md` | This file (copied from source). |
-| `~/.kiro/powers/installed/outsystems/steering/skill.md` | Agent-facing skill content; loads into the chat agent's context whenever the Power is active. Drives the tenant prompt + MCP wiring + OAuth. |
+| `~/.kiro/powers/installed/outsystems/skills/outsystems/SKILL.md` | Agent-facing skill content; Kiro loads it when the Power is active. Drives the tenant prompt + MCP wiring + OAuth. |
 | `~/.kiro/settings/mcp.json` | Kiro's MCP loader file. The agent writes the tenant URL to top-level `mcpServers.outsystems` here on first use. The Power has no per-install `mcp.json`, so Kiro's update flow can't corrupt the tenant URL. |
 

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "outsystems",
+  "displayName": "OutSystems - MCP",
+  "version": "0.20.0",
+  "description": "Drive OutSystems from Kiro over the MCP HTTP transport: edit apps, publish, deploy, search tenant elements, manage external libraries.",
+  "author": {
+    "name": "OutSystems AI Platform",
+    "url": "https://www.outsystems.com"
+  },
+  "keywords": ["outsystems", "low-code", "oml", "deployment", "mcp"],
+  "license": "MIT",
+  "homepage": "https://github.com/OutSystems/outsystems-mcp#install---kiro-chat",
+  "repository": "https://github.com/OutSystems/outsystems-mcp"
+}

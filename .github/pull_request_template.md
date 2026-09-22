@@ -15,5 +15,5 @@ This PR is for...
 ### Checklist
 * [ ] every supported harness accounted for, each one verified, not applicable with the reason, or a recorded gap with a follow-up (every row of the CLAUDE.md harness table)
 * [ ] no internal references leaked (stage hostnames, internal Jira projects, team jargon)
-* [ ] if skill content or behavior changed: kept in sync across `skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and root `SKILL.md`, plus `kiro/outsystems/POWER.md` where its `## Conventions` carries the same rules
-* [ ] if releasing: version bumped in all four manifests (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`)
+* [ ] if skill content or behavior changed: kept in sync across `skills/outsystems/SKILL.md`, `kiro/outsystems/skills/outsystems/SKILL.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and root `SKILL.md`, plus `kiro/outsystems/POWER.md` where its `## Conventions` carries the same rules
+* [ ] if releasing: version bumped in all five manifests (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, `kiro/outsystems/plugin.json`)

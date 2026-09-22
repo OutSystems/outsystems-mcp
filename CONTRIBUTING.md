@@ -10,7 +10,7 @@ This is a distribution-only repository. It packages the OutSystems MCP integrati
 - At least one of the supported harnesses installed locally. Rows you cannot verify are recorded as gaps with a follow-up per the PR checklist, not skipped silently:
   - **Claude Code** 2.1.236 or newer for plugin/skill changes (the version the `--config` / `userConfig` install recipe was verified on).
   - **Claude Desktop** for MCP config changes and, on a paid plan, plugin/skill-content changes. Verifying skill content additionally requires installing the plugin via Desktop's plugin-install flow, since patching `claude_desktop_config.json` alone only wires up the MCP server.
-  - **Kiro 0.11.133 or newer** for Power changes.
+  - **Kiro with Agent Plugins support** for Power changes (the `plugin.json` loader was checked against Kiro 1.1.14).
   - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
   - **Cursor App** (Team/Enterprise plan with team admin access) OR **Cursor CLI** (all plans) for Cursor changes.
 - An OutSystems tenant you can authenticate against (e.g. `mycompany.outsystems.dev`) and that is enabled for the MCP server, for end-to-end verification. Authenticating is not sufficient: a tenant outside the server-side allowlist rejects every tool call.
@@ -50,10 +50,12 @@ cursor/
       SKILL.md            # Agent guidance loaded by Cursor plugin
 kiro/
   outsystems/
-    POWER.md              # User-facing Kiro Power manifest (onboarding + troubleshooting)
+    plugin.json           # Kiro Power manifest (Agent Plugins format: name, version, keywords, license)
+    POWER.md              # Operator-facing Power documentation (onboarding + troubleshooting). Kiro's agent loader ignores it once plugin.json is present, but the Powers panel's details view still reads its frontmatter and body, so keep both
     icon.png              # Logo shown in Kiro's Powers UI
-    steering/
-      skill.md            # Agent steering content loaded into Kiro Chat
+    skills/
+      outsystems/
+        SKILL.md          # Agent-facing skill loaded into Kiro Chat
 skills/
   outsystems/
     SKILL.md              # Agent-facing skill loaded by the Claude Code plugin (and Claude Desktop via the same plugin)
@@ -64,7 +66,7 @@ README.md                 # Install instructions for each supported harness
 All five skill documents overlap in intent (they all describe the same MCP tools and conventions):
 - `skills/outsystems/SKILL.md` (Claude Code, and Claude Desktop via the same plugin)
 - `cursor/skills/outsystems/SKILL.md` (Cursor)
-- `kiro/outsystems/steering/skill.md` (Kiro)
+- `kiro/outsystems/skills/outsystems/SKILL.md` (Kiro)
 - `copilot/skill.md` (GitHub Copilot)
 - `SKILL.md` (root, generic)
 
@@ -95,7 +97,7 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`, `POWER`.
 ### Pull requests
 
 1. Create a branch from `main`.
-2. Make your changes. If you touch tool semantics, update every place that documents them (`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and the root `SKILL.md`) so they stay aligned. `kiro/outsystems/POWER.md` carries the same conventions under `## Conventions`; update it too when a rule changes.
+2. Make your changes. If you touch tool semantics, update every place that documents them (`skills/outsystems/SKILL.md`, `kiro/outsystems/skills/outsystems/SKILL.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and the root `SKILL.md`) so they stay aligned. `kiro/outsystems/POWER.md` carries the same conventions under `## Conventions`; update it too when a rule changes.
 3. Open a PR targeting `main`.
 4. Account for every supported harness in the CLAUDE.md table, each one verified, not applicable with the reason, or a recorded gap with a follow-up, and record the outcomes in the PR body (see "Testing" below).
 5. After review and merge, the version bump goes out as the next release (see [Versioning and Releases](#versioning-and-releases)).
@@ -222,7 +224,7 @@ For changes to the root `SKILL.md`, fetch it the way the install snippet does (`
 
 ## Versioning and Releases
 
-Version lives in four places and must stay in sync:
+Version lives in five places and must stay in sync:
 
 **Claude:**
 - `.claude-plugin/plugin.json` → `version`
@@ -232,7 +234,10 @@ Version lives in four places and must stay in sync:
 - `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
 
-Bump all four in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
+**Kiro:**
+- `kiro/outsystems/plugin.json` → `version`
+
+Bump all five in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
 
 For Claude Code, `claude plugin update` compares the version in `.claude-plugin/plugin.json`. Leave that one behind and users are told "already at the latest version" and never pull the new content, even after `claude plugin marketplace update`. The marketplace entry is what a user browses before installing, so keeping it in step matters for what a release advertises rather than for whether the update fires.
 

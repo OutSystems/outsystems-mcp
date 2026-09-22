@@ -1,6 +1,6 @@
 ---
 name: consistency-reviewer
-description: Verifies that this repo's agent-facing surface - skill-doc instructions, slash-command frontmatter, and plugin manifests - accurately reflects actual behavior and stays in lockstep across the five parallel skill docs and four manifest files.
+description: Verifies that this repo's agent-facing surface - skill-doc instructions, slash-command frontmatter, and plugin manifests - accurately reflects actual behavior and stays in lockstep across the five parallel skill docs and five manifest files.
 model: inherit
 ---
 
@@ -8,7 +8,7 @@ model: inherit
 
 ## Purpose
 
-Verify that this repo's declarations match what actually happens when an agent follows them. This repo ships no server code - its product IS the text an LLM agent reads: five parallel skill documents (`skills/outsystems/SKILL.md`, `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, root `SKILL.md`), slash-command definitions under `commands/` (frontmatter `description` / `argument-hint` plus body), the Kiro `POWER.md` operator doc, and the plugin manifests that declare what ships (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and their Cursor counterparts under `cursor/`).
+Verify that this repo's declarations match what actually happens when an agent follows them. This repo ships no server code - its product IS the text an LLM agent reads: five parallel skill documents (`skills/outsystems/SKILL.md`, `kiro/outsystems/skills/outsystems/SKILL.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, root `SKILL.md`), slash-command definitions under `commands/` (frontmatter `description` / `argument-hint` plus body), the Kiro `POWER.md` operator doc, and the plugin manifests that declare what ships (`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, their Cursor counterparts under `cursor/`, and the Kiro Power manifest `kiro/outsystems/plugin.json`).
 
 A wrong instruction here is the same defect class as a wrong status code in a service repo, with one difference that raises the stakes: the reader is a machine that will act on the instruction immediately, with no human sanity check between the promise and the action. Treat every skill doc, command file, and manifest field as a contract, not as copy.
 
@@ -16,7 +16,7 @@ A wrong instruction here is the same defect class as a wrong status code in a se
 
 - **Agent-facing contract drift** - an instruction, a slash command's frontmatter, or a manifest field versus what actually happens: a renamed or removed MCP tool argument the skill doc still tells the agent to pass, a slash command's `argument-hint` that no longer matches how the body parses `$ARGUMENTS`, an install step that no longer matches the actual `claude mcp add` / `mcp.json` shape for that harness
 - **Cross-harness lockstep drift** - per `CLAUDE.md`'s "Skill docs must stay in lockstep across hosts": a behavioral rule (a confirm-before-destructive rule, a new caveat, a changed workflow) added to one of the five skill docs (or the curated `POWER.md` subset) but not the others. Use the lockstep grep `CLAUDE.md` documents to check counts across all five files, not just the one the diff touched
-- **Manifest version lockstep drift** - per `CLAUDE.md`'s "Manifest version lockstep": `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, and `.cursor-plugin/marketplace.json` bumped out of sync
+- **Manifest version lockstep drift** - per `CLAUDE.md`'s "Manifest version lockstep": `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, and `kiro/outsystems/plugin.json` bumped out of sync
 - **Config-key drift** - a JSON config example (`servers` vs `mcpServers`, the file path, the server key name) that doesn't match what the harness in question actually reads, per the table in `CLAUDE.md`
 - **Slash-command naming collision** - a new `commands/*.md` file whose name is not prefixed `outsystems-` and would be shadowed by a host built-in (the `/feedback` collision `CLAUDE.md` documents is the known instance; the same risk applies to any new command name)
 - **Tool discriminability and argument derivability** - an instruction that tells the agent to call a remote MCP tool with an argument the agent has no way to obtain from prior output or the instructions themselves, or that describes two tools/flows so similarly an agent reading only the skill doc cannot pick between them
@@ -46,7 +46,7 @@ From the diff, categorize what's new or changed:
 
 - **Skill-doc instructions**: any of the five skill docs, or `POWER.md`'s curated subset
 - **Slash commands**: `commands/*.md` frontmatter (`description`, `argument-hint`) or body
-- **Plugin manifests**: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, the root `.mcp.json` the Claude plugin declares its server in, or any `mcp.json`/config example embedded in a skill doc
+- **Plugin manifests**: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, `kiro/outsystems/plugin.json`, the root `.mcp.json` the Claude plugin declares its server in, or any `mcp.json`/config example embedded in a skill doc
 - **Remote-tool-contract assumptions**: an instruction that names a specific MCP tool, argument, or response shape belonging to the remote server
 
 If the diff doesn't touch any of these categories, say so and stop — this PR has nothing for you to review.
@@ -64,7 +64,7 @@ If the diff touches one of the five skill docs (or `POWER.md`):
 For each changed manifest:
 
 1. **Required fields**: `name`, `description`, `version` present and non-empty; `skills` / `commands` paths in `plugin.json` actually resolve to a directory that exists; every `${user_config.<key>}` placeholder in the root `.mcp.json` names a key declared under `userConfig` in `.claude-plugin/plugin.json`, and the install recipes pass that key's value in the shape the URL template expects (a bare hostname for `tenant_hostname`).
-2. **Version lockstep**: per `CLAUDE.md`'s "Manifest version lockstep" table, a version bump in one of the four manifest files (`plugin.json` / `marketplace.json`, Claude and Cursor each) must land in all four in the same diff. Read all four and compare.
+2. **Version lockstep**: per `CLAUDE.md`'s "Manifest version lockstep" table, a version bump in one of the five manifest files (`plugin.json` / `marketplace.json` for Claude and Cursor each, plus the Kiro Power's `kiro/outsystems/plugin.json`) must land in all five in the same diff. Read all five and compare.
 3. **Config-key accuracy**: any `mcpServers` vs `servers` example, file path, or server key named in a skill doc matches the harness table in `CLAUDE.md`.
 
 ### Step 4: Verify Slash-Command Contracts
