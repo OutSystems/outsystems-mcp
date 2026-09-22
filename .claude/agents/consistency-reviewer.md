@@ -46,7 +46,7 @@ From the diff, categorize what's new or changed:
 
 - **Skill-doc instructions**: any of the five skill docs, or `POWER.md`'s curated subset
 - **Slash commands**: `commands/*.md` frontmatter (`description`, `argument-hint`) or body
-- **Plugin manifests**: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, or any `mcp.json`/config example embedded in a skill doc
+- **Plugin manifests**: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, the root `.mcp.json` the Claude plugin declares its server in, or any `mcp.json`/config example embedded in a skill doc
 - **Remote-tool-contract assumptions**: an instruction that names a specific MCP tool, argument, or response shape belonging to the remote server
 
 If the diff doesn't touch any of these categories, say so and stop — this PR has nothing for you to review.
@@ -63,7 +63,7 @@ If the diff touches one of the five skill docs (or `POWER.md`):
 
 For each changed manifest:
 
-1. **Required fields**: `name`, `description`, `version` present and non-empty; `skills` / `commands` paths in `plugin.json` actually resolve to a directory that exists.
+1. **Required fields**: `name`, `description`, `version` present and non-empty; `skills` / `commands` paths in `plugin.json` actually resolve to a directory that exists; every `${user_config.<key>}` placeholder in the root `.mcp.json` names a key declared under `userConfig` in `.claude-plugin/plugin.json`, and the install recipes pass that key's value in the shape the URL template expects (a bare hostname for `tenant_hostname`).
 2. **Version lockstep**: per `CLAUDE.md`'s "Manifest version lockstep" table, a version bump in one of the four manifest files (`plugin.json` / `marketplace.json`, Claude and Cursor each) must land in all four in the same diff. Read all four and compare.
 3. **Config-key accuracy**: any `mcpServers` vs `servers` example, file path, or server key named in a skill doc matches the harness table in `CLAUDE.md`.
 

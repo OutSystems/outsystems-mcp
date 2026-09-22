@@ -1,10 +1,18 @@
 {
   "name": "outsystems",
-  "description": "Edit, publish, deploy, and search OutSystems apps from your AI assistant.",
-  "version": "0.19.0",
+  "description": "Edit, publish, deploy, and search OutSystems apps from your AI assistant. Connects to your own OutSystems tenant's MCP server (https://<tenant_hostname>/mcp) over OAuth.",
+  "version": "0.20.0",
   "author": {
     "name": "OutSystems AI Platform"
   },
   "skills": "./skills/",
-  "commands": "./commands/"
+  "commands": "./commands/",
+  "userConfig": {
+    "tenant_hostname": {
+      "type": "string",
+      "title": "OutSystems tenant hostname",
+      "description": "The host part of your OutSystems URL, for example mycompany.outsystems.dev. No https://, no path.",
+      "required": true
+    }
+  }
 }

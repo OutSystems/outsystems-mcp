@@ -2,13 +2,13 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately via Desktop's plugin-install flow), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, `commands/`, and `skills/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately via Desktop's plugin-install flow), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are `.mcp.json` at the repo root (the MCP server the Claude plugin declares) plus the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, `commands/`, and `skills/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
 - Git.
 - At least one of the supported harnesses installed locally. Rows you cannot verify are recorded as gaps with a follow-up per the PR checklist, not skipped silently:
-  - **Claude Code** (any recent version) for plugin/skill changes.
+  - **Claude Code** 2.1.236 or newer for plugin/skill changes (the version the `--config` / `userConfig` install recipe was verified on).
   - **Claude Desktop** for MCP config changes and, on a paid plan, plugin/skill-content changes. Verifying skill content additionally requires installing the plugin via Desktop's plugin-install flow, since patching `claude_desktop_config.json` alone only wires up the MCP server.
   - **Kiro 0.11.133 or newer** for Power changes.
   - **Microsoft Copilot** (Business or Enterprise plan with MCP servers policy enabled) for Copilot changes.
@@ -24,14 +24,15 @@ git clone https://github.com/OutSystems/outsystems-mcp.git
 cd outsystems-mcp
 ```
 
-There is nothing to install or build. The files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, `commands/`, and `skills/` are the source of truth.
+There is nothing to install or build. The root `.mcp.json` and the files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, `cursor/`, `commands/`, and `skills/` are the source of truth.
 
 ## Repository Structure
 
 ```
 .claude-plugin/
   marketplace.json        # Claude Code / Desktop marketplace manifest (lists the plugin)
-  plugin.json             # Claude Code / Desktop plugin manifest (name, version, skills dir, commands dir)
+  plugin.json             # Claude Code / Desktop plugin manifest (name, version, skills dir, commands dir, userConfig)
+.mcp.json                 # MCP server the Claude plugin declares; URL built from the tenant_hostname plugin option
 .cursor-plugin/
   marketplace.json        # Cursor marketplace manifest (lists the plugin)
 commands/
@@ -105,14 +106,17 @@ There is no automated test suite. Verify changes manually, accounting for every 
 
 ### Claude Code (plugin + skills)
 
-Install the local checkout as a marketplace, then install the plugin:
+Install the local checkout as a marketplace, then install the plugin with your tenant hostname:
 
 ```bash
 claude plugin marketplace add ~/path/to/outsystems-mcp
-claude plugin install outsystems@outsystems
+claude plugin install outsystems@outsystems --config tenant_hostname=mycompany.outsystems.dev
+claude mcp list   # expect: plugin:outsystems:outsystems: https://mycompany.outsystems.dev/mcp (HTTP) - ! Needs authentication
 ```
 
-Restart Claude Code, register the MCP server with `claude mcp add` (see the `README.md` install snippet), and run an OutSystems-related prompt end-to-end (e.g. `app_list` followed by `mentor_start` → poll → `publish_start`).
+The plugin declares the MCP server itself (`.mcp.json`), so there is no `claude mcp add` step; a user-scope `outsystems` entry left over from an older recipe shadows the plugin's server when both point at the same URL. To keep the test away from your real install, point `CLAUDE_CONFIG_DIR` at an empty directory for these commands; `claude plugin install`, `claude plugin details`, and `claude mcp list` all work there without signing in. Then restart Claude Code and run an OutSystems-related prompt end-to-end (e.g. `app_list` followed by `mentor_start` → poll → `publish_start`).
+
+Three side effects of the root `.mcp.json` to know about. First, `claude plugin validate .claude-plugin/plugin.json` does not read it: only an inline `mcpServers` block in `plugin.json` is schema-checked, so a broken `.mcp.json` shows up at load time, in `claude --debug` or `/mcp`. Second, Claude Code also reads a repo-root `.mcp.json` as project MCP config, so inside this checkout it would list a project-scope `outsystems` at the literal `https://${user_config.tenant_hostname}/mcp` (`⏸ Pending approval`, then `✘ Failed to connect — ENOTFOUND` once approved) and an interactive `claude` would ask you to approve it; approving would shadow any user-scope `outsystems` you still have from the older recipe, because scopes dedupe by name and project outranks user. The repo therefore ships `.claude/settings.json` with `"disabledMcpjsonServers": ["outsystems"]`, which suppresses that entry for everyone who opens the checkout; keep it. Third, the same path is the one Copilot in Visual Studio reads for `<SolutionDir>\.mcp.json`, but that harness expects a `servers` key, so it ignores this file.
 
 ### Claude Desktop
 
@@ -159,7 +163,7 @@ Reverting too early carries its own risk: if you revert before Desktop has actua
 
    Otherwise, if you did not use the Fallback swap at all, install the plugin via whichever path above applies, and confirm the installed content is your branch's — check for wording your branch introduced — before proceeding. If the check fails, uninstall and reinstall the plugin once, and re-check. If that second attempt still shows stale content, or if the install itself fails outright, stop, run Teardown, and record Claude Desktop as a gap — skip the rest of this step and the Verification steps that follow; there is nothing further to do.
 
-   If you are continuing (the install above was confirmed, under either path): restart Desktop before continuing to step 2. The plugin delivers the skill doc and slash commands only — `.claude-plugin/plugin.json` declares no `mcpServers` block — so a plugin-only install genuinely has no `outsystems` entry; that's by design, not a bug to fix by adding one.
+   If you are continuing (the install above was confirmed, under either path): restart Desktop before continuing to step 2. Since 0.20.0 the plugin also declares the `outsystems` MCP server (`.mcp.json`, URL built from the `tenant_hostname` plugin option). Whether Desktop prompts for that option on install, and what its Chat tab does with a plugin-declared remote server whose option is unset, is unverified: record what you observe in the PR body. The Chat tab recipe below still relies on the `claude_desktop_config.json` entry, and the `mcpServers.outsystems` entry it writes is the one the rest of these steps mean by "the `outsystems` entry".
 2. In the Chat tab, ask an OutSystems-related question. If the agent shows zero awareness of any OutSystems-specific behavior at all — no tenant-hostname prompt, no citation of setup instructions, nothing recognizable as skill content — treat this as a suspected blocking finding, to be confirmed once steps 3 and 5 below have run: if the agent also fails to run the Desktop setup subsection in step 3 for a reason other than the harness-capability limit described there, and fails to apply `## Rules` in step 5, the finding is confirmed. A confirmed finding falsifies the `CLAUDE.md` table's Claude Desktop row and `README.md`'s "delivers the same conventions doc" claim: do not merge either claim until this is resolved.
 3. Let the agent drive `skills/outsystems/SKILL.md`'s "For Claude Desktop Users (Manual Config)" subsection end-to-end from a fresh state (tenant prompt, config patch, restart instruction, OAuth sign-in). This is what certifies the skill doc's own Desktop recipe works, not just that Desktop received the plugin. If the agent surfaces the skill but the recipe misleads it, note the specific step and treat it as a doc gap to fix. If the agent cannot run `npx` or read/write `claude_desktop_config.json` at all, do not treat it as a doc gap — it is a harness-capability limit, and it also invalidates `README.md`'s own Desktop paste-prompt recipe (which demands the same capabilities). Record it as a blocking finding, then complete the config edit by hand yourself, continue to step 4 (which has its own capability-limited branch for exactly this case), and then proceed through steps 5-8 normally.
 4. **Second pass, README-documented order.** Uninstall the plugin and remove the `outsystems` config entry again. Wire the MCP server using `README.md`'s Claude Desktop paste prompt, but with an intentionally broken `command` path (e.g. point it at a nonexistent binary) so the server is configured but failing to connect. A genuinely working server proves nothing here: `## First use / setup`'s entry condition (tools not visible / connection errors) is already false once a server is configured and connected, so the skip-precondition this step exists to test is never actually exercised. Restart Desktop, then reinstall the plugin **via the same branch-targeting path as step 1** — if that was the Fallback swap, this means a second bounded swap cycle, not a plain reinstall, or you will silently certify `main`'s content instead of your branch's — and restart again. Ask the same kind of OutSystems question. Confirm the skill recognizes the existing (if broken) config and does not re-run its from-scratch setup recipe — this exercises the order `README.md` actually documents (server wired first, plugin installed after), the inverse of steps 1-3 above. Record that recognizes-already-configured observation first, before the agent's next move: per `skills/outsystems/SKILL.md`'s already-configured shortcut, the expected behavior is to skip the tenant-collection and config-write steps, confirm `npx` per `SKILL.md`'s step 4, confirm with the user that Desktop was restarted since the entry was last edited per `SKILL.md`'s step 6, and — since the server still won't connect after that — diagnose the broken `command` via step 5's PATH-fallback paragraph, propose its repair (replacing `command` with the absolute path from `which npx`) rather than a from-scratch setup, and have the user restart Desktop again before retrying. Confirm the agent does all five; a successful repair making the server connect is the expected outcome here and does not retroactively invalidate the observation already recorded. If step 3 recorded a harness-capability limit, hand-complete this config edit (with the intentionally broken `command`) yourself too, and test only this recognizes-already-configured half — do not attempt the README paste-prompt through the agent. Gaps found here are Desktop-setup-recipe gaps; fix and record per step 8 below.
@@ -212,7 +216,7 @@ For changes to the root `SKILL.md`, fetch it the way the install snippet does (`
 
 ## Code Standards
 
-- **JSON manifests** (`marketplace.json`, `plugin.json`): two-space indent, trailing newline, sorted alphabetically only where it doesn't reorder a meaningful sequence (e.g. plugin entries in `marketplace.json` should keep listing order).
+- **JSON manifests** (`marketplace.json`, `plugin.json`, `.mcp.json`): two-space indent, trailing newline, sorted alphabetically only where it doesn't reorder a meaningful sequence (e.g. plugin entries in `marketplace.json` should keep listing order).
 - **Markdown** (`SKILL.md`, `POWER.md`, skill files, `README.md`): one sentence per concept; prefer short paragraphs over deep heading nesting. Code fences need a language tag.
 - **No internal references** in any file shipped to users: no stage hostnames, no internal Jira projects, no team-internal jargon. The repo is public — assume an external developer is reading.
 
@@ -239,7 +243,7 @@ Claude Desktop installs from the same `.claude-plugin/` pair as Claude Code, but
 Versioning follows [Semantic Versioning](https://semver.org/):
 
 - **MAJOR** — breaking change to install instructions, file layout, or required harness version.
-- **MINOR** — new skill content, new workflows documented, new install path for an additional harness.
+- **MINOR** — new skill content, new workflows documented, new install path for an additional harness. An install-recipe change whose previous configuration keeps working is MINOR too (0.20.0 moved Claude Code from `claude mcp add` to the plugin's `tenant_hostname` option; entries written by the old recipe still load).
 - **PATCH** — fixes and clarifications that don't change how a user installs or invokes the integration.
 
 There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install`, Claude Desktop plugin install or reinstall, Cursor Team Marketplace refresh, or Kiro Power re-fetch.
