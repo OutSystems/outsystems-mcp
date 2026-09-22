@@ -136,7 +136,7 @@ the suites pin down:
 - `spec_untrusted_input_port.test.sh` - the properties that keep
   untrusted input away from the privileged agent: the comment fetch and
   the review POST are shell steps and not prompt instructions, the tool
-  grant keeps `Task` but no shell and no network reach, `id-token: write`
+  grant keeps `Task` but no shell, `id-token: write`
   is scoped to the `ai-review` job alone, no credential file is written
   on any trigger, and this README does not deny the surface.
 
