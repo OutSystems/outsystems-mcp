@@ -67,7 +67,8 @@ check "a validation error is not waited out" "$(paused)" no
 
 post rejected-summary-only "$SUMMARY_ONLY" GH_POST_CODES=422,201
 check "a summary-only review is retried as it stands" "$(sent 2 .body)" '## Review'
-check "with no empty heading appended" "$(sent 2 'has("comments")')" false
+check_no_match "with no empty heading appended" "$(sent 2 .body)" \
+  'could not be anchored inline'
 
 post rejected-twice "$WITH_FINDING" GH_POST_CODES=422,422
 check "a rejected retry fails the job" "$([ "$STEP_RC" -ne 0 ] && echo yes)" yes

@@ -39,14 +39,18 @@ context happy
 check "step succeeds" "$STEP_RC" 0
 check "the branch name is passed through verbatim" "$(cat "$CTX/head-ref.txt")" feature/x
 check "the base is the merge-base, not the base branch tip" "$(cat "$CTX/base-sha.txt")" "$BASE"
-check_match "the diff covers the PR's own commits" "$(cat "$CTX/pr.diff")" '\+\+\+ b/one.txt'
-check_match "the diff covers the PR's own commits" "$(cat "$CTX/pr.diff")" '\+\+\+ b/two.txt'
+check_match "the diff covers the PR's first commit" "$(cat "$CTX/pr.diff")" '\+\+\+ b/one.txt'
+check_match "the diff covers the PR's head commit" "$(cat "$CTX/pr.diff")" '\+\+\+ b/two.txt'
 check "a first review has no previous head" "$(cat "$CTX/prev-sha.txt")" ""
 check "and no delta" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
 check "prior reviews default to an empty list" "$(cat "$CTX/prior-reviews.json")" "[]"
 check "prior inline comments default to an empty list" "$(cat "$CTX/prior-comments.json")" "[]"
 check_file_absent "nothing suppresses the review" "$CTX/no-review.txt"
 check "so the agent step is not skipped" "$(cat "$RT/step-output.txt")" ""
+# Anything left in the checkout is inside the agent's Read/Grep scope and
+# would read as a repository change.
+check "the step leaves the workspace untouched" \
+  "$(git -C "$REPO_DIR" status --porcelain)" ""
 
 section "a branch name is data: it reaches the file, not the shell"
 

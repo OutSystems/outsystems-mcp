@@ -92,12 +92,35 @@ check_match "allowedTools is quoted, so the action cannot widen a pattern while 
   "$claude_args" '--allowedTools \\"[A-Za-z,]+\\"'
 check_no_match "no Bash grant, git included" "$claude_args" 'Bash'
 check_no_match "no network-capable tool" "$claude_args" 'WebFetch|WebSearch|mcp__'
-check_match "Task stays granted, the critic panel needs it" "$claude_args" 'Task'
+# Equality, not presence: dropping Write leaves the agent unable to emit
+# review.json, and every run then posts the "did not complete" notice.
+check "the grant is exactly the set the prompt and the payload step depend on" \
+  "$(printf '%s' "$claude_args" | sed -n 's/.*--allowedTools \\"\([^\\]*\)\\".*/\1/p')" \
+  'Read,Grep,Glob,Task,Write,Edit'
 check_match "the context directory is added to the file tools' scope" \
   "$claude_args" '--add-dir \$\{\{ runner.temp \}\}/ai-review'
 
-check_no_match "the prompt makes no GitHub API call of its own" \
-  "$(step_field ai-review "$AGENT" with.prompt)" 'gh (api|pr) '
+prompt=$(step_field ai-review "$AGENT" with.prompt)
+check_no_match "the prompt makes no GitHub API call of its own" "$prompt" 'gh (api|pr) '
+# The directory named in the prompt is the one `--add-dir` grants and the
+# one the payload step reads back; a drift denies the agent's reads and
+# strands review.json where nothing looks for it.
+check "the prompt reads the context from the granted directory" \
+  "$(printf '%s' "$prompt" | grep -co 'CONTEXT = \${{ runner.temp }}/ai-review')" 1
+check "the prompt writes review.json into the same directory" \
+  "$(printf '%s' "$prompt" | grep -co '\${{ runner.temp }}/ai-review/review.json')" 1
+
+section "the shell steps take their inputs from the resolved SHA, not the run's"
+
+check "the context step's env pins the resolved PR context" \
+  "$(step_field ai-review "Collect the review context" env)" \
+  '{"BASE_REF":"${{ needs.resolve.outputs.base_ref }}","GH_TOKEN":"${{ secrets.GITHUB_TOKEN }}","HEAD_REF":"${{ needs.resolve.outputs.head_ref }}","HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","PR_NUMBER":"${{ needs.resolve.outputs.pr_number }}","REPO":"${{ github.repository }}"}'
+check "the payload step stamps the resolved SHA onto the review" \
+  "$(step_field ai-review "Build the review payload" env)" \
+  '{"HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}"}'
+check "the post step probes for a duplicate against the resolved SHA" \
+  "$(step_field ai-review "Post the review (exactly one, event=COMMENT)" env)" \
+  '{"GH_TOKEN":"${{ secrets.GITHUB_TOKEN }}","HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","PR_NUMBER":"${{ needs.resolve.outputs.pr_number }}","REPO":"${{ github.repository }}"}'
 
 section "checkout: the pinned SHA, with no token written into .git/config"
 
@@ -153,6 +176,11 @@ for slug in resolve context payload post; do
     check "$slug step body is plain shell, parameterised through env" \
       "plain shell" "plain shell"
   fi
+done
+
+for slug in context payload post; do
+  check "$slug step body names the granted context directory" \
+    "$(grep -c 'CTX="${RUNNER_TEMP}/ai-review"' "$STEPS/$slug.sh")" 1
 done
 
 finish
