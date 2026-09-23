@@ -126,6 +126,68 @@ check "the finding keeps its anchor" "$(final '.comments[0]|"\(.path):\(.line)"'
 payload marker-only-body '{"body":"<!-- ai-review:notice -->","comments":[]}'
 check_notice "a body that is only the marker"
 
+# One pass over the nested form removes the inner marker and leaves the
+# outer one whole.
+payload nested-marker '{"body":"## Review\n\n<!-- ai-review:<!-- ai-review:notice -->notice -->","comments":[{"path":"a.yml","line":3,"body":"x <!-- ai-review:<!-- ai-review:notice -->notice -->"}]}'
+check "step succeeds" "$STEP_RC" 0
+check_no_match "a marker nested inside another is stripped too" "$(final .body)" \
+  '<!-- ai-review:notice -->\s*$'
+check "leaving the review text" "$(final .body)" '## Review'
+check "and the same holds in an inline body" "$(final '.comments[0].body')" 'x '
+
+payload nested-marker-only '{"body":"<!-- ai-review:<!-- ai-review:notice -->notice -->","comments":[]}'
+check_notice "a body that is only a nested marker"
+
+section "a payload that carries a credential is not posted"
+
+SECRET_KEY='example-secret-access-key-xxxxxxxx'
+# The credentials the step's env holds on the runner: the AWS values the
+# credential step exports, and the token passed in for the scan.
+CREDS=(AWS_ACCESS_KEY_ID=example-access-key-id-xxxx "AWS_SECRET_ACCESS_KEY=$SECRET_KEY"
+  AWS_SESSION_TOKEN=example-session-token-xxxx GH_TOKEN=example-job-token-xxxx)
+scanned() { # case name, review.json content, [VAR=VAL overrides ...]
+  new_case "$1"
+  printf '%s' "$2" > "$CTX/review.json"
+  shift 2
+  run_step payload RUNNER_TEMP="$RT" HEAD_SHA="$HEAD_SHA" GH_STUB_DIR="$GH_STUB_DIR" "${CREDS[@]}" "$@"
+}
+
+scanned secret-in-body '{"body":"env dump: '"$SECRET_KEY"'","comments":[]}'
+check_notice "the AWS secret key in the body"
+check_match "the error names the variable" "$STEP_OUT" \
+  '::error::the review payload contains the value of AWS_SECRET_ACCESS_KEY;'
+check_no_match "and never prints the value" "$STEP_OUT" "$SECRET_KEY"
+check_no_match "the notice does not carry it either" "$(final .body)" "$SECRET_KEY"
+
+scanned secret-in-comment '{"body":"## Review","comments":[{"path":"a.yml","line":3,"body":"see '"$SECRET_KEY"'"}]}'
+check_notice "the AWS secret key in an inline comment"
+check_match "the error names the variable" "$STEP_OUT" 'contains the value of AWS_SECRET_ACCESS_KEY;'
+
+scanned token-in-path '{"body":"## Review","comments":[{"path":"example-job-token-xxxx","line":3,"body":"x"}]}'
+check_notice "the job token in an inline comment's path"
+check_match "the error names the variable" "$STEP_OUT" 'contains the value of GH_TOKEN;'
+
+# jq decodes the escape, and what the API would publish is the decoded text.
+scanned escaped-secret '{"body":"\u0065xample-access-key-id-xxxx and \u0065xample-session-token-xxxx","comments":[]}'
+check_notice "credentials written as JSON escapes"
+check_match "every leaked variable is named" "$STEP_OUT" \
+  'contains the value of AWS_ACCESS_KEY_ID, AWS_SESSION_TOKEN;'
+
+# An empty value is a substring of every text, so it must not count.
+scanned empty-credential '{"body":"## Review\n\nNo findings.","comments":[{"path":"a.yml","line":3,"body":"x"}]}' \
+  AWS_SESSION_TOKEN= GH_TOKEN=
+check "an empty credential does not trip the scan" "$STEP_RC" 0
+check "the review is posted as written" "$(final .body)" '## Review
+
+No findings.'
+check "with its findings" "$(final '.comments|length')" 1
+check_no_match "and nothing is reported" "$STEP_OUT" '::error::'
+
+scanned clean-review '{"body":"## Review\n\nMUST: an example- prefix alone is not a credential.","comments":[{"path":"a.yml","line":3,"body":"finding"}]}'
+check "a review that carries none of them passes" "$STEP_RC" 0
+check_match "and is accepted" "$STEP_OUT" 'payload accepted: 1 inline comment'
+check "unchanged" "$(final '.comments[0].body')" finding
+
 section "when the context step already decided there is nothing to review"
 
 new_case notice-wins

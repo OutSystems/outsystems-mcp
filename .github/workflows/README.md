@@ -59,45 +59,73 @@ workflow-level grant is `contents: read`.
 Every GitHub API call happens in a shell step, never in the prompt. The
 agent session receives the diff, this bot's own prior reviews and inline
 comments (filtered to `github-actions[bot]` at fetch time), and the branch
-name. `.git/config` is not token-free: the checkout runs with
-`persist-credentials: false`, but the review action re-adds the job token
-to `remote.origin.url` in agent mode, where the session's Read grant can
-see it. Containment is the tool allowlist, not the environment: the
-action passes its whole process environment to the CLI, so the session's
-env does hold the Bedrock credentials and a copy of the workflow token,
-but the session has no tool that can reach the GitHub API or the network,
-no `gh`, no MCP server and no shell, so it holds nothing it can spend. The
-posting step shares this job and its `pull-requests: write`, so widening
-`--allowedTools` toward any network- or `gh`-capable tool restores the
-write primitive and requires moving the post into a job of its own. The
-session holds no shell at all, `git` included: with `Write` in the same
-session, any git invocation executes the program named by
-`diff.external` or `core.fsmonitor`, out of the repo config, the runner's
-global config or a `.git/hooks/` script, so no permission on one of those
-files contains it. Git does run in the workspace after the session:
-`actions/checkout`'s post-job cleanup calls `git config --local` and
-`git submodule foreach` there, with the job token, the AWS credentials and
-the OIDC request variables in its env, so a `core.fsmonitor` the session
-planted in `.git/config` would execute. Two measures close it: the
-session's `--disallowedTools "Edit(.git/**)"` keeps every file-editing
-tool, `Write` included, out of any `.git` directory under the workspace,
-and an `always()` step right after the session deletes the workspace's
-`.git`, so the cleanup finds no `.git/config` and returns early. PR text
-written by a third party therefore reaches the agent only as diff
-content. A base ref that cannot be resolved, and a
-head with no diff against a base that did resolve, each post a notice
-naming which of the two happened, rather than an empty-diff review that
-would read as clean. That route is taken from the context step's outputs,
-never from a file in the directory the agent can write. The agent writes
-a review payload to a file; a later shell step validates its shape and
-posts it with `event` and
-`commit_id` set by the workflow, so the bot cannot approve a PR even if
-the prompt is subverted, and a crashed agent yields a visible notice
+name. The action passes its whole process environment to the CLI, so the
+session's env holds the Bedrock credentials and a copy of the workflow
+token, and the checkout's `persist-credentials: false` does not keep the
+token out of `.git/config`: the review action re-adds it to
+`remote.origin.url` in agent mode. Containment is the session's tool
+grants.
+
+- **No tool that reaches the network or runs a program.** No `gh`, no MCP
+  server, no WebFetch and no shell grant, `git` included: with any write
+  in the same session, a git invocation executes the program named by
+  `diff.external` or `core.fsmonitor`, out of the repo config, the
+  runner's global config or a `.git/hooks/` script. The posting step
+  shares this job and its `pull-requests: write`, so widening the grants
+  toward any network- or `gh`-capable tool restores the write primitive
+  and requires moving the post into a job of its own.
+- **File tools scoped by path.** A bare `Read`, `Write` or `Edit` allow
+  rule approves that tool on every path on the runner. The grants are
+  instead `Read` on the workspace and the context directory
+  (`$RUNNER_TEMP/ai-review`), which also governs Grep and Glob, and `Edit`,
+  which governs every file-writing tool, on the context directory alone.
+  The session runs in `dontAsk` mode, so a call no rule allows is denied
+  instead of waiting on a prompt; subagents inherit the same rules.
+- **Denies as a second layer.** Read and Edit are both denied the
+  runner's file-command files (`$RUNNER_TEMP/_runner_file_commands`,
+  where a planted `BASH_ENV` or `PATH` entry would run in every later
+  step), any `_actions` directory (the installed actions' post scripts),
+  `/tmp` (the review action's own post-step comment buffer), dotfiles in
+  the home directory, `/proc` (every process's env there holds the
+  credentials) and any `.git` under the workspace (the token in
+  `remote.origin.url`, and the config the post-job git reads). Home is
+  denied as dotfiles only: the workspace and the context directory are
+  both under it, and a deny outranks every allow.
+- **A credential scan before posting.** The review is public, so the
+  payload step replaces any payload whose body, inline comment bodies or
+  paths contain the literal value of `AWS_ACCESS_KEY_ID`,
+  `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` or the job token with the
+  notice, and logs an `::error::` naming the variable, never the value.
+  An encoded or split copy is not caught; the denies above are what keep
+  the session from reading the values in the first place.
+
+Git does run in the workspace after the session: `actions/checkout`'s
+post-job cleanup calls `git config --local` and `git submodule foreach`
+there, with the job token, the AWS credentials and the OIDC request
+variables in its env. The session holds no write grant on the workspace,
+and an `always()` step right after the session also deletes the
+workspace's `.git`, so the cleanup finds no `.git/config` and returns
+early whatever the CLI's rule matching does. PR text written by a third
+party reaches the agent only as diff content.
+
+What proves the file scope is `.github/tests/probe-tool-scope.sh`, run by
+hand, not CI; see "Tests" below. The contract suite pins the exact rule
+lists, which proves what the workflow asks for, not what the CLI
+enforces.
+
+A base ref that cannot be resolved, and a head with no diff against a
+base that did resolve, each post a notice naming which of the two
+happened, rather than an empty-diff review that would read as clean. That
+route is taken from the context step's outputs, never from a file in the
+directory the agent can write. The agent writes a review payload to a
+file; a later shell step validates its shape and posts it with `event`
+and `commit_id` set by the workflow, so the bot cannot approve a PR even
+if the prompt is subverted, and a crashed agent yields a visible notice
 rather than silence. Every notice ends with a hidden
 `<!-- ai-review:notice -->` marker, which the payload step strips from
-the agent's own text, and the next run never takes the head of a review
-whose body ends with it as the last reviewed one, so the changes at a
-notice's head still count as new.
+the agent's own text until none is left, nested copies included, and the
+next run never takes the head of a review whose body ends with it as the
+last reviewed one, so the changes at a notice's head still count as new.
 
 Two consequences of dropping the untrusted inputs. The review cannot dedup
 against human review comments, since those are the untrusted channel and
@@ -113,7 +141,9 @@ lockstep loop from `CLAUDE.md`, plus `simplification-reviewer.md`'s
 `wc -c` measurement and its build/lint/test step - are redirected by the
 orchestrator prompt to `Grep` and `Read`, or to inspection where this
 repo, markdown and JSON with no build system, has nothing to run. The
-session holds no shell grant at all, so a critic file that starts
+simplification critic's step that edits a file to try a replacement
+works on a copy under the context directory, the only place the session
+can write. The session holds no shell grant at all, so a critic file that starts
 prescribing a shell form needs that override extended in the same change;
 without it the critic is denied inside its own subagent, which degrades
 the review silently instead of failing the job.
@@ -139,9 +169,11 @@ contract and spec suites read the same committed workflow as data. What
 the suites pin down:
 
 - `workflow-contract.test.sh` - the guarantees that live in the
-  structure: per-job token scope, an agent allowlist with no shell and
-  nothing that reaches the network, a deny on `.git` for the agent's
-  file-editing tools and the removal of `.git` right after the session, a
+  structure: per-job token scope, an agent grant with no shell and
+  nothing that reaches the network, the exact allow and deny rule lists
+  (no file tool allowed without a path, writes allowed in the context
+  directory only, every second-layer deny present for Read and Edit), the
+  `dontAsk` mode, the removal of `.git` right after the session, a
   checkout that persists no credentials, the declared `bash` shell every
   step runs under, the step order, and the trigger surface.
 - `resolve-step.test.sh` - the per-trigger gate and the five outputs the
@@ -155,8 +187,11 @@ the suites pin down:
 - `payload-step.test.sh` - every payload whose keys reach the API as one
   review, every one that reaches it as the notice instead, a notice route
   that only the context step's outputs can select, a notice marker that
-  only this step can write, and a directory the agent plants at a path
-  the payload or post step writes not keeping the run from posting. The
+  only this step can write, nested copies of it included, a payload
+  carrying the literal value of a credential in its env going out as the
+  notice (an empty credential never matching), and a directory the agent
+  plants at a path the payload or post step writes not keeping the run
+  from posting. The
   gate checks each element's keys and that its `body` is a string: a
   non-string `body` sends the run to the notice, while a wrong type in
   `path` or `line` reaches the API, and the post step's fold is what
@@ -176,6 +211,36 @@ the suites pin down:
 A case that needs `gh` behaviour the stub does not have belongs in the
 stub, not in a mock of the step: a test that reimplements the step
 proves the test.
+
+### Probing the agent's file scope
+
+```bash
+.github/tests/probe-tool-scope.sh
+CLAUDE_BIN=/path/to/claude .github/tests/probe-tool-scope.sh
+```
+
+The contract suite proves which rules the workflow passes, not what the
+CLI does with them. This probe does the second, and it needs a signed-in
+`claude` CLI and model access, so `run.sh` never calls it: run it by
+hand after any change to the agent step's `claude_args`. It builds a
+throwaway layout under the home directory shaped like the runner's, with
+stand-ins for the runner's file-command files, an installed action,
+`/tmp`, home dotfiles and the workspace `.git`, takes the agent step's
+flags from the committed workflow with the runner paths swapped for that
+layout, and runs the CLI headless with a prompt that attempts every
+out-of-scope read and write, from the session and from a Task subagent.
+The verdict is taken from the filesystem and the transcript: every
+stand-in unchanged, no canary planted outside the scope in the output,
+and the in-scope reads, the `review.json` write and the subagent's write
+in the context directory done. `WORKFLOW=<file>` points it at another
+revision of the workflow, which is how a known-bad grant is shown to
+fail it.
+
+What it does not prove: the action installs its own pinned CLI version on
+the runner and drives it through the Agent SDK rather than `-p`, so a
+probe against a different version says nothing about the runner's until
+`CLAUDE_BIN` points at that version, and `/proc` is only exercised on
+Linux.
 
 ## Required repo configuration
 

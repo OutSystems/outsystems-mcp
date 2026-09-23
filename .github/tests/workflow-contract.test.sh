@@ -104,22 +104,81 @@ check "the agent step's env carries only the Bedrock switch" \
   "$(step_field ai-review "$AGENT" env)" '{"CLAUDE_CODE_USE_BEDROCK":"1"}'
 
 claude_args=$(step_field ai-review "$AGENT" with.claude_args)
+
+# The rule list a flag hands the CLI, one rule per line, tokenized the way
+# the action does it: shell words first, then each value split on commas.
+tool_rules() { # flag name
+  python3 - "$claude_args" "$1" <<'PY2'
+import json
+import shlex
+import sys
+
+words = shlex.split(json.loads(sys.argv[1]))
+flag = "--" + sys.argv[2]
+for i, word in enumerate(words):
+    if word == flag:
+        for rule in words[i + 1].split(","):
+            print(rule.strip())
+PY2
+}
+allow=$(tool_rules allowedTools)
+deny=$(tool_rules disallowedTools)
+WS='${{ github.workspace }}'
+CTXDIR='${{ runner.temp }}/ai-review'
+
 check_match "allowedTools is quoted, so the action cannot widen a pattern while tokenizing" \
-  "$claude_args" '--allowedTools \\"[A-Za-z,]+\\"'
+  "$claude_args" '--allowedTools \\"[^"]+\\"'
+check_match "so is disallowedTools" "$claude_args" '--disallowedTools \\"[^"]+\\"'
 check_no_match "no Bash grant, git included" "$claude_args" 'Bash'
 check_no_match "no network-capable tool" "$claude_args" 'WebFetch|WebSearch|mcp__'
-# Equality, not presence: dropping Write leaves the agent unable to emit
-# review.json, and every run then posts the "did not complete" notice.
-check "the grant is exactly the set the prompt and the payload step depend on" \
-  "$(printf '%s' "$claude_args" | sed -n 's/.*--allowedTools \\"\([^\\]*\)\\".*/\1/p')" \
-  'Read,Grep,Glob,Task,Write,Edit'
+# A bare file-tool allow approves that tool on every path on the runner,
+# the runner's file commands, /proc and /tmp included.
+check "no file tool is allowed without a path" \
+  "$(grep -cxE 'Read|Write|Edit|Grep|Glob|MultiEdit|NotebookEdit' <<<"$allow")" 0
+# Equality, not presence: a missing Edit grant leaves the agent unable to
+# emit review.json, and every run then posts the "did not complete" notice.
+check "the grant is exactly the panel, reads of the workspace and the context, and writes to the context" \
+  "$allow" "Task
+Read(/$WS/**)
+Read(/$CTXDIR/**)
+Edit(/$CTXDIR/**)"
+# `Edit` path rules govern every file-writing tool, Write included; a
+# `Write(...)` or `Glob(...)` path rule is accepted by the CLI and never
+# consulted, so it would read as a scope that is not there.
+check "the only write grant is the context directory" \
+  "$(grep -E '^(Edit|Write|MultiEdit|NotebookEdit)' <<<"$allow")" "Edit(/$CTXDIR/**)"
+check_no_match "no Write, Grep or Glob path rule stands in for a Read or Edit one" \
+  "$claude_args" '(Write|Grep|Glob|MultiEdit|NotebookEdit)\('
+check_match "calls no rule allows are denied rather than left waiting on a prompt" \
+  "$claude_args" '--permission-mode dontAsk( |$)'
 check_match "the context directory is added to the file tools' scope" \
   "$claude_args" '--add-dir \$\{\{ runner.temp \}\}/ai-review'
-# `Edit` path rules cover every file-editing tool, Write included; a
-# `Write(...)` path rule is accepted by the CLI and never consulted.
-check_match "every file-editing tool is denied the workspace .git directory" \
-  "$claude_args" '--disallowedTools \\"Edit\(\.git/\*\*\)\\"'
-check_no_match "no Write path rule stands in for that deny" "$claude_args" 'Write\('
+
+# Each path is denied to Read and to Edit, because the CLI the action
+# installs predates Read denies also covering Write.
+check "the deny list is exactly the second layer the step comment names" \
+  "$deny" "Read(/$WS/**/.git/**)
+Edit(/$WS/**/.git/**)
+Read(/\${{ runner.temp }}/_runner_file_commands/**)
+Edit(/\${{ runner.temp }}/_runner_file_commands/**)
+Read(//**/_actions/**)
+Edit(//**/_actions/**)
+Read(//tmp/**)
+Edit(//tmp/**)
+Read(~/.*)
+Edit(~/.*)
+Read(//proc/**)
+Edit(//proc/**)"
+# shellcheck disable=SC2088  # a rule's literal text, not a shell path
+for path in "/$WS/**/.git/**" '/${{ runner.temp }}/_runner_file_commands/**' \
+  '//**/_actions/**' '//tmp/**' '~/.*' '//proc/**'; do
+  check "$path is denied to reads and writes alike" \
+    "$(grep -cxF -e "Read($path)" -e "Edit($path)" <<<"$deny")" 2
+done
+# The workspace and the context directory both sit under the runner's
+# home, and a deny outranks every allow.
+check "no deny covers the whole home directory" \
+  "$(grep -cE '^(Read|Edit)\(~/\*' <<<"$deny")" 0
 
 prompt=$(step_field ai-review "$AGENT" with.prompt)
 check_no_match "the prompt makes no GitHub API call of its own" "$prompt" 'gh (api|pr) '
@@ -130,6 +189,10 @@ check "the prompt reads the context from the granted directory" \
   "$(printf '%s' "$prompt" | grep -co 'CONTEXT = \${{ runner.temp }}/ai-review')" 1
 check "the prompt writes review.json into the same directory" \
   "$(printf '%s' "$prompt" | grep -co '\${{ runner.temp }}/ai-review/review.json')" 1
+# Every write the prompt asks for has to land inside the one Edit grant.
+check "the prompt sends scratch edits to the context directory, not the workspace" \
+  "$(printf '%s' "$prompt" | grep -co 'CONTEXT/scratch/')" 1
+check_no_match "and no longer asks for working-tree edits to be undone" "$prompt" 'undo each one with Edit'
 
 section "the shell steps take their inputs from the resolved SHA, not the run's"
 
@@ -137,10 +200,12 @@ check "the context step's env pins the resolved PR context" \
   "$(step_field ai-review "Collect the review context" env)" \
   '{"BASE_REF":"${{ needs.resolve.outputs.base_ref }}","GH_TOKEN":"${{ secrets.GITHUB_TOKEN }}","HEAD_REF":"${{ needs.resolve.outputs.head_ref }}","HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","PR_NUMBER":"${{ needs.resolve.outputs.pr_number }}","REPO":"${{ github.repository }}"}'
 # The notice route is read from the context step's outputs, which the
-# agent cannot write, never from a file in its write scope.
-check "the payload step stamps the resolved SHA and routes on the context step's outputs" \
+# agent cannot write, never from a file in its write scope. GH_TOKEN is
+# there for the credential scan, next to the AWS values the credential
+# step exports to every later step.
+check "the payload step stamps the resolved SHA, routes on the context step's outputs, and holds the token it scans for" \
   "$(step_field ai-review "Build the review payload" env)" \
-  '{"HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","NO_REVIEW_NOTICE":"${{ steps.context.outputs.no_review_notice }}","SKIP_REVIEW":"${{ steps.context.outputs.skip_review }}"}'
+  '{"GH_TOKEN":"${{ github.token }}","HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","NO_REVIEW_NOTICE":"${{ steps.context.outputs.no_review_notice }}","SKIP_REVIEW":"${{ steps.context.outputs.skip_review }}"}'
 check "the post step probes for a duplicate against the resolved SHA" \
   "$(step_field ai-review "Post the review (exactly one, event=COMMENT)" env)" \
   '{"GH_TOKEN":"${{ secrets.GITHUB_TOKEN }}","HEAD_SHA":"${{ needs.resolve.outputs.head_sha }}","PR_NUMBER":"${{ needs.resolve.outputs.pr_number }}","REPO":"${{ github.repository }}"}'
