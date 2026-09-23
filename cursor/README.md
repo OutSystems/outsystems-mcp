@@ -70,19 +70,20 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
 
 ## Version Alignment
 
-Cursor and Claude plugin versions must stay in sync:
+Cursor, Claude, and Kiro plugin versions must stay in sync:
 - `.claude-plugin/plugin.json` -> `version`
 - `.claude-plugin/marketplace.json` -> `plugins[0].version`
 - `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
+- `kiro/outsystems/plugin.json` → `version`
 
-Update all four together in the same commit when bumping the version.
+Update all five together in the same commit when bumping the version. `CLAUDE.md`'s "Manifest version lockstep" section is the source of truth for this list.
 
 ## Skill Docs Lockstep
 
 The Cursor skill doc is included in the plugin and deployed via `cursor/.cursor-plugin/plugin.json`. It must stay synchronized with the other harness skill docs:
 - `skills/outsystems/SKILL.md` (Claude Code)
-- `kiro/outsystems/steering/skill.md` (Kiro)
+- `kiro/outsystems/skills/outsystems/SKILL.md` (Kiro)
 - `copilot/skill.md` (GitHub Copilot)
 - `SKILL.md` (root, generic)
 
@@ -91,7 +92,7 @@ All five files carry a `## Rules` section that is identical but for two wording 
 Use the lockstep grep check before opening a PR:
 ```bash
 PHRASE="<distinctive substring from your change>"
-for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/skill.md cursor/skills/outsystems/SKILL.md SKILL.md; do
+for f in skills/outsystems/SKILL.md kiro/outsystems/skills/outsystems/SKILL.md copilot/skill.md cursor/skills/outsystems/SKILL.md SKILL.md; do
   printf '%s  %s\n' "$(grep -c "$PHRASE" "$f")" "$f"
 done
 ```

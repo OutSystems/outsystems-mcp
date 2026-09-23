@@ -10,7 +10,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | :-- | :-- | :-- | :-- | :-- |
 | Claude Code | `skills/outsystems/SKILL.md` | automatic, via `plugin.json`'s `skills` key | declared by the plugin: root `.mcp.json`, URL built from the `tenant_hostname` plugin option; listed as `plugin:outsystems:outsystems` in `claude mcp list` (`claude mcp add` at user scope is the fallback) | `mcpServers` |
 | Claude Desktop | `skills/outsystems/SKILL.md` | same plugin as Claude Code, installed separately via Desktop's plugin-install flow (paid plan required) | `claude_desktop_config.json` for the Chat tab and the Code tab; whether the plugin's `.mcp.json` server also loads in either tab, and whether Desktop prompts for the option, are unverified (see CONTRIBUTING.md) | `mcpServers` |
-| Kiro Chat | `kiro/outsystems/steering/skill.md` | automatic, via the Power's `steering/` directory | `~/.kiro/settings/mcp.json` | `mcpServers` |
+| Kiro Chat | `kiro/outsystems/skills/outsystems/SKILL.md` | automatic, via `kiro/outsystems/plugin.json` (Agent Plugins format): Kiro loads every `skills/*/SKILL.md` in the Power | `~/.kiro/settings/mcp.json` | `mcpServers` |
 | Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
 | Copilot in Visual Studio | `copilot/skill.md` | manual download to `.github/copilot-instructions.md` | `<SolutionDir>\.mcp.json`, or `%USERPROFILE%\.mcp.json` | `servers` |
@@ -42,7 +42,7 @@ Harnesses differ in ways that break otherwise-correct changes: the config key (`
 This repo ships **five parallel skill documents**:
 
 - `skills/outsystems/SKILL.md` is the Claude Code marketplace skill, consumed when a user runs `claude plugin install outsystems@outsystems`, or when a Claude Desktop user installs the same plugin via its plugin-install flow.
-- `kiro/outsystems/steering/skill.md` is the Kiro Power steering doc, consumed by Kiro.
+- `kiro/outsystems/skills/outsystems/SKILL.md` is the Kiro Power skill doc, consumed by Kiro through the Power's `plugin.json` (Agent Plugins format). Once a `plugin.json` is present, Kiro reads agent instructions from `skills/*/SKILL.md` (and steering only from `dev.kiro/steering/*.md`), so a top-level `steering/` is no longer read and the Power has none. `kiro/outsystems/POWER.md` stays: Kiro's agent loader ignores it in this format, but the Powers panel's details view still reads its frontmatter (description, display name, keywords) and shows its body as the Power's documentation, and it is the human-readable guide on GitHub.
 - `copilot/skill.md` is the GitHub Copilot skill doc, consumed by GitHub Copilot (VS Code, CLI, or Visual Studio).
 - `cursor/skills/outsystems/SKILL.md` is the Cursor skill doc, consumed by Cursor CLI.
 - `SKILL.md` at the repo root is the top-level fallback skill doc, consumed by hosts that look at the repo root or by anyone reading the repo on GitHub.
@@ -59,7 +59,7 @@ After any skill-doc change, grep for two distinctive phrases from the change acr
 
 ```bash
 PHRASE="<a distinctive substring from your change>"
-for f in skills/outsystems/SKILL.md kiro/outsystems/steering/skill.md copilot/skill.md cursor/skills/outsystems/SKILL.md SKILL.md; do
+for f in skills/outsystems/SKILL.md kiro/outsystems/skills/outsystems/SKILL.md copilot/skill.md cursor/skills/outsystems/SKILL.md SKILL.md; do
   printf '%s  %s\n' "$(grep -c "$PHRASE" "$f")" "$f"
 done
 ```
@@ -76,7 +76,7 @@ Setup steps legitimately diverge between the harnesses (Claude Code sets the `te
 
 ### Exception: plugin-specific and host-specific affordances
 
-Host-specific UI surfaces (typed shortcuts, hotkeys) live only in the doc for the host that has them; `commands/` is scoped by plugin, not host. The Claude plugin ships slash commands under `commands/` (declared in `.claude-plugin/plugin.json`'s `commands` key); Kiro Powers do not have an equivalent. So mentions of `/outsystems-feedback` and similar slash-command trigger phrases belong only in `skills/outsystems/SKILL.md`, not in `kiro/outsystems/steering/skill.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, or root `SKILL.md`. The underlying *behavior* (what the agent does on the trigger) still has to lockstep across all five docs.
+Host-specific UI surfaces (typed shortcuts, hotkeys) live only in the doc for the host that has them; `commands/` is scoped by plugin, not host. The Claude plugin ships slash commands under `commands/` (declared in `.claude-plugin/plugin.json`'s `commands` key); Kiro Powers do not have an equivalent. So mentions of `/outsystems-feedback` and similar slash-command trigger phrases belong only in `skills/outsystems/SKILL.md`, not in `kiro/outsystems/skills/outsystems/SKILL.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, or root `SKILL.md`. The underlying *behavior* (what the agent does on the trigger) still has to lockstep across all five docs.
 
 Naming note: slash-command filenames become the command name a user types. Claude Code ships a built-in `/feedback` that routes to Anthropic's issue tracker, so a plugin file named `commands/feedback.md` is shadowed by the host and never fires. Every plugin slash MUST be prefixed with `outsystems-` (`commands/outsystems-feedback.md` → `/outsystems-feedback`) so the host-vs-plugin collision surface is closed by the file name alone.
 
@@ -88,7 +88,7 @@ The manifest ships `commands/` to any host that installs the plugin, including C
 
 The mechanism prose in `## Authenticating` (whether a harness exposes an agent-callable `authenticate` tool, how each harness's OAuth flow is triggered, and harness-specific error remedies like the callback-port paragraph) is intentionally divergent per harness and exempt from the phrase-count grep. The Reactive paragraph's `tenant_not_allowed` closing sentence is the one exception within Authenticating: it stays byte-identical, once per file, across all five docs, and must be re-grepped at 1x/file across all five whenever a future change touches the Reactive paragraph, per `### Check before opening a PR` above. That grep is change-scoped and operator-run, not a standing automated check, so re-running it is a contributor obligation, not something CI enforces.
 
-Separately, the "if sign-in itself errors" trigger condition is phrased identically in two of the five docs (`copilot/skill.md`, root `SKILL.md`); `skills/outsystems/SKILL.md` carries the same opening clause plus a Desktop-specific exclusion for `npx` PATH resolution failures and stale OAuth grants, since only that doc's setup recipe covers those local causes; and the remaining two (`kiro/outsystems/steering/skill.md`, `cursor/skills/outsystems/SKILL.md`) express the same rule as "if sign-in fails". Treat that phrase as a semantic alignment, not a 5/5 phrase-count case.
+Separately, the "if sign-in itself errors" trigger condition is phrased identically in two of the five docs (`copilot/skill.md`, root `SKILL.md`); `skills/outsystems/SKILL.md` carries the same opening clause plus a Desktop-specific exclusion for `npx` PATH resolution failures and stale OAuth grants, since only that doc's setup recipe covers those local causes; and the remaining two (`kiro/outsystems/skills/outsystems/SKILL.md`, `cursor/skills/outsystems/SKILL.md`) express the same rule as "if sign-in fails". Treat that phrase as a semantic alignment, not a 5/5 phrase-count case.
 
 ### The Claude plugin declares the MCP server
 
@@ -103,7 +103,7 @@ Since 0.20.0 the root `.mcp.json` declares the `outsystems` HTTP server with `"u
 
 ### Manifest version lockstep
 
-Two sets of files, four in total, declare plugin versions and they must stay in sync on every bump:
+Three sets of files, five in total, declare plugin versions and they must stay in sync on every bump:
 
 **Claude:**
 - `.claude-plugin/plugin.json` -> `version`
@@ -113,6 +113,11 @@ Two sets of files, four in total, declare plugin versions and they must stay in 
 - `cursor/.cursor-plugin/plugin.json` -> `version`
 - `.cursor-plugin/marketplace.json` -> `plugins[0].version`
 
-`claude plugin update outsystems@outsystems` compares the version in `.claude-plugin/plugin.json`. Bumping only `.claude-plugin/marketplace.json` does not trigger an update: the user is told "already at the latest version" and never pulls the new content, even after `claude plugin marketplace update`. Cursor's resolution has not been verified, so treat both Cursor manifests as load-bearing. Always bump all four files (Claude + Cursor pairs) in the same commit, keeping both Claude and Cursor versions aligned.
+**Kiro:**
+- `kiro/outsystems/plugin.json` -> `version`
+
+`claude plugin update outsystems@outsystems` compares the version in `.claude-plugin/plugin.json`. Bumping only `.claude-plugin/marketplace.json` does not trigger an update: the user is told "already at the latest version" and never pulls the new content, even after `claude plugin marketplace update`. Cursor's resolution has not been verified, so treat both Cursor manifests as load-bearing. Always bump all five files (Claude + Cursor pairs, plus the Kiro manifest) in the same commit, keeping every version aligned. Whether Kiro compares this version on a Power update has not been verified; keep it aligned so the Powers panel and the catalog submission advertise the release that is actually shipped.
+
+The version is not the only shared field. `description`, `author.name`, `keywords`, `license`, `homepage`, and `repository` carry the same value in all three plugin manifests, and `displayName` and `author.url` in the Claude and Kiro ones (Cursor's reference does not document them). The two `marketplace.json` entries repeat the description, and `kiro/outsystems/POWER.md`'s frontmatter repeats the description and keywords because Kiro's details view reads them from there. Change one of these values everywhere in the same commit. The description is host-neutral on purpose, and the keywords are chosen for Kiro, where they trigger Power activation: keep them specific to OutSystems, because a generic word such as `mcp` or `deployment` activates the Power in unrelated conversations.
 
 Claude Desktop installs from the same `.claude-plugin/` manifest pair as Claude Code, and its in-place update resolution is equally unverified; CONTRIBUTING.md's Claude Desktop testing section recommends uninstall/reinstall over trusting an update to have picked up new content.

@@ -1,10 +1,23 @@
 {
   "name": "outsystems",
-  "description": "Edit, publish, deploy, and search OutSystems apps from your AI assistant. Connects to your own OutSystems tenant's MCP server (https://<tenant_hostname>/mcp) over OAuth.",
+  "displayName": "OutSystems - MCP",
+  "description": "Edit, publish, deploy, and search OutSystems apps, and manage external libraries, from your AI assistant. Connects to your own OutSystems tenant's MCP server over OAuth.",
   "version": "0.20.0",
   "author": {
-    "name": "OutSystems AI Platform"
+    "name": "OutSystems AI Platform",
+    "url": "https://www.outsystems.com"
   },
+  "keywords": [
+    "outsystems",
+    "odc",
+    "outsystems developer cloud",
+    "odc studio",
+    "oml",
+    "outsystems mentor"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/OutSystems/outsystems-mcp",
+  "repository": "https://github.com/OutSystems/outsystems-mcp",
   "skills": "./skills/",
   "commands": "./commands/",
   "userConfig": {
