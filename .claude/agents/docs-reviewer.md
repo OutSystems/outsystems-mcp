@@ -109,7 +109,7 @@ Do not propose creating these files if they do not exist.
 
 For every manifest file changed in the diff - in this repo that means `.claude-plugin/plugin.json`,
 `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`,
-and the root `.mcp.json`:
+`kiro/outsystems/plugin.json`, and the root `.mcp.json`:
 
 1. **Required fields**: `name`, `version`, `description` (and `source` for the marketplace entry).
    For `plugin.json`, also confirm `skills` and `commands` point at directories that actually exist.
