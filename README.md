@@ -2,15 +2,6 @@
 
 Distribution repo for the OutSystems MCP. To install, paste the matching prompt below into your AI assistant.
 
-## ⚠️ Disclaimer
-> Early Alpha. Please Read Before Using
->
-> This project is in early alpha and is provided as-is, without warranties or guarantees of any kind. It is not production-ready, expect bugs, incomplete features, breaking changes, and unstable behaviors. Do not rely on it for critical, commercial, or production use.
->
-> There is no service-level agreement (SLA), and fixes and updates ship when they are ready, with no promised schedule. Support is best-effort, through [GitHub issues](https://github.com/OutSystems/outsystems-mcp/issues), with no defined response time. We are sharing this publicly because we value community input, not because it is ready for broad adoption.
->
-> Bug reports, feature requests, and feedback are welcome. See [Support and privacy](#support-and-privacy) to learn where to send them, which privacy policy applies, and which agreement covers your tenant data.
-
 ## Install - Claude Code
 
 Paste into Claude Code:
@@ -279,7 +270,9 @@ Redact your tenant hostname and any bearer tokens before posting.
 
 ### Support
 
-Open an issue in the [outsystems-mcp issue tracker](https://github.com/OutSystems/outsystems-mcp/issues) for bugs, feature requests, and setup problems, and attach the logs listed under [Getting logs](#getting-logs). Support is best-effort with no SLA, as the Disclaimer section says. For security vulnerabilities, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+Customers with an active OutSystems subscription can report issues with the MCP Server through the [OutSystems Support Portal](https://success.outsystems.com/support/home/), handled under the support terms and SLAs of their subscription. GitHub Issues in this repository are intended for community discussion, bug reports, and feature requests, and are addressed on a best-effort basis.
+
+When you open an issue in the [outsystems-mcp issue tracker](https://github.com/OutSystems/outsystems-mcp/issues), attach the logs listed under [Getting logs](#getting-logs). For security vulnerabilities, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
 ### Privacy policy
 
