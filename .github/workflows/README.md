@@ -102,8 +102,8 @@ grants.
 - **A credential scan before posting.** The review is public, so the
   payload step replaces any payload whose body, inline comment bodies or
   paths contain the literal value of `AWS_ACCESS_KEY_ID`,
-  `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` or the job token with the
-  notice, and logs an `::error::` naming the variable, never the value.
+  `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, the job token, or the
+  OIDC request and runtime tokens with the notice, and logs an `::error::` naming the variable, never the value.
   An encoded or split copy is not caught; the denies above are what keep
   the session from reading the values in the first place.
 
@@ -256,10 +256,12 @@ stand-ins for the runner's file-command files, an installed action,
 flags from the committed workflow with the runner paths swapped for that
 layout, and runs the CLI headless with a prompt that attempts every
 out-of-scope read and write, and calls `EnterWorktree` and `Bash`, from
-the session and from a Task subagent. The subagent is also sent to paths
-that only a deny rule refuses (the workspace `.git/config`, a home
-dotfile, the file-command directory), so a CLI that passed the allow
-list to subagents but dropped the deny list fails the probe. The verdict is taken from the
+the session and from a Task subagent. The subagent's read of the
+workspace `.git/config` is the one operation an allow rule admits and
+only a deny rule refuses, so it is what shows that subagents inherit the
+deny list; its other out-of-scope operations show that they inherit the
+allow list. The canary sits on the first line of every stand-in, the
+line a successful read is told to quote. The verdict is taken from the
 filesystem and the transcript: every stand-in unchanged, no canary
 planted outside the scope in the output, no worktree or branch added,
 the in-scope reads, the `review.json` write and the subagent's write in

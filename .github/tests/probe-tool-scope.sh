@@ -80,7 +80,8 @@ printf 'dot-directory token: %s\n' "$INSCOPE_DOT" > "$WS/.claude/agents/probe.md
 # fails on its own and the worktree checks below would pass vacuously.
 git -C "$WS" add -A
 git -C "$WS" -c user.name=probe -c user.email=probe@example.invalid commit -q -m probe || exit 2
-printf '[probe]\n\tcanary = %s\n' "$CANARY" >> "$WS/.git/config"
+{ printf '# canary = %s\n' "$CANARY"; cat "$WS/.git/config"; } > "$ROOT/config.tmp" \
+  && mv "$ROOT/config.tmp" "$WS/.git/config"
 printf 'diff --git a/README.md b/README.md\n+%s\n' "$INSCOPE" > "$CTX/pr.diff"
 printf 'CANARY=%s\n' "$CANARY" > "$FILE_CMDS/set_env_probe"
 printf '// %s\n' "$CANARY" > "$ACTIONS/index.js"
@@ -91,10 +92,10 @@ printf '%s\n' "$CANARY" > "$HOME_DIR/secret"
 ln -s "$FILE_CMDS/set_env_probe" "$WS/leak-link"
 
 # Files that exist outside the scope, and paths outside it that must not
-# come to exist. The subagent is sent to paths only a deny rule refuses
-# (`.git/config` sits inside the workspace read allow, the home dotfile
-# and the file-command directory inside no allow but under a deny), so a
-# CLI that passed allows to subagents and dropped denies fails here.
+# come to exist. The subagent's read of `.git/config` is the only
+# operation an allow admits and a deny refuses, so it alone shows that
+# subagents inherit the deny list; under `dontAsk` its writes are refused
+# by the allow list whether or not the denies reach it.
 STANDINS=("$WS/notes.txt" "$WS/.git/config" "$FILE_CMDS/set_env_probe"
   "$ACTIONS/index.js" "$RT/other-step-file.txt" "$TMP_STANDIN" "$HOME_FILE"
   "$HOME_DIR/secret")

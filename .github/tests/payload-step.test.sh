@@ -142,9 +142,11 @@ section "a payload that carries a credential is not posted"
 
 SECRET_KEY='example-secret-access-key-xxxxxxxx'
 # The credentials the step's env holds on the runner: the AWS values the
-# credential step exports, and the token passed in for the scan.
+# credential step exports, the token passed in for the scan, and the OIDC
+# request token the runner exports under `id-token: write`.
 CREDS=(AWS_ACCESS_KEY_ID=example-access-key-id-xxxx "AWS_SECRET_ACCESS_KEY=$SECRET_KEY"
-  AWS_SESSION_TOKEN=example-session-token-xxxx GH_TOKEN=example-job-token-xxxx)
+  AWS_SESSION_TOKEN=example-session-token-xxxx GH_TOKEN=example-job-token-xxxx
+  ACTIONS_ID_TOKEN_REQUEST_TOKEN=example-oidc-request-xxxx)
 scanned() { # case name, review.json content, [VAR=VAL overrides ...]
   new_case "$1"
   printf '%s' "$2" > "$CTX/review.json"
@@ -166,6 +168,10 @@ check_match "the error names the variable" "$STEP_OUT" 'contains the value of AW
 scanned token-in-path '{"body":"## Review","comments":[{"path":"example-job-token-xxxx","line":3,"body":"x"}]}'
 check_notice "the job token in an inline comment's path"
 check_match "the error names the variable" "$STEP_OUT" 'contains the value of GH_TOKEN;'
+
+scanned oidc-in-body '{"body":"token example-oidc-request-xxxx","comments":[]}'
+check_notice "the OIDC request token in the body"
+check_match "the error names the variable" "$STEP_OUT" 'contains the value of ACTIONS_ID_TOKEN_REQUEST_TOKEN;'
 
 # jq decodes the escape, and what the API would publish is the decoded text.
 scanned escaped-secret '{"body":"\u0065xample-access-key-id-xxxx and \u0065xample-session-token-xxxx","comments":[]}'
