@@ -151,7 +151,9 @@ every line at the head containing an identifier the diff adds or
 removes. Identifiers are taken from the diff's added and removed lines by
 a pattern that admits only `[A-Za-z0-9_-]`, keeping snake_case, camelCase
 and kebab-case tokens and dropping prose words, and each reaches
-`git grep` as a single fixed-string argument. The index keeps the 200
+`git grep` as a single fixed-string argument. A diff line longer than
+4096 bytes, typically minified or generated content, is skipped, which
+keeps one oversized line from stalling the step. The index keeps the 200
 identifiers the diff touches most, at most 20 lines each and 2000 lines
 in all, and its header says whether it is complete or which cap cut it
 short; when it cannot be built, a stub says so and the review proceeds.
@@ -206,7 +208,7 @@ the suites pin down:
   filtering that keeps third-party text out of them, the delta staying
   inside the diff under review, a notice never standing in for the last
   review, an identifier index that finds uses outside the diff, treats a
-  diff line as data, and states its caps, and the degraded inputs that
+  diff line as data, skips over-long lines, and states its caps, and the degraded inputs that
   must warn rather than fail the job.
 - `payload-step.test.sh` - every payload whose keys reach the API as one
   review, every one that reaches it as the notice instead, a notice route

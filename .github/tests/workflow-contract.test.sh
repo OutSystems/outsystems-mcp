@@ -97,6 +97,8 @@ check "every GitHub API path the workflow reaches is a pulls path" \
 # role, checked out at a fork-controlled SHA.
 check "the review job runs only on a resolve that said yes" \
   "$(q jobs.ai-review.if)" "\"needs.resolve.outputs.should_run == 'true'\""
+check "the review job is bounded, so a hung step cannot hold the runner for the 6-hour default" \
+  "$(q jobs.ai-review.timeout-minutes)" 60
 
 section "agent session: its step env adds only the Bedrock switch, and no tool can spend a token"
 

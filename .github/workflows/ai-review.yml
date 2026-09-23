@@ -353,6 +353,9 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.should_run == 'true'
     runs-on: ubuntu-latest
+    # Bounds a hung step; the longest review so far took under half
+    # of this.
+    timeout-minutes: 60
     # The only job granted OIDC and a write scope. `pull-requests: write`
     # is consumed by the posting step, not by the agent step, which shares
     # the job: the agent's env holds the token, and its tool allowlist is
@@ -537,14 +540,17 @@ jobs:
             # Only tokens that read as code are kept: snake_case, camelCase
             # and kebab-case, which leaves out plain prose words. Ranked by
             # how often the diff touches them, so the cap keeps the most
-            # central ones.
+            # central ones. `split` keeps the pass linear in the diff size,
+            # and a line past 4096 bytes (minified or generated content) is
+            # skipped rather than tokenized.
             awk '
               /^(\+\+\+|---) / { next }
+              length($0) > 4096 { next }
               /^[-+]/ {
-                rest = substr($0, 2)
-                while (match(rest, /[A-Za-z_][A-Za-z0-9_-]*/)) {
-                  tok = substr(rest, RSTART, RLENGTH)
-                  rest = substr(rest, RSTART + RLENGTH)
+                n = split(substr($0, 2), parts, /[^A-Za-z0-9_-]+/)
+                for (i = 1; i <= n; i++) {
+                  tok = parts[i]
+                  sub(/^[^A-Za-z_]+/, "", tok)
                   sub(/-+$/, "", tok)
                   if (length(tok) < 3 || length(tok) > 80 || tok !~ /[A-Za-z]/) continue
                   if (tok ~ /_/ || tok ~ /[a-z][A-Z]/ || tok ~ /[A-Za-z0-9]-[A-Za-z0-9]/) seen[tok]++

@@ -352,6 +352,29 @@ check "the index stays within the line cap" \
 check_match "the header says the line cap truncated it" \
   "$(cat "$CTX/symbols.txt")" '# Truncated: stopped at 2000 lines after [0-9]+ of 120 identifiers'
 
+section "a very long diff line is skipped, and tokenizing stays linear"
+
+LONG_DIR="$WORK/long-repo"
+new_repo "$LONG_DIR"
+commit_file "$LONG_DIR" base.txt base > /dev/null
+git -C "$LONG_DIR" update-ref refs/remotes/origin/main main
+{
+  echo 'short_line_ident'
+  awk 'BEGIN { for (i = 0; i < 400000; i++) printf "long_tok "; print "" }'
+  awk 'BEGIN { for (i = 0; i < 300; i++) printf "mid_tok_%d ", i % 50; print "" }'
+} > "$LONG_DIR/bundle.txt"
+git -C "$LONG_DIR" add bundle.txt
+git -C "$LONG_DIR" commit -q -m long
+LONG_HEAD=$(git -C "$LONG_DIR" rev-parse HEAD)
+started=$SECONDS
+context_in "$LONG_DIR" long-line HEAD_SHA="$LONG_HEAD"
+elapsed=$((SECONDS - started))
+check "step succeeds" "$STEP_RC" 0
+check "a 3.6 MB diff line does not stall the step" "$([ "$elapsed" -le 15 ] && echo yes)" yes
+check_match "identifiers on normal lines are indexed" "$(cat "$CTX/symbols.txt")" '^## short_line_ident '
+check "identifiers only on the over-long line are not" "$(grep -c '^## long_tok ' "$CTX/symbols.txt")" 0
+check_match "a line under the limit with many tokens is tokenized" "$(cat "$CTX/symbols.txt")" '^## mid_tok_1 '
+
 section "an index that cannot be built leaves a stub and does not fail the step"
 
 # A git that fails only the two index commands, so the rest of the step
