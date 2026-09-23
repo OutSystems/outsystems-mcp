@@ -161,8 +161,9 @@ The prompt sends every search a critic file prescribes (the Grep and
 Glob it names, `rg`) to those two files and `Read`, and the shell forms -
 the `for`/`grep -c` lockstep loop from `CLAUDE.md`, plus
 `simplification-reviewer.md`'s `wc -c` measurement and its
-build/lint/test step - to `Read`, or to inspection where this repo,
-markdown and JSON with no build system, has nothing to run. The
+build/lint/test step - to `Read`, or to inspection, since the session
+has no shell to run a measurement, a build or the `.github/tests/`
+suite. The
 simplification critic's step that edits a file to try a replacement
 works on a copy under the context directory, the only place the session
 can write. A critic file that starts prescribing another tool or shell
@@ -255,7 +256,10 @@ stand-ins for the runner's file-command files, an installed action,
 flags from the committed workflow with the runner paths swapped for that
 layout, and runs the CLI headless with a prompt that attempts every
 out-of-scope read and write, and calls `EnterWorktree` and `Bash`, from
-the session and from a Task subagent. The verdict is taken from the
+the session and from a Task subagent. The subagent is also sent to paths
+that only a deny rule refuses (the workspace `.git/config`, a home
+dotfile, the file-command directory), so a CLI that passed the allow
+list to subagents but dropped the deny list fails the probe. The verdict is taken from the
 filesystem and the transcript: every stand-in unchanged, no canary
 planted outside the scope in the output, no worktree or branch added,
 the in-scope reads, the `review.json` write and the subagent's write in

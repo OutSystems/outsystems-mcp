@@ -347,8 +347,8 @@ context_in "$DENSE_DIR" line-cap HEAD_SHA="$DENSE_HEAD"
 check "step succeeds" "$STEP_RC" 0
 check_match "an identifier with more matches than the per-identifier cap says how many were left out" \
   "$(cat "$CTX/symbols.txt")" '^\(6 more not shown\)$'
-check "the index stays within the line cap" \
-  "$([ "$(grep -vc '^#' "$CTX/symbols.txt")" -le 2001 ] && echo yes)" yes
+check "the index body, headers and truncation lines included, stays within 2000 lines" \
+  "$([ "$(grep -vc '^# ' "$CTX/symbols.txt")" -le 2000 ] && echo yes)" yes
 check_match "the header says the line cap truncated it" \
   "$(cat "$CTX/symbols.txt")" '# Truncated: stopped at 2000 lines after [0-9]+ of 120 identifiers'
 
@@ -369,8 +369,10 @@ LONG_HEAD=$(git -C "$LONG_DIR" rev-parse HEAD)
 started=$SECONDS
 context_in "$LONG_DIR" long-line HEAD_SHA="$LONG_HEAD"
 elapsed=$((SECONDS - started))
+# The bound leaves room for a loaded machine; the quadratic tokenizer this
+# guards against needs minutes on this line with BSD awk and hours with gawk.
 check "step succeeds" "$STEP_RC" 0
-check "a 3.6 MB diff line does not stall the step" "$([ "$elapsed" -le 15 ] && echo yes)" yes
+check "a 3.6 MB diff line does not stall the step" "$([ "$elapsed" -le 60 ] && echo yes)" yes
 check_match "identifiers on normal lines are indexed" "$(cat "$CTX/symbols.txt")" '^## short_line_ident '
 check "identifiers only on the over-long line are not" "$(grep -c '^## long_tok ' "$CTX/symbols.txt")" 0
 check_match "a line under the limit with many tokens is tokenized" "$(cat "$CTX/symbols.txt")" '^## mid_tok_1 '

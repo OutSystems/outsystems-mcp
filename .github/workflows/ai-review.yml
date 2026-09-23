@@ -542,8 +542,9 @@ jobs:
             # how often the diff touches them, so the cap keeps the most
             # central ones. `split` keeps the pass linear in the diff size,
             # and a line past 4096 bytes (minified or generated content) is
-            # skipped rather than tokenized.
-            awk '
+            # skipped rather than tokenized; the C locale makes `length`
+            # count bytes rather than characters.
+            LC_ALL=C awk '
               /^(\+\+\+|---) / { next }
               length($0) > 4096 { next }
               /^[-+]/ {
@@ -566,7 +567,9 @@ jobs:
                 note="indexed the ${max_symbols} most frequent of ${found_symbols} identifiers"
                 break
               fi
-              if [ "$lines" -ge "$max_lines" ]; then
+              # A block needs room for its header and, when cut, a
+              # "more not shown" line, so the body never passes max_lines.
+              if [ "$lines" -ge $((max_lines - 1)) ]; then
                 note="stopped at ${max_lines} lines after ${indexed} of ${found_symbols} identifiers"
                 break
               fi
@@ -577,7 +580,11 @@ jobs:
               total=$(wc -l < "$work/matches" | tr -d ' ')
               shown=$total
               [ "$shown" -le "$per_symbol" ] || shown=$per_symbol
-              [ "$shown" -le $((max_lines - lines - 1)) ] || shown=$((max_lines - lines - 1))
+              room=$((max_lines - lines - 1))
+              [ "$shown" -le "$room" ] || shown=$room
+              if [ "$shown" -lt "$total" ] && [ "$shown" -ge "$room" ]; then
+                shown=$((room - 1))
+              fi
               {
                 printf '## %s (%s matching lines)\n' "$sym" "$total"
                 head -n "$shown" "$work/matches" \
@@ -998,6 +1005,9 @@ jobs:
               notice "$INCOMPLETE"
               exit 0
             fi
+            # The OIDC request and runtime tokens are not scanned: they expire
+            # with the job, right after this step, and the session can read
+            # its env only through /proc, which it is denied.
             for var in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN GH_TOKEN; do
               val="${!var:-}"
               if [ -n "$val" ] && grep -qF -- "$val" <<<"$payload_text"; then
