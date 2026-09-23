@@ -13,8 +13,9 @@ name: AI PR Review
 #   spend via a slash comment.
 #
 # Backend: AWS Bedrock via GitHub OIDC role assumption (no long-lived key).
-# Behavior: a shell step prepares the review context (the diff plus this
-#   bot's own prior findings); the agent step runs this repo's own critic
+# Behavior: a shell step prepares the review context (the diff, this
+#   bot's own prior findings, the head's file list and an index of where
+#   the changed identifiers appear); the agent step runs this repo's own critic
 #   panel, vendored at .claude/agents/*.md (docs-reviewer,
 #   consistency-reviewer, error-handling-reviewer,
 #   simplification-reviewer), in the adversarial find-verify-refute loop
@@ -517,9 +518,93 @@ jobs:
             fi
           fi
 
+          # The session holds no search tool, so this is how it finds code
+          # beyond the diff: every tracked path at the head, and every line
+          # there that contains an identifier the diff adds or removes. An
+          # identifier is lifted from the diff by a pattern that admits
+          # only [A-Za-z0-9_-] and reaches git as one fixed-string `-e`
+          # argument, never as shell text or a regex. Both read the pinned
+          # tree, not the working tree. A missing index narrows
+          # the review, so a failure leaves a stub saying so.
+          if ! git -c core.quotePath=false ls-tree -r --name-only --full-tree "$HEAD_SHA" > "$CTX/files.txt"; then
+            echo "::warning::could not list the files at ${HEAD_SHA}; the review has no file list."
+            echo "# The file list could not be built for this run; only the paths in pr.diff are known." > "$CTX/files.txt"
+          fi
+          build_symbol_index() ( # stdout: the index
+            max_symbols=200 per_symbol=20 max_lines=2000 max_chars=300
+            work=$(mktemp -d "${RUNNER_TEMP}/ai-review-index.XXXXXX") || exit 1
+            trap 'rm -rf "$work"' EXIT
+            # Only tokens that read as code are kept: snake_case, camelCase
+            # and kebab-case, which leaves out plain prose words. Ranked by
+            # how often the diff touches them, so the cap keeps the most
+            # central ones.
+            awk '
+              /^(\+\+\+|---) / { next }
+              /^[-+]/ {
+                rest = substr($0, 2)
+                while (match(rest, /[A-Za-z_][A-Za-z0-9_-]*/)) {
+                  tok = substr(rest, RSTART, RLENGTH)
+                  rest = substr(rest, RSTART + RLENGTH)
+                  sub(/-+$/, "", tok)
+                  if (length(tok) < 3 || length(tok) > 80 || tok !~ /[A-Za-z]/) continue
+                  if (tok ~ /_/ || tok ~ /[a-z][A-Z]/ || tok ~ /[A-Za-z0-9]-[A-Za-z0-9]/) seen[tok]++
+                }
+              }
+              END { for (t in seen) print seen[t], t }
+            ' "$CTX/pr.diff" | LC_ALL=C sort -k1,1nr -k2,2 > "$work/ranked" || exit 1
+            found_symbols=$(wc -l < "$work/ranked" | tr -d ' ')
+            lines=0 indexed=0 note=""
+            : > "$work/body"
+            while read -r _ sym; do
+              if [ "$indexed" -ge "$max_symbols" ]; then
+                note="indexed the ${max_symbols} most frequent of ${found_symbols} identifiers"
+                break
+              fi
+              if [ "$lines" -ge "$max_lines" ]; then
+                note="stopped at ${max_lines} lines after ${indexed} of ${found_symbols} identifiers"
+                break
+              fi
+              rc=0
+              git grep -n -I --no-color --full-name -F -e "$sym" "$HEAD_SHA" -- > "$work/matches" || rc=$?
+              # git grep exits 1 when nothing matches, which is a result.
+              [ "$rc" -le 1 ] || exit 1
+              total=$(wc -l < "$work/matches" | tr -d ' ')
+              shown=$total
+              [ "$shown" -le "$per_symbol" ] || shown=$per_symbol
+              [ "$shown" -le $((max_lines - lines - 1)) ] || shown=$((max_lines - lines - 1))
+              {
+                printf '## %s (%s matching lines)\n' "$sym" "$total"
+                head -n "$shown" "$work/matches" \
+                  | awk -v p="${HEAD_SHA}:" -v c="$max_chars" \
+                      'index($0, p) == 1 { $0 = substr($0, length(p) + 1) } { print substr($0, 1, c) }'
+                if [ "$total" -gt "$shown" ]; then
+                  printf '(%s more not shown)\n' "$((total - shown))"
+                fi
+              } >> "$work/body" || exit 1
+              lines=$(wc -l < "$work/body" | tr -d ' ')
+              indexed=$((indexed + 1))
+            done < "$work/ranked"
+            printf '# Where the identifiers this pull request adds or removes appear at %s,\n' "$HEAD_SHA"
+            printf '# most frequent in the diff first. Each section lists path:line:text, at most\n'
+            printf '# %s lines per identifier, each cut at %s characters.\n' "$per_symbol" "$max_chars"
+            if [ "$found_symbols" -eq 0 ]; then
+              printf '# Complete: the diff adds or removes no identifier this index recognises.\n'
+            elif [ -n "$note" ]; then
+              printf '# Truncated: %s.\n' "$note"
+            else
+              printf '# Complete: all %s identifiers are indexed.\n' "$found_symbols"
+            fi
+            cat "$work/body"
+          )
+          if ! build_symbol_index > "$CTX/symbols.txt"; then
+            echo "::warning::could not build the identifier index at ${HEAD_SHA}; the review finds uses of the changed code only through the diff and files.txt."
+            echo "# The identifier index could not be built for this run. Uses of the changed identifiers outside the diff are not listed: find candidate files in files.txt and Read them." > "$CTX/symbols.txt"
+          fi
+
           echo "review context in ${CTX}:"
           echo "  base_sha=${BASE_SHA} head_sha=${HEAD_SHA} head_ref=${HEAD_REF} prev_sha=${PREV_SHA}"
           echo "  pr.diff $(wc -l < "$CTX/pr.diff") lines, delta.diff $(wc -l < "$CTX/delta.diff") lines"
+          echo "  files.txt $(wc -l < "$CTX/files.txt") paths, symbols.txt $(wc -l < "$CTX/symbols.txt") lines"
           echo "  prior reviews $(jq length "$CTX/prior-reviews.json"), prior inline comments $(jq length "$CTX/prior-comments.json")"
 
       - name: Configure AWS credentials (OIDC -> Bedrock)
@@ -544,10 +629,15 @@ jobs:
           # Bedrock credentials are in the session's env; what the session
           # has no tool for is spending them.
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # The tool grants are the containment boundary. A bare `Read`,
-          # `Write` or `Edit` allow rule approves that tool on every path on
-          # the runner, so each grant is path-scoped instead: Read (which
-          # also governs Grep and Glob) on the workspace and the context
+          # The tool grants are the containment boundary. `--tools` limits
+          # the session, and every subagent it spawns, to Task, Read, Edit
+          # and Write, because `dontAsk` does not gate every built-in:
+          # EnterWorktree runs `git worktree add` in the workspace with no
+          # allow rule, and Bash, NotebookEdit, WebFetch, Skill, Workflow
+          # and the Cron tools would each need a deny rule kept current with
+          # every CLI release. A bare `Read`, `Write` or `Edit` allow rule
+          # approves that tool on every path on the runner, so each grant is
+          # path-scoped instead: Read on the workspace and the context
           # directory, and Edit, which governs every file-writing tool
           # (Write included), on the context directory alone, where the
           # payload goes. `dontAsk` denies any call no rule allows outright,
@@ -575,12 +665,13 @@ jobs:
           # is arbitrary code execution, because git runs the program named
           # by `diff.external` or `core.fsmonitor` in .git/config, by a
           # `.git/hooks/` script, and by the same keys in the runner's
-          # global config. The critics Read the prepared diff instead, and
-          # the prompt redirects every other shell form a critic contract
-          # states to Grep and Read; one that tries a shell is denied inside
-          # its own session. A future `Bash(...)` grant must be quoted: the
-          # action collapses an unquoted pattern to bare `Bash`, widening
-          # it with no visible signal.
+          # global config. The CLI ships no Grep or Glob built-in to add in
+          # its place, so the context step prepares a file list and an
+          # identifier index; the critics Read those and the diff, and the
+          # prompt redirects every search or shell form a critic contract
+          # states to them. A future `Bash(...)` grant must be quoted and
+          # added to `--tools`: the action collapses an unquoted pattern to
+          # bare `Bash`, widening it with no visible signal.
           #
           # `.github/tests/probe-tool-scope.sh` runs these exact flags
           # against a local CLI and checks the filesystem afterwards; CI
@@ -589,6 +680,7 @@ jobs:
             --model ${{ vars.AI_REVIEW_BEDROCK_MODEL }}
             --max-turns 200
             --permission-mode dontAsk
+            --tools "Task,Read,Edit,Write"
             --add-dir ${{ runner.temp }}/ai-review
             --allowedTools "Task,Read(/${{ github.workspace }}/**),Read(/${{ runner.temp }}/ai-review/**),Edit(/${{ runner.temp }}/ai-review/**)"
             --disallowedTools "Read(/${{ github.workspace }}/**/.git/**),Edit(/${{ github.workspace }}/**/.git/**),Read(/${{ runner.temp }}/_runner_file_commands/**),Edit(/${{ runner.temp }}/_runner_file_commands/**),Read(//**/_actions/**),Edit(//**/_actions/**),Read(//tmp/**),Edit(//tmp/**),Read(~/.*),Edit(~/.*),Read(//proc/**),Edit(//proc/**)"
@@ -604,6 +696,16 @@ jobs:
             - CONTEXT/pr.diff - the diff under review.
             - CONTEXT/base-sha.txt - BASE_SHA.
             - CONTEXT/head-ref.txt - the PR's branch name. May be empty.
+            - CONTEXT/files.txt - every tracked path at the PR head, one per
+              line.
+            - CONTEXT/symbols.txt - for each identifier the diff adds or
+              removes, every line at the PR head that contains it, as
+              path:line:text. Its header states whether it is complete or
+              was cut short.
+            - This session's only tools are Task, Read, Edit and Write. There
+              is no search tool: find a path in files.txt, find the callers
+              and other uses of a changed identifier in symbols.txt, then
+              Read the files you need.
             - If the branch name carries a ticket reference, state the
               scope the review is bound to. Out-of-scope findings are still
               reportable but labelled as such.
@@ -635,7 +737,7 @@ jobs:
                actionable findings. Each agent's full contract lives in its
                `.claude/agents/<name>.md` file; do not re-derive scope from a
                critic's short description, read the agent file if a boundary
-               is unclear. Override these four points of every contract in
+               is unclear. Override these five points of every contract in
                the Task prompt you write, because the contracts assume a
                session this one is not:
                  - the diff is CONTEXT/pr.diff, to Read. No critic may run
@@ -645,15 +747,21 @@ jobs:
                    in CONTEXT/head-ref.txt is the only scope reference; a
                    critic whose contract reads a plan or ticket source has
                    none in this repo.
+                 - the only tools are Task, Read, Edit and Write, and none
+                   of them searches. A contract step that searches the repo
+                   finds paths in CONTEXT/files.txt and the uses of a
+                   changed identifier in CONTEXT/symbols.txt, then Reads the
+                   files. A search neither file answers is reasoned from the
+                   files Read, and the finding says so.
                  - there is no shell. Verification a contract states as a
-                   shell command runs through Grep and Read instead: the
-                   cross-harness lockstep counts come from `Grep` over the
-                   five skill-doc paths, not from the `grep -c` loop
-                   `CLAUDE.md` writes. A measurement or a build, lint or
-                   test step a contract prescribes has nothing this
-                   session can run (the workflow's own suite under
-                   `.github/tests/` needs a shell); reason from the text
-                   and say so.
+                   shell command runs through Read instead: the
+                   cross-harness lockstep counts come from Reading each of
+                   the five skill-doc paths and counting the phrase, not
+                   from the shell loop `CLAUDE.md` writes. A measurement or
+                   a build, lint or test step a contract prescribes has
+                   nothing this session can run (the workflow's own suite
+                   under `.github/tests/` needs a shell); reason from the
+                   text and say so.
                  - the working directory is read-only. File writes are
                    granted under CONTEXT only, so a contract step that
                    edits a file to try a replacement copies it to
@@ -701,9 +809,10 @@ jobs:
                    at SHOULD, or drop it.
                  - For agent-facing / consistency claims, VERIFY by quoting the
                    instruction or manifest field and the behavior it describes
-                   side by side. A cross-harness lockstep claim must grep all
-                   five skill docs (per `CLAUDE.md`'s documented technique),
-                   not just the one the diff touched.
+                   side by side. A cross-harness lockstep claim must count
+                   the phrase in all five skill docs (per `CLAUDE.md`'s
+                   documented technique, done by Reading each), not just
+                   the one the diff touched.
                  - Attribute correctly: is the issue net-new in this PR or
                    pre-existing? Check the +/- lines.
                  - Spawn refuter subagent(s) whose only job is to REFUTE both

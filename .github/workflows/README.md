@@ -58,14 +58,22 @@ workflow-level grant is `contents: read`.
 
 Every GitHub API call happens in a shell step, never in the prompt. The
 agent session receives the diff, this bot's own prior reviews and inline
-comments (filtered to `github-actions[bot]` at fetch time), and the branch
-name. The action passes its whole process environment to the CLI, so the
+comments (filtered to `github-actions[bot]` at fetch time), the branch
+name, the list of tracked paths at the head, and an index of the lines at
+the head that contain an identifier the diff adds or removes. The action passes its whole process environment to the CLI, so the
 session's env holds the Bedrock credentials and a copy of the workflow
 token, and the checkout's `persist-credentials: false` does not keep the
 token out of `.git/config`: the review action re-adds it to
 `remote.origin.url` in agent mode. Containment is the session's tool
 grants.
 
+- **Four built-in tools, and nothing else.** `--tools` limits the
+  session and its subagents to `Task`, `Read`, `Edit` and `Write`. The
+  permission mode alone does not keep a built-in out: `EnterWorktree`
+  runs `git worktree add` in the workspace with no allow rule, creating a
+  branch and writing `.git/worktrees/`, so the set is restricted rather
+  than trimmed with deny rules that would have to track every CLI
+  release.
 - **No tool that reaches the network or runs a program.** No `gh`, no MCP
   server, no WebFetch and no shell grant, `git` included: with any write
   in the same session, a git invocation executes the program named by
@@ -77,8 +85,8 @@ grants.
 - **File tools scoped by path.** A bare `Read`, `Write` or `Edit` allow
   rule approves that tool on every path on the runner. The grants are
   instead `Read` on the workspace and the context directory
-  (`$RUNNER_TEMP/ai-review`), which also governs Grep and Glob, and `Edit`,
-  which governs every file-writing tool, on the context directory alone.
+  (`$RUNNER_TEMP/ai-review`), and `Edit`, which governs every
+  file-writing tool, on the context directory alone.
   The session runs in `dontAsk` mode, so a call no rule allows is denied
   instead of waiting on a prompt; subagents inherit the same rules.
 - **Denies as a second layer.** Read and Edit are both denied the
@@ -133,20 +141,32 @@ are no longer fetched, so it may repeat a point a reviewer already made.
 And the PR title and body are out of context: the review is bound to the
 diff and the branch name.
 
-The vendored critics in `.claude/agents/` run no shell command of their
-own: the orchestrator prompt hands each one the prepared diff to `Read`,
-so the `git diff <base_sha>...HEAD` their files prescribe is not needed,
-and the shell forms a critic file still prescribes - the `for`/`grep -c`
-lockstep loop from `CLAUDE.md`, plus `simplification-reviewer.md`'s
-`wc -c` measurement and its build/lint/test step - are redirected by the
-orchestrator prompt to `Grep` and `Read`, or to inspection where this
-repo, markdown and JSON with no build system, has nothing to run. The
+The vendored critics in `.claude/agents/` run no shell command and no
+search of their own: the orchestrator prompt hands each one the prepared
+diff to `Read`, so the `git diff <base_sha>...HEAD` their files prescribe
+is not needed. The session holds no search tool, since the CLI ships no
+Grep or Glob built-in, so the context step writes two files in their
+place: `files.txt`, every tracked path at the head, and `symbols.txt`,
+every line at the head containing an identifier the diff adds or
+removes. Identifiers are taken from the diff's added and removed lines by
+a pattern that admits only `[A-Za-z0-9_-]`, keeping snake_case, camelCase
+and kebab-case tokens and dropping prose words, and each reaches
+`git grep` as a single fixed-string argument. The index keeps the 200
+identifiers the diff touches most, at most 20 lines each and 2000 lines
+in all, and its header says whether it is complete or which cap cut it
+short; when it cannot be built, a stub says so and the review proceeds.
+The prompt sends every search a critic file prescribes (the Grep and
+Glob it names, `rg`) to those two files and `Read`, and the shell forms -
+the `for`/`grep -c` lockstep loop from `CLAUDE.md`, plus
+`simplification-reviewer.md`'s `wc -c` measurement and its
+build/lint/test step - to `Read`, or to inspection where this repo,
+markdown and JSON with no build system, has nothing to run. The
 simplification critic's step that edits a file to try a replacement
 works on a copy under the context directory, the only place the session
-can write. The session holds no shell grant at all, so a critic file that starts
-prescribing a shell form needs that override extended in the same change;
-without it the critic is denied inside its own subagent, which degrades
-the review silently instead of failing the job.
+can write. A critic file that starts prescribing another tool or shell
+form needs that override extended in the same change; without it the
+critic has no such tool inside its own subagent, which degrades the
+review silently instead of failing the job.
 
 ## Tests
 
@@ -169,8 +189,10 @@ contract and spec suites read the same committed workflow as data. What
 the suites pin down:
 
 - `workflow-contract.test.sh` - the guarantees that live in the
-  structure: per-job token scope, an agent grant with no shell and
-  nothing that reaches the network, the exact allow and deny rule lists
+  structure: per-job token scope, the exact built-in tool set, an agent
+  grant with no shell and nothing that reaches the network, a prompt that
+  names only tools the session holds and only context files the context
+  step writes, the exact allow and deny rule lists
   (no file tool allowed without a path, writes allowed in the context
   directory only, every second-layer deny present for Read and Edit), the
   `dontAsk` mode, the removal of `.git` right after the session, a
@@ -183,7 +205,9 @@ the suites pin down:
 - `context-step.test.sh` - the files the agent is allowed to read, the
   filtering that keeps third-party text out of them, the delta staying
   inside the diff under review, a notice never standing in for the last
-  review, and the degraded inputs that must warn rather than fail the job.
+  review, an identifier index that finds uses outside the diff, treats a
+  diff line as data, and states its caps, and the degraded inputs that
+  must warn rather than fail the job.
 - `payload-step.test.sh` - every payload whose keys reach the API as one
   review, every one that reaches it as the notice instead, a notice route
   that only the context step's outputs can select, a notice marker that
@@ -228,11 +252,15 @@ stand-ins for the runner's file-command files, an installed action,
 `/tmp`, home dotfiles and the workspace `.git`, takes the agent step's
 flags from the committed workflow with the runner paths swapped for that
 layout, and runs the CLI headless with a prompt that attempts every
-out-of-scope read and write, from the session and from a Task subagent.
-The verdict is taken from the filesystem and the transcript: every
-stand-in unchanged, no canary planted outside the scope in the output,
-and the in-scope reads, the `review.json` write and the subagent's write
-in the context directory done. `WORKFLOW=<file>` points it at another
+out-of-scope read and write, and calls `EnterWorktree` and `Bash`, from
+the session and from a Task subagent. The verdict is taken from the
+filesystem and the transcript: every stand-in unchanged, no canary
+planted outside the scope in the output, no worktree or branch added,
+the in-scope reads, the `review.json` write and the subagent's write in
+the context directory done, and the session's tool list, from the
+CLI's init message, equal to the set `--tools` names. An operation the
+model reports as unavailable is counted separately, and fails the probe
+when that tool is in the session's list. `WORKFLOW=<file>` points it at another
 revision of the workflow, which is how a known-bad grant is shown to
 fail it.
 

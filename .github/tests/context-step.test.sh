@@ -16,21 +16,25 @@ git -C "$REPO_DIR" update-ref refs/remotes/origin/main main
 FIRST=$(commit_file "$REPO_DIR" one.txt "one")
 HEAD_SHA=$(commit_file "$REPO_DIR" two.txt "two")
 
-context() { # case name, then VAR=VAL overrides
-  local name="$1"
-  shift
+context_in() { # repo dir, case name, then VAR=VAL overrides
+  local dir="$1" name="$2"
+  shift 2
   new_case "$name"
   : > "$RT/step-output.txt"
-  run_step_in "$REPO_DIR" context \
+  run_step_in "$dir" context \
     GH_TOKEN=token REPO=o/r PR_NUMBER=7 BASE_REF=main \
     HEAD_SHA="$HEAD_SHA" HEAD_REF=feature/x \
     RUNNER_TEMP="$RT" GITHUB_OUTPUT="$RT/step-output.txt" \
     GH_STUB_DIR="$GH_STUB_DIR" "$@"
 }
 
+context() { # case name, then VAR=VAL overrides
+  context_in "$REPO_DIR" "$@"
+}
+
 output() { sed -n "s/^$1=//p" "$RT/step-output.txt"; }
 
-section "happy path: the five files the prompt reads, and nothing else"
+section "happy path: the files the prompt reads, and nothing else"
 
 context happy
 check "step succeeds" "$STEP_RC" 0
@@ -42,9 +46,21 @@ check "a first review has no previous head" "$(cat "$CTX/prev-sha.txt")" ""
 check "and no delta" "$(wc -c < "$CTX/delta.diff" | tr -d ' ')" 0
 check "prior reviews default to an empty list" "$(cat "$CTX/prior-reviews.json")" "[]"
 check "prior inline comments default to an empty list" "$(cat "$CTX/prior-comments.json")" "[]"
+check "files.txt lists every tracked path at the head" \
+  "$(cat "$CTX/files.txt")" "base.txt
+one.txt
+two.txt"
+check_file_exists "symbols.txt is written" "$CTX/symbols.txt"
+check_match "and says it is complete when the diff names no identifier" \
+  "$(cat "$CTX/symbols.txt")" '# Complete: the diff adds or removes no identifier'
+check "the context directory holds exactly the files the prompt names" \
+  "$(cd "$CTX" && ls | tr '\n' ' ')" \
+  "base-sha.txt delta.diff files.txt head-ref.txt pr.diff prev-sha.txt prior-comments.json prior-reviews.json symbols.txt "
 check "nothing suppresses the review, so the agent step is not skipped" \
   "$(cat "$RT/step-output.txt")" ""
-# Anything left in the checkout is inside the agent's Read/Grep scope and
+check "the index leaves no scratch directory behind in the runner temp" \
+  "$(cd "$RT" && ls | tr '\n' ' ')" "ai-review step-output.txt stub "
+# Anything left in the checkout is inside the agent's Read scope and
 # would read as a repository change.
 check "the step leaves the workspace untouched" \
   "$(git -C "$REPO_DIR" status --porcelain)" ""
@@ -256,5 +272,110 @@ check "base-sha.txt still holds a resolved SHA, not origin/<ref>" \
   "$(cat "$CTX/base-sha.txt")" "$UNRELATED"
 check "the review runs on the wider diff rather than being skipped" \
   "$(cat "$RT/step-output.txt")" ""
+
+section "the identifier index: uses of the changed code outside the diff"
+
+IDX_DIR="$WORK/index-repo"
+new_repo "$IDX_DIR"
+mkdir -p "$IDX_DIR/docs"
+printf 'total = compute_total(items)\n' > "$IDX_DIR/caller.sh"
+printf 'See compute_total for the sum.\n' > "$IDX_DIR/docs/notes.md"
+git -C "$IDX_DIR" add caller.sh docs/notes.md
+git -C "$IDX_DIR" commit -q -m base
+git -C "$IDX_DIR" update-ref refs/remotes/origin/main main
+IDX_HEAD=$(commit_file "$IDX_DIR" lib.sh 'compute_total() { echo "sum of the items"; }')
+context_in "$IDX_DIR" index HEAD_SHA="$IDX_HEAD"
+check "step succeeds" "$STEP_RC" 0
+SYMS=$(cat "$CTX/symbols.txt")
+check_match "the identifier the diff adds has a section" "$SYMS" '^## compute_total \(3 matching lines\)'
+check_match "the index finds its caller, a file the diff does not touch" "$SYMS" '^caller\.sh:1:total = compute_total\(items\)'
+check_match "and a mention in a nested path, by its repository path" "$SYMS" '^docs/notes\.md:1:See compute_total'
+check_match "the definition in the diff is indexed too" "$SYMS" '^lib\.sh:1:compute_total\(\)'
+check_no_match "entries carry no tree-ish prefix" "$SYMS" "$IDX_HEAD:"
+check_no_match "plain prose words are not indexed" "$SYMS" '^## (sum|items|echo|the)( |$)'
+check_match "the header names the indexed head" "$SYMS" "^# Where the identifiers this pull request adds or removes appear at $IDX_HEAD"
+check_match "and says it is complete" "$SYMS" '# Complete: all 1 identifiers are indexed'
+check "files.txt lists the head's tracked paths, nested ones included" \
+  "$(cat "$CTX/files.txt")" "caller.sh
+docs/notes.md
+lib.sh"
+
+section "a diff line is data: its identifiers reach git, never the shell"
+
+META_DIR="$WORK/meta-repo"
+new_repo "$META_DIR"
+commit_file "$META_DIR" base.txt base > /dev/null
+git -C "$META_DIR" update-ref refs/remotes/origin/main main
+# shellcheck disable=SC2016  # the command substitutions are the fixture
+META_LINE='run_$(touch '"$WORK"'/pwned-index)_x `touch '"$WORK"'/pwned-index2` "$(id)"; my-flag=$GITHUB_OUTPUT && rm_all -rf -e --output=x'
+META_HEAD=$(commit_file "$META_DIR" meta.sh "$META_LINE")
+context_in "$META_DIR" metachars-index HEAD_SHA="$META_HEAD"
+check "step succeeds" "$STEP_RC" 0
+check_file_absent "a command substitution in an identifier position runs nothing" "$WORK/pwned-index"
+check_file_absent "nor does a backtick form" "$WORK/pwned-index2"
+check "nothing reaches the step outputs" "$(cat "$RT/step-output.txt")" ""
+check "every section names an identifier made of [A-Za-z0-9_-] alone" \
+  "$(grep '^## ' "$CTX/symbols.txt" | grep -cvE '^## [A-Za-z_][A-Za-z0-9_-]* \([0-9]+ matching lines\)$')" 0
+check_match "an identifier next to the metacharacters is still indexed" \
+  "$(cat "$CTX/symbols.txt")" '^## rm_all \(1 matching lines\)'
+check_match "the matching line is quoted verbatim as data" \
+  "$(cat "$CTX/symbols.txt")" 'meta\.sh:1:run_\$\(touch '
+check_no_match "an option-shaped token is never taken for an identifier" \
+  "$(cat "$CTX/symbols.txt")" '^## -'
+
+section "the index is capped, and its header says when it was cut short"
+
+WIDE_DIR="$WORK/wide-repo"
+new_repo "$WIDE_DIR"
+commit_file "$WIDE_DIR" base.txt base > /dev/null
+git -C "$WIDE_DIR" update-ref refs/remotes/origin/main main
+WIDE_HEAD=$(commit_file "$WIDE_DIR" many.txt "$(for i in $(seq 1 250); do printf 'ident_%03d\n' "$i"; done)")
+context_in "$WIDE_DIR" symbol-cap HEAD_SHA="$WIDE_HEAD"
+check "step succeeds" "$STEP_RC" 0
+check "no more than 200 identifiers are indexed" "$(grep -c '^## ' "$CTX/symbols.txt")" 200
+check_match "the header says the symbol cap truncated it" \
+  "$(cat "$CTX/symbols.txt")" '# Truncated: indexed the 200 most frequent of 250 identifiers'
+
+DENSE_DIR="$WORK/dense-repo"
+new_repo "$DENSE_DIR"
+for i in $(seq 1 120); do for _ in $(seq 1 25); do printf 'dense_%03d\n' "$i"; done; done > "$DENSE_DIR/uses.txt"
+git -C "$DENSE_DIR" add uses.txt
+git -C "$DENSE_DIR" commit -q -m base
+git -C "$DENSE_DIR" update-ref refs/remotes/origin/main main
+DENSE_HEAD=$(commit_file "$DENSE_DIR" touch.txt "$(for i in $(seq 1 120); do printf 'dense_%03d\n' "$i"; done)")
+context_in "$DENSE_DIR" line-cap HEAD_SHA="$DENSE_HEAD"
+check "step succeeds" "$STEP_RC" 0
+check_match "an identifier with more matches than the per-identifier cap says how many were left out" \
+  "$(cat "$CTX/symbols.txt")" '^\(6 more not shown\)$'
+check "the index stays within the line cap" \
+  "$([ "$(grep -vc '^#' "$CTX/symbols.txt")" -le 2001 ] && echo yes)" yes
+check_match "the header says the line cap truncated it" \
+  "$(cat "$CTX/symbols.txt")" '# Truncated: stopped at 2000 lines after [0-9]+ of 120 identifiers'
+
+section "an index that cannot be built leaves a stub and does not fail the step"
+
+# A git that fails only the two index commands, so the rest of the step
+# still runs against the real repository.
+FAILGIT="$WORK/failgit"
+mkdir -p "$FAILGIT"
+REAL_GIT=$(command -v git)
+cat > "$FAILGIT/git" <<STUB
+#!/usr/bin/env bash
+for arg in "\$@"; do
+  case "\$arg" in grep|ls-tree) echo "git: \$arg failed" >&2; exit 128 ;; esac
+done
+exec "$REAL_GIT" "\$@"
+STUB
+chmod +x "$FAILGIT/git"
+context_in "$IDX_DIR" index-fails HEAD_SHA="$IDX_HEAD" PATH="$FAILGIT:$PATH"
+check "step succeeds" "$STEP_RC" 0
+check_match "the missing index is logged as a warning" "$STEP_OUT" '::warning::could not build the identifier index'
+check_match "and so is the missing file list" "$STEP_OUT" '::warning::could not list the files'
+check_match "symbols.txt is a stub that says it could not be built" \
+  "$(cat "$CTX/symbols.txt")" '^# The identifier index could not be built for this run'
+check "and holds no partial index" "$(grep -c '^## ' "$CTX/symbols.txt")" 0
+check_match "files.txt is a stub too" "$(cat "$CTX/files.txt")" '^# The file list could not be built'
+check "the review still runs" "$(cat "$RT/step-output.txt")" ""
+check_match "the diff is still prepared" "$(cat "$CTX/pr.diff")" '\+\+\+ b/lib.sh'
 
 finish

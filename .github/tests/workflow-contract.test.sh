@@ -123,6 +123,7 @@ PY2
 }
 allow=$(tool_rules allowedTools)
 deny=$(tool_rules disallowedTools)
+tools=$(tool_rules tools)
 WS='${{ github.workspace }}'
 CTXDIR='${{ runner.temp }}/ai-review'
 
@@ -130,6 +131,17 @@ check_match "allowedTools is quoted, so the action cannot widen a pattern while 
   "$claude_args" '--allowedTools \\"[^"]+\\"'
 check_match "so is disallowedTools" "$claude_args" '--disallowedTools \\"[^"]+\\"'
 check_no_match "no Bash grant, git included" "$claude_args" 'Bash'
+# `dontAsk` does not gate every built-in: EnterWorktree runs `git worktree
+# add` with no allow rule. Restricting the set is what removes it, and
+# every other built-in the review does not use, from the session.
+check "the built-in tool set is exactly Task, Read, Edit and Write" "$tools" "Task
+Read
+Edit
+Write"
+check "the tool set is passed once" "$(grep -oE -- '--tools( |=)' <<<"$claude_args" | wc -l | tr -d ' ')" 1
+check_match "and quoted, like the rule lists" "$claude_args" '--tools \\"[^"]+\\"'
+check "every allow rule names a tool in that set" \
+  "$(sed 's/(.*//' <<<"$allow" | grep -cvxF -f <(printf '%s\n' "$tools"))" 0
 check_no_match "no network-capable tool" "$claude_args" 'WebFetch|WebSearch|mcp__'
 # A bare file-tool allow approves that tool on every path on the runner,
 # the runner's file commands, /proc and /tmp included.
@@ -193,6 +205,23 @@ check "the prompt writes review.json into the same directory" \
 check "the prompt sends scratch edits to the context directory, not the workspace" \
   "$(printf '%s' "$prompt" | grep -co 'CONTEXT/scratch/')" 1
 check_no_match "and no longer asks for working-tree edits to be undone" "$prompt" 'undo each one with Edit'
+# The prompt may only send the session to tools it holds.
+check_no_match "the prompt names no tool outside the session's set" "$prompt" \
+  '(^|[^A-Za-z])(Grep|Glob|Bash|LS|MultiEdit|NotebookEdit|WebFetch|WebSearch|EnterWorktree|ToolSearch)([^A-Za-z]|$)'
+check_match "the prompt names the four tools the session holds" \
+  "$prompt" 'only tools are Task, Read, Edit and Write'
+# CONTEXT is the Read grant's directory, checked above, so a file the
+# prompt names is in scope exactly when the context step writes it
+# there; review.json and scratch/ are the agent's own writes.
+prompt_files=$(grep -oE 'CONTEXT/[A-Za-z0-9_.-]+' <<<"$prompt" | sed 's#^CONTEXT/##' | sort -u)
+extract_steps
+for f in $prompt_files; do
+  case "$f" in review.json|scratch) continue ;; esac
+  check "CONTEXT/$f, named in the prompt, is written by the context step" \
+    "$(grep -cF "\"\$CTX/$f\"" "$STEPS/context.sh" | awk '{print ($1 > 0)}')" 1
+done
+check "the prompt sends the session to the file list and the identifier index" \
+  "$(grep -cxE 'files\.txt|symbols\.txt' <<<"$prompt_files")" 2
 
 section "the shell steps take their inputs from the resolved SHA, not the run's"
 
