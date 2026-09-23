@@ -10,7 +10,7 @@
     {
       "name": "outsystems",
       "description": "Edit, publish, deploy, and search OutSystems apps, and manage external libraries, from your AI assistant. Connects to your own OutSystems tenant's MCP server over OAuth.",
-      "version": "0.20.0",
+      "version": "1.0.0",
       "author": {
         "name": "OutSystems AI Platform"
       },
