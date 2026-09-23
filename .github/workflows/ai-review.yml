@@ -1005,10 +1005,12 @@ jobs:
               notice "$INCOMPLETE"
               exit 0
             fi
-            # Every credential the runner puts in a run step's env; one that
-            # is unset or empty in this step is skipped.
+            # Every credential this step's env holds. The OIDC request token
+            # carries the same value as the runtime token Node actions
+            # receive, which a run step never holds. An unset or empty value
+            # is skipped.
             for var in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN GH_TOKEN \
-                       ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_RUNTIME_TOKEN; do
+                       ACTIONS_ID_TOKEN_REQUEST_TOKEN; do
               val="${!var:-}"
               if [ -n "$val" ] && grep -qF -- "$val" <<<"$payload_text"; then
                 leaked="${leaked:+$leaked, }$var"

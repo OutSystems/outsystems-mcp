@@ -103,7 +103,8 @@ grants.
   payload step replaces any payload whose body, inline comment bodies or
   paths contain the literal value of `AWS_ACCESS_KEY_ID`,
   `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, the job token, or the
-  OIDC request and runtime tokens with the notice, and logs an `::error::` naming the variable, never the value.
+  OIDC request token (the same value as the runtime token Node actions
+  receive) with the notice, and logs an `::error::` naming the variable, never the value.
   An encoded or split copy is not caught; the denies above are what keep
   the session from reading the values in the first place.
 
@@ -260,8 +261,8 @@ the session and from a Task subagent. The subagent's read of the
 workspace `.git/config` is the one operation an allow rule admits and
 only a deny rule refuses, so it is what shows that subagents inherit the
 deny list; its other out-of-scope operations show that they inherit the
-allow list. The canary sits on the first line of every stand-in, the
-line a successful read is told to quote. The verdict is taken from the
+allow list. The canary sits on the first line of every stand-in a read
+targets, the line a successful read is told to quote. The verdict is taken from the
 filesystem and the transcript: every stand-in unchanged, no canary
 planted outside the scope in the output, no worktree or branch added,
 the in-scope reads, the `review.json` write and the subagent's write in
