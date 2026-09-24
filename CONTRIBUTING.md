@@ -104,7 +104,7 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`, `POWER`.
 
 ## Testing
 
-There is no automated test suite. Verify changes manually, accounting for every harness in the CLAUDE.md table as step 4 above requires.
+The shipped content has no automated test suite: verify changes manually, accounting for every harness in the CLAUDE.md table as step 4 above requires. The one exception is `.github/workflows/ai-review.yml`, whose shell steps and structural guarantees are covered by `.github/tests/run.sh`; run it when you touch that workflow.
 
 ### Claude Code (plugin + skills)
 
