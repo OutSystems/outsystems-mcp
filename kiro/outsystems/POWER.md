@@ -158,7 +158,7 @@ Workflows below describe the call sequence in prose; read the live `tools/list` 
 
 ### Tool errors
 
-Errors carry a structured category in `data.category` (`AuthError`, `ValidationError`, `UpstreamError`, `InternalError`); upstream errors also include `data.upstream_status`. Use these for retry decisions, not the message text. Three named exceptions: the external-library `Server is busy, retry shortly` case, which is transient and worth retrying; a rejection naming `tenant_not_allowed`, which no retry or re-setup clears, covered under Conventions; and a `tenant not configured` error, a setup fault covered under MCP server unreachable above, not a retry target.
+Errors carry a structured category in `data.category` (`AuthError`, `ValidationError`, `UpstreamError`, `InternalError`, `CapacityError`); upstream errors also include `data.upstream_status`. Use these for retry decisions, not the message text. A `CapacityError` means the server is at capacity, not that the call is wrong: retry it after a short wait. A mentor run that fails with `code: "busy"` hit the same condition when its turn started but carries no error category, so retry the turn after a short wait too. Two named exceptions: a rejection naming `tenant_not_allowed`, which no retry or re-setup clears, covered under Conventions; and a `tenant not configured` error, a setup fault covered under MCP server unreachable above, not a retry target.
 
 ## Limitations
 

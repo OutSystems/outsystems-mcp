@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "outsystems",
   "displayName": "OutSystems - MCP",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Edit, publish, deploy, and search OutSystems apps, and manage external libraries, from your AI assistant. Connects to your own OutSystems tenant's MCP server over OAuth.",
   "author": {
     "name": "OutSystems AI Platform",

@@ -136,12 +136,13 @@ Call the OutSystems feedback tool with:
   - Feature request: "Thanks, your feature request has been recorded. Anything else you'd like to add — a use case, an example, a mock?"
   - Thumbs-up / general: "Thanks, your feedback has been recorded."
 - `status: "not_configured"` → the writer is not enabled on this environment; tell the user "Feedback is not configured on this OutSystems environment yet, so your message was not recorded. If you can share it directly with your OutSystems contact, that will reach the team."
-- Any error (`data.category` of `ValidationError` / `UpstreamError` / `InternalError` / etc., per the SKILL.md error-categories rule) → tell the user in plain language what actually blocked the submission, not just the category name. Map the common cases:
+- Any error (`data.category` of `ValidationError` / `UpstreamError` / `CapacityError` / `InternalError` / etc., per the SKILL.md error-categories rule) → tell the user in plain language what actually blocked the submission, not just the category name. Map the common cases:
   - `ValidationError` with a byte-cap message → "Your message was too long (over 4096 bytes). Trim it and send again."
   - `ValidationError` on `mentor_session_id` shape → "The mentor session id needs to be a UUID. Either drop it (the server will auto-correlate) or paste the exact UUID."
   - `ValidationError` on a reserved name → "'server_failure' is a reserved name only the server uses. Pick 'bug-report' instead."
   - `ValidationError` on a value type → "Feedback value must be a short string, number, or true/false — not an object or null."
   - `UpstreamError` (5xx from the downstream store — do NOT name the store to the user) → "The feedback backend is temporarily unreachable. Try again in a minute; if it keeps failing, share the message with your OutSystems contact."
+  - `CapacityError` → "The server is busy right now. Try again in a minute."
   - `InternalError` or any other category → "Something went wrong on the server (<data.category>). Try again in a minute or share directly with your OutSystems contact."
   Do not retry automatically; this is user-initiated. The point of unpacking the error is to give the user actionable next steps, not to relay implementation details.
 
