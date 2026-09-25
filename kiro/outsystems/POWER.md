@@ -158,7 +158,7 @@ Workflows below describe the call sequence in prose; read the live `tools/list` 
 
 ### Tool errors
 
-Errors carry a structured category in `data.category` (`AuthError`, `ValidationError`, `UpstreamError`, `InternalError`); upstream errors also include `data.upstream_status`. Use these for retry decisions, not the message text. Three named exceptions: the external-library `Server is busy, retry shortly` case, which is transient and worth retrying; a rejection naming `tenant_not_allowed`, which no retry or re-setup clears, covered under Conventions; and a `tenant not configured` error, a setup fault covered under MCP server unreachable above, not a retry target.
+Errors carry a structured category in `data.category` (`AuthError`, `ValidationError`, `UpstreamError`, `InternalError`, `CapacityError`); upstream errors also include `data.upstream_status`. Use these for retry decisions, not the message text. A `CapacityError` (such as `data.code = "server_busy"`) is transient: the server is at capacity and nothing is wrong with the call, so retry with backoff. Three named exceptions: the external-library `Server is busy, retry shortly` upload rejection returned as a `ValidationError` by older servers, which is transient like its current `CapacityError` form and retried with backoff; a rejection naming `tenant_not_allowed`, which no retry or re-setup clears, covered under Conventions; and a `tenant not configured` error, a setup fault covered under MCP server unreachable above, not a retry target.
 
 ## Limitations
 
