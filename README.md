@@ -5,7 +5,7 @@ Distribution repo for the OutSystems MCP. To install, paste the matching prompt 
 Every harness section below sets up two artifacts and says how to keep the skill current. Your agent needs both: the MCP server without the skill gives it every tool and none of the rules, the confirm-before-destructive rule included, and the skill without the MCP server leaves it nothing to call. Some hosts deliver both in one step; the section says so when that is the case. The latest published skill is the one on the `main` branch of this repo; there are no release notes, so the [commit history](https://github.com/OutSystems/outsystems-mcp/commits/main) is where changes show up.
 
 - **Skill**: the document that tells the agent how to work with OutSystems: confirm before changing tenant state, poll long-running operations until they finish, decide retries from the error category, prefer the asset key over names. It changes with new releases, so each section carries an **Update** step. Some hosts wrap it in a plugin or a Power.
-- **MCP server**: the OutSystems endpoint at `https://<my-tenant>/mcp`, which exposes the tools and signs you in to your tenant. OutSystems hosts it; your harness only stores its URL, so there is nothing to update on your side.
+- **MCP server**: the OutSystems endpoint at `https://<my-tenant>/mcp`, which exposes the tools and signs you in to your tenant. OutSystems hosts it and updates it on the tenant side, and your harness only stores its URL; if you reach it through the `mcp-remote` local proxy, as the Claude Desktop install does, also keep `mcp-remote` at 0.14.0 or later (see [Install - Claude Desktop](#install---claude-desktop)).
 
 ## Install - Claude Code
 
