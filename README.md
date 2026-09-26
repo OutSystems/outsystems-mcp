@@ -162,7 +162,7 @@ Step 5: once the tools are listed, tell me to ask `list 10 of my outsystems apps
 
 ```
 Update the OutSystems skill in the working directory.
-Find the copy an earlier install wrote: `.github/copilot-instructions.md`, or `AGENTS.md` if that is where it went. It is the file whose first line is `# OutSystems - Remote MCP`. Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes over that file. If neither file starts with that line, write nothing and tell me what you found. Copy it verbatim: do NOT retype or summarize the contents (that truncates the file and corrupts escaping).
+Find the copy an earlier install wrote: `.github/copilot-instructions.md`, or `AGENTS.md` if that is where it went; if an earlier install saved the copy alongside an existing file, tell me its path. It is the file whose first line is `# OutSystems - Remote MCP`. Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes over that file. If no candidate file starts with that line, write nothing and tell me what you found. Copy it verbatim: do NOT retype or summarize the contents (that truncates the file and corrupts escaping).
 ```
 
 ## Install - Copilot in Visual Studio (Windows)
@@ -274,7 +274,7 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 
 ```
 Update the OutSystems skill in this harness.
-Find the copy an earlier install injected into this harness's instructions/rules/system-prompt mechanism: the block that begins with the heading `# OutSystems - Remote MCP`. Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and replace that whole block with the fetched contents, leaving everything else in place. If you can't find the block, write nothing and tell me where you looked.
+Find the copy an earlier install injected into this harness's instructions/rules/system-prompt mechanism: the block that begins with the heading `# OutSystems - Remote MCP` and ends where the text of its last section, `## Feedback`, ends. Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and replace that whole block with the fetched contents, leaving everything else in place. If you can't find the block, or can't tell where it ends, write nothing and tell me what you found.
 ```
 
 ## Troubleshooting
@@ -296,7 +296,7 @@ Find the copy an earlier install injected into this harness's instructions/rules
 | Nothing appears at all on a Copilot Business or Enterprise plan | An admin must enable the "MCP servers in Copilot" policy. |
 | No "Add custom connector" button in Claude Desktop | The native connector flow is not a working install path today regardless of button visibility; use the local-proxy steps in the Claude Desktop section. |
 | Can't find a plugin-install option in Claude Desktop | Plugins require a paid plan (Pro, Max, Team, Enterprise); on Free there is no plugin install surface. On a paid plan, an Enterprise admin may also restrict which plugins install. |
-| The agent isn't asking for confirmation before a destructive tenant operation on Claude Desktop | Usually the plugin isn't installed, or you're on the Free plan where plugins aren't available: install the plugin above, or read [SKILL.md](SKILL.md) manually and apply its rules yourself. If the plugin is installed and this still happens, Desktop's Chat tab may not be applying the skill doc's Rules; open an issue here with what you observed. |
+| The agent isn't asking for confirmation before a destructive tenant operation on Claude Desktop | Usually the plugin isn't installed, or you're on the Free plan where plugins aren't available: install the plugin above, or read [SKILL.md](SKILL.md) manually and apply its rules yourself. If the plugin is installed and this still happens, Desktop's Chat tab may not be applying the skill's rules; open an issue here with what you observed. |
 
 ### Reset
 
