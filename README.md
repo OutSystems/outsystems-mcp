@@ -2,9 +2,14 @@
 
 Distribution repo for the OutSystems MCP. To install, paste the matching prompt below into your AI assistant.
 
+Every harness section below sets up two artifacts and says how to keep the skill current. Your agent needs both: the MCP server without the skill gives it every tool and none of the rules, the confirm-before-destructive rule included, and the skill without the MCP server leaves it nothing to call. Some hosts deliver both in one step; the section says so when that is the case. The latest published skill is the one on the `main` branch of this repo; there are no release notes, so the [commit history](https://github.com/OutSystems/outsystems-mcp/commits/main) is where changes show up.
+
+- **Skill**: the document that tells the agent how to work with OutSystems: confirm before changing tenant state, poll long-running operations until they finish, decide retries from the error category, prefer the asset key over names. It changes with new releases, so each section carries an **Update** step. Some hosts wrap it in a plugin or a Power.
+- **MCP server**: the OutSystems endpoint at `https://<my-tenant>/mcp`, which exposes the tools and signs you in to your tenant. OutSystems hosts it and updates it on the tenant side, and your harness only stores its URL; if you reach it through the `mcp-remote` local proxy, as the Claude Desktop install does, also keep `mcp-remote` at 0.14.0 or later (see [Install - Claude Desktop](#install---claude-desktop)).
+
 ## Install - Claude Code
 
-Paste into Claude Code:
+**Skill and MCP server:** one plugin install delivers both. The plugin carries the skill and declares the MCP server from your tenant hostname. Paste into Claude Code:
 
 ```
 Install the OutSystems outsystems-mcp plugin from OutSystems/outsystems-mcp on GitHub.
@@ -15,6 +20,8 @@ Step 4: run `claude mcp list`. Expect either `plugin:outsystems:outsystems: http
 Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; you'll drive the OAuth flow automatically via Claude Code's synthesized `authenticate` tool (a client convenience, not a server tool). If that doesn't trigger, or a call fails with an auth error, tell me to open `/mcp`, pick the `outsystems` server marked as coming from the plugin, and choose Authenticate as the fallback.
 ```
 
+**Update:** run `claude plugin marketplace update outsystems`, then `claude plugin update outsystems@outsystems`, then restart Claude Code. The first command refreshes Claude Code's cached copy of this repo's marketplace; the second compares the installed plugin version with it and installs the newer plugin, or reports `already at the latest version`. Run both, in this order: the second alone compares against the stale cache and reports the old version as the latest, and the first alone leaves the installed plugin as it was. The update refreshes the skill however the MCP server is registered, including an older `claude mcp add` entry.
+
 Upgrading from a version before 0.20.0? The old recipe registered the server with `claude mcp add` at user scope. That entry keeps working, and when it points at the same tenant Claude Code keeps it and hides the plugin's server as a duplicate. To move to the plugin's server: set the option with `claude plugin install outsystems@outsystems --config tenant_hostname=<my-tenant>` (bare hostname, no `https://`, no path; on an installed plugin this only updates the option), remove the old entry with `claude mcp remove outsystems -s user`, and restart Claude Code. Removing the entry also drops its saved OAuth tokens, so expect one sign-in on your next OutSystems request. The plugin's tools are named `mcp__plugin_outsystems_outsystems__<tool>`, so rename any permission rules or hooks you wrote against `mcp__outsystems__<tool>`.
 
 After install, you can also type `/outsystems-feedback <message>` in Claude Code to send feedback about the agent experience so the maintainers can act on it. The slash command is Claude-Code-only (and uses the `outsystems-` prefix so it doesn't collide with Claude Code's built-in `/feedback`, which routes to Anthropic's issue tracker); on other harnesses, ask the agent in plain language ("send a thumbs-up about the OutSystems agent") and it will invoke the underlying feedback tool.
@@ -23,7 +30,7 @@ After install, you can also type `/outsystems-feedback <message>` in Claude Code
 
 Use the local proxy below. Claude Desktop's native **Add custom connector** flow always fails during OAuth sign-in against any OutSystems tenant: the connector's `claude.ai` callback URL is rejected, because the tenant's identity provider accepts only loopback redirect URIs. It is not a working install path; the native steps are kept in the collapsed section below for reference only.
 
-Paste into Claude Desktop (requires Node.js with `npx` available on your machine):
+**MCP server:** paste into Claude Desktop (requires Node.js with `npx` available on your machine):
 
 ```
 Install the OutSystems MCP server in Claude Desktop via a local proxy.
@@ -37,7 +44,7 @@ Step 4: tell me to restart Claude Desktop.
 Step 5: After restarting, if the server fails to connect: Claude Desktop launches processes with a minimal PATH, and a broken, stale, or mistyped `"command"` value looks identical to Desktop. macOS/Linux, replace whatever the `"command"` value currently is with the full path from `which npx`. Windows, if the `"command"` value is anything other than `"cmd"`, restore it to `"cmd"` first; then replace whatever token stands in for `npx` inside the `/c` argument string with the `.cmd` path from `where npx` (the line ending in `.cmd`), quoting it if it contains a space — it commonly does (e.g. `C:\Program Files\nodejs\npx.cmd`). Restart Claude Desktop again and retry; if it still doesn't connect after that, stop and point me at https://github.com/OutSystems/outsystems-mcp#troubleshooting rather than continuing to guess. Otherwise, the first OutSystems tool call will open a browser window for OAuth sign-in; complete the sign-in when prompted.
 ```
 
-Once the MCP server is wired up above, install the plugin too: it delivers the conventions doc.
+**Skill:** once the MCP server is wired up above, install the plugin too: it delivers the skill.
 
 > **Requires a paid plan:** Plugins require a paid plan (Pro, Max, Team, Enterprise), and Enterprise admins may restrict which plugins install.
 
@@ -59,19 +66,21 @@ If the flow starts working: on a Team or Enterprise plan you may not see "Add cu
 
 </details>
 
-> **Note:** the plugin installed above delivers the same OutSystems conventions doc Claude Code gets, including the confirm-before-destructive rule, once both the local proxy and the plugin are set up. Plugins require a paid plan, so on Free the gap remains: read [SKILL.md](SKILL.md) if you want the conventions, and expect to confirm destructive operations yourself rather than being prompted.
+> **Note:** the plugin installed above delivers the same OutSystems skill Claude Code gets, including the confirm-before-destructive rule, once both the local proxy and the plugin are set up. Plugins require a paid plan, so on Free the gap remains: read [SKILL.md](SKILL.md) if you want the skill's rules, and expect to confirm destructive operations yourself rather than being prompted.
+
+**Update:** uninstall the `outsystems` plugin, then reinstall it from the same marketplace through Claude Desktop's plugin install flow, and restart Claude Desktop. Whether Desktop picks up a new plugin version in place is unverified, so reinstalling is the dependable path; if the reinstall still shows the old version, remove and re-add the `OutSystems/outsystems-mcp` marketplace first. The MCP server entry in `claude_desktop_config.json` needs no update. On Free, re-read [SKILL.md](SKILL.md) on `main` for the current rules.
 
 ## Install - Kiro Chat
 
-Install the Power yourself from the Powers panel: **Add Custom Power** > **Import power from GitHub**, paste the URL below, then **Install**.
+**Skill:** the OutSystems Power carries it. Install the Power yourself from the Powers panel: **Add Custom Power** > **Import power from GitHub**, paste the URL below, then **Install**.
 
 ```
 https://github.com/OutSystems/outsystems-mcp/tree/main/kiro/outsystems
 ```
 
-The Power uses Kiro's Agent Plugins format: `plugin.json` declares it and `skills/outsystems/SKILL.md` carries the agent instructions. `POWER.md` in the same folder is the human-readable guide to onboarding and troubleshooting.
+The Power uses Kiro's Agent Plugins format: `plugin.json` declares it and `skills/outsystems/SKILL.md` is the skill. `POWER.md` in the same folder is the human-readable guide to onboarding and troubleshooting.
 
-Then paste into Kiro Chat:
+**MCP server:** then paste into Kiro Chat:
 
 ```
 Finish setting up the OutSystems Power in Kiro.
@@ -81,6 +90,8 @@ Step 3: tell me the OAuth sign-in opens automatically on the next OutSystems too
 ```
 
 The tenant URL goes under the **top-level** `mcpServers`, not under `powers.mcpServers`. Kiro rewrites the whole `powers` block on every Power install, uninstall or update, so a URL stored there is lost on the next update; a URL at the top level is untouched.
+
+**Update:** update the OutSystems Power from the Powers panel, or, if the panel offers no update, uninstall it and import it again from the same URL. If you installed through the registry file below, run `git pull` in `~/git/outsystems-mcp` instead; Kiro watches that directory. The MCP server URL stays in place either way, because it lives at the top level. Whether Kiro compares the Power's version on update is unverified, so afterwards compare the `version` in `~/.kiro/powers/installed/outsystems/plugin.json` with the one in [`kiro/outsystems/plugin.json`](kiro/outsystems/plugin.json) on `main`; if they differ, uninstall and import again.
 
 <details>
 <summary>Alternative: install via a registry file (adds the icon to the Powers list)</summary>
@@ -104,9 +115,11 @@ The icon has to be inlined as base64 because Kiro's Powers view only loads image
 
 > On a Copilot Business/Enterprise plan, an admin must enable the "MCP servers in Copilot" policy.
 
-One-click: [**Add the OutSystems MCP server to VS Code**](https://vscode.dev/redirect/mcp/install?name=outsystems&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2F%24%7Binput%3Aos_tenant%7D%2Fmcp%22%7D&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22os_tenant%22%2C%22description%22%3A%22Your%20OutSystems%20tenant%20hostname%20%28e.g.%20mycompany.outsystems.dev%29%22%7D%5D). VS Code prompts you for your tenant hostname the first time the server starts and remembers it after that. You still need the conventions doc, so run Step 3 of the recipe below afterwards.
+**MCP server:** one-click: [**Add the OutSystems MCP server to VS Code**](https://vscode.dev/redirect/mcp/install?name=outsystems&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2F%24%7Binput%3Aos_tenant%7D%2Fmcp%22%7D&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22os_tenant%22%2C%22description%22%3A%22Your%20OutSystems%20tenant%20hostname%20%28e.g.%20mycompany.outsystems.dev%29%22%7D%5D). VS Code prompts you for your tenant hostname the first time the server starts and remembers it after that. Or use Step 2 of the prompt below.
 
-Or paste into VS Code copilot chat:
+**Skill:** Step 3 of the prompt below copies it into your workspace. The one-click link installs only the MCP server, so run Step 3 afterwards if you used it.
+
+Paste into VS Code copilot chat:
 
 ```
 Install the OutSystems MCP server in VS Code Copilot.
@@ -114,14 +127,25 @@ Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outs
 Step 2: open my user MCP config (behind `MCP: Open User Configuration`) or create `.vscode/mcp.json`. Read it first and preserve existing entries, then add under the top-level `servers` object (the key is `servers`, NOT `mcpServers`) the canonical `servers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/mcp.json), substituting my tenant for `<my-tenant>`:
 {"outsystems": {"type": "http", "url": "https://<my-tenant>/mcp"}}
 Do NOT add an `oauth.clientId` — the server supports Dynamic Client Registration and VS Code registers its own client automatically.
-Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in my workspace. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Step 3: install the OutSystems skill: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in my workspace. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
 Step 4: tell me to open the MCP config I edited (either `.vscode/mcp.json` or the user configuration behind `MCP: Open User Configuration`), check for `outsystems` under `servers`, and start it. A browser opens automatically for OAuth on first connection.
 Step 5: then tell me to ask `list 10 of my outsystems apps` to ensure it is working
+```
+
+**Update:** the skill is a copy of the file on `main` and never refreshes itself. Paste into VS Code copilot chat:
+
+```
+Update the OutSystems skill in my workspace.
+Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes over `.github/copilot-instructions.md`, but only if that file's first line is `# OutSystems - Remote MCP`, which marks an earlier copy of the skill. If the first line is anything else, or the file is missing, write nothing and tell me what you found; if an earlier install saved the copy alongside an existing file, tell me its path. Copy it verbatim: do NOT retype or summarize the contents (that truncates the file and corrupts escaping).
 ```
 
 ## Install - Copilot in CLI
 
 > On a Copilot Business/Enterprise plan, an admin must enable the "MCP servers in Copilot" policy.
+
+**MCP server:** Step 2 of the prompt below registers it.
+
+**Skill:** Step 3 of the prompt below copies it into your working directory.
 
 Paste into copilot:
 
@@ -129,14 +153,25 @@ Paste into copilot:
 Install the OutSystems MCP server in Copilot CLI.
 Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
 Step 2: run `copilot mcp add --transport http outsystems https://<my-tenant>/mcp` (substitute my tenant). This writes the server to `~/.copilot/mcp-config.json` under the top-level `mcpServers` object — it's added to config, but a CLI session that's already running won't load it until Step 4. This matches the canonical `mcpServers.outsystems` block at https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/mcp.json. Add no auth headers or client_id; the server uses OAuth + Dynamic Client Registration.
-Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in the working directory — that is the path Copilot reads, so default to it. Use `AGENTS.md` instead only when the project already keeps its own conventions there; an `AGENTS.md` that holds an OutSystems conventions doc installed for a different assistant (Cursor's recipe writes one) is not the project's own file, so in that case write `.github/copilot-instructions.md` and tell me. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
+Step 3: install the OutSystems skill: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes to `.github/copilot-instructions.md` in the working directory — that is the path Copilot reads, so default to it. Use `AGENTS.md` instead only when the project already keeps its own conventions there; an `AGENTS.md` that holds an OutSystems skill installed for a different assistant (Cursor's recipe writes one) is not the project's own file, so in that case write `.github/copilot-instructions.md` and tell me. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file already exists do NOT hand-merge; save the copy alongside it and tell me.
 Step 4: since `copilot mcp add` wrote the server to config from outside this running session, the session hasn't loaded it yet. Tell me to type `/mcp reload` in the CLI to load it (then optionally `/mcp show outsystems` to confirm it's listed). Note: `/mcp ...` are interactive slash commands I type in the REPL — you cannot run them for me, so ask me to run them rather than executing them yourself. The OAuth flow runs on the first OutSystems tool call — a browser opens for me to authorize.
 Step 5: once the tools are listed, tell me to ask `list 10 of my outsystems apps` to ensure it is working.
 ````
 
+**Update:** the skill is a copy of the file on `main` and never refreshes itself. Paste into copilot:
+
+```
+Update the OutSystems skill in the working directory.
+Find the copy an earlier install wrote: `.github/copilot-instructions.md`, or `AGENTS.md` if that is where it went; if an earlier install saved the copy alongside an existing file, tell me its path. It is the file whose first line is `# OutSystems - Remote MCP`. Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md and save its exact bytes over that file. If no candidate file starts with that line, write nothing and tell me what you found. Copy it verbatim: do NOT retype or summarize the contents (that truncates the file and corrupts escaping).
+```
+
 ## Install - Copilot in Visual Studio (Windows)
 
 > On a Copilot Business/Enterprise plan, an admin must enable the "MCP servers in Copilot" policy.
+
+**MCP server:** Step 2 of the prompt below registers it.
+
+**Skill:** Step 3 of the prompt below downloads it into your solution.
 
 Paste into copilot chat:
 
@@ -146,14 +181,27 @@ Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outs
 Step 2: create or edit `.mcp.json` in my solution dir (`<SolutionDir>\.mcp.json`) or global `%USERPROFILE%\.mcp.json`. Read it first and preserve existing entries, then add under the top-level `servers` object the canonical `servers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/mcp.json), substituting my tenant:
 {"outsystems": {"type": "http", "url": "https://<my-tenant>/mcp"}}
 Do NOT add an `oauth.clientId` — the server supports Dynamic Client Registration.
-Step 3: install the OutSystems conventions file by DOWNLOADING it — do NOT read it into chat and retype it. Run this terminal command from the repo root (approve it when Visual Studio asks): `New-Item -ItemType Directory -Force .github | Out-Null; Invoke-WebRequest -Uri https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md -OutFile .github\copilot-instructions.md`. Then verify it downloaded fully — `(Get-Content .github\copilot-instructions.md).Count` should report ~150+ lines; if it's short, re-run the command, never hand-type the content.
+Step 3: install the OutSystems skill by DOWNLOADING it — do NOT read it into chat and retype it. Run this terminal command from the repo root (approve it when Visual Studio asks): `New-Item -ItemType Directory -Force .github | Out-Null; Invoke-WebRequest -Uri https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md -OutFile .github\copilot-instructions.md`. Then verify it downloaded fully: `Select-String -Path .github\copilot-instructions.md -Pattern '^## Feedback' -Quiet` should print `True`, because `## Feedback` is the file's last section; if it prints `False`, re-run the command, never hand-type the content.
 Step 4: tell me to open the Tools picker, and ENABLE the `outsystems` tools — in Visual Studio, MCP tools are disabled by default and must be turned on manually. It will fail due to authentication, click "view details" and follow the steps in the authentication section. Finally, enable all tools.
 Step 5: tell me to ask `list 10 of my outsystems apps` to ensure it is working.
+```
+
+**Update:** the skill is a copy of the file on `main` and never refreshes itself. Paste into copilot chat:
+
+```
+Update the OutSystems skill in my solution by DOWNLOADING it again: do NOT read it into chat and retype it.
+First check that `.github\copilot-instructions.md` is an earlier copy of the skill: `Get-Content .github\copilot-instructions.md -TotalCount 1` should print `# OutSystems - Remote MCP`. If it prints anything else, or the file is missing, stop and tell me.
+Then run from the repo root (approve it when Visual Studio asks): `Invoke-WebRequest -Uri https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/copilot/skill.md -OutFile .github\copilot-instructions.md`.
+Verify: `Select-String -Path .github\copilot-instructions.md -Pattern '^## Feedback' -Quiet` should print `True`; if it prints `False`, re-run the download.
 ```
 
 ## Install - Cursor CLI (all plans, individual accounts included)
 
 No plugin and no team admin needed — this path works on a personal/individual Cursor account as well as on Team/Enterprise.
+
+**MCP server:** Step 2 of the prompt below registers it.
+
+**Skill:** Step 3 of the prompt below copies it into your workspace.
 
 Paste into Cursor agent:
 
@@ -164,25 +212,36 @@ Step 2: create or edit `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json
 {"outsystems": {"url": "https://<my-tenant>/mcp"}}
 Important: use `mcpServers` as the key (not `servers`), and omit `type` — Cursor infers the transport from the `url`. Never set `"type": "streamable-http"`; that value makes Cursor CLI silently drop the entire `mcp.json`.
 Only touch Cursor's own config. Do NOT read, copy from, or migrate any other assistant's MCP config — `.vscode/mcp.json`, `.mcp.json`, `~/.copilot/mcp-config.json`, `~/.claude.json`, `claude_desktop_config.json`, `~/.kiro/settings/mcp.json`, `~/.gemini/settings.json`, `.continue/`, or any other assistant's file — even if one exists and already has an `outsystems` entry; different keys and schemas mean a block lifted from one silently never loads in Cursor. Ask me for the tenant instead of hunting for it. Between the two Cursor configs, prefer the project one when my workspace already has it.
-Step 3: install the OutSystems conventions file: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes to `AGENTS.md` in my workspace root — Cursor loads that file verbatim. Do NOT save it under `.cursor/rules/`: that loader only reads `.mdc` files carrying rule frontmatter, so a plain `.md` copy there never loads. If `AGENTS.md` already exists, read it before writing: when it already holds an OutSystems conventions doc that another assistant's setup put there, stop and tell me — that file is already doing this job and a second copy alongside it helps nobody. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file exists with unrelated content do NOT hand-merge; save the copy alongside it and tell me.
+Step 3: install the OutSystems skill: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes to `AGENTS.md` in my workspace root — Cursor loads that file verbatim. Do NOT save it under `.cursor/rules/`: that loader only reads `.mdc` files carrying rule frontmatter, so a plain `.md` copy there never loads. If `AGENTS.md` already exists, read it before writing: when it already holds an OutSystems skill that another assistant's setup put there, stop and tell me — that file is already doing this job and a second copy alongside it helps nobody. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file exists with unrelated content do NOT hand-merge; save the copy alongside it and tell me.
 Step 4: in a terminal, run: `agent mcp list` (verify outsystems appears), then `agent mcp enable outsystems` if it shows "needs approval", then `agent mcp login outsystems` (opens browser for OAuth sign-in; complete it there).
 Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is working.
+```
+
+**Update:** the skill is a copy of the file on `main` and never refreshes itself; plugin version bumps reach only the Cursor App path. Paste into Cursor agent:
+
+```
+Update the OutSystems skill in my workspace.
+Check that `AGENTS.md` in my workspace root is an earlier copy of the skill: it starts with a frontmatter block carrying `name: outsystems`, followed by the heading `# OutSystems - Remote MCP`. If it doesn't, or the file is missing, write nothing and tell me what you found; if an earlier install saved the copy alongside an existing file, tell me its path. Otherwise fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes over `AGENTS.md`. Copy it verbatim: do NOT retype or summarize the contents (that truncates the file and corrupts escaping).
 ```
 
 ## Install - Cursor App (Plugin)
 
 > **Team/Enterprise plans only:** Requires team admin to import plugin to Team Marketplace.
 
+**Skill and MCP server:** the plugin delivers the skill, and on first use the agent writes the MCP server entry to your personal `~/.cursor/mcp.json`, so there is no separate MCP server step.
+
 **Team Admin:** Import the plugin to your Marketplace:
 1. Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → **Import from Repo**
 2. Enter: `https://github.com/OutSystems/outsystems-mcp`
 3. Review the `outsystems` plugin and save it as **Required** — or at minimum **Default On**.
 
-> Save it as **Required** unless you have a reason not to. Marking it Required (or Default On) is what makes setup one step for your developers: the skill is already loaded when they open Cursor, so they just ask for something OutSystems-related and the agent walks them through the tenant prompt and sign-in. Leaving it opt-in means each developer must find and enable the plugin first, and until they do the agent has no OutSystems conventions at all.
+> Save it as **Required** unless you have a reason not to. Marking it Required (or Default On) is what makes setup one step for your developers: the skill is already loaded when they open Cursor, so they just ask for something OutSystems-related and the agent walks them through the tenant prompt and sign-in. Leaving it opt-in means each developer must find and enable the plugin first, and until they do the agent has no OutSystems skill at all.
 
 **Individual User (after admin installs):** Open Cursor and ask anything OutSystems-related. The agent prompts for your tenant hostname, writes your personal `~/.cursor/mcp.json` (creating it if you don't have one — the plugin's own `cursor/mcp.json` is a read-only template and is never edited), and completes setup automatically.
 
 No team admin, or on an individual plan? Use the **Cursor CLI** path above; it works on every plan.
+
+**Update:** a team admin refreshes the `OutSystems/outsystems-mcp` import under **Plugins** > **Team Marketplaces** in the dashboard; developers then get the new plugin version. How Cursor resolves a new plugin version, and whether it pulls one without that refresh, is unverified. The `~/.cursor/mcp.json` entry needs no update.
 
 See [cursor/README.md](cursor/README.md) for detailed setup instructions and version alignment requirements.
 
@@ -190,9 +249,15 @@ See [cursor/README.md](cursor/README.md) for detailed setup instructions and ver
 
 Currently, this assistant does not support custom MCP servers.
 
+**Skill, MCP server and Update:** not applicable. Without custom MCP server support there are no tools for the skill to drive, so neither artifact is installed here.
+
 ## Install - other AI assistants (best effort)
 
 For other agentic harnesses (Codex CLI, Continue, Cline, Aider, etc.), this is a best-effort install path — the MCP server is a stock streamable-HTTP MCP endpoint with OAuth + Dynamic Client Registration, so most harnesses should be able to wire it up, but we don't validate the flow ourselves. If something breaks, file an issue with the symptoms.
+
+**MCP server:** Step 2 of the prompt below registers it.
+
+**Skill:** Step 3 of the prompt below injects it into the harness's instructions.
 
 Paste into your harness:
 
@@ -203,6 +268,13 @@ Step 2: register `outsystems` as an MCP server in this harness's configuration, 
 Step 3: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and inject its contents into this harness's instructions/rules/system-prompt mechanism (e.g. the system prompt rules file in Cline, a repo instruction file consumed by Aider, the system prompt config for Continue, etc.). The skill covers conventions (OML stays server-side, polling shape for long-running tools, error category enums, mentor session round-trip) that the tool descriptions alone don't fully convey.
 Step 4: trigger authentication. If the harness synthesizes per-server `authenticate` / `complete_authentication` tools after registration (as Claude Code does — they're a client convenience, not server tools), call those (lazy on first tool call). Otherwise let the harness's built-in MCP auth UI handle the OAuth handshake.
 Step 5: depending on the harness, the new MCP server may not be visible until you reload its MCP config or restart. If the harness has a CLI to list registered MCP servers (similar to `claude mcp list`), run it to check whether `outsystems` is visible — if not, tell me to restart the harness. Once the tools appear, ask me anything OutSystems-related to confirm the install is complete.
+```
+
+**Update:** [SKILL.md](SKILL.md) is a living document that changes with new releases, and the copy Step 3 injected stays as it was on the day you installed. Paste into your harness:
+
+```
+Update the OutSystems skill in this harness.
+Find the copy an earlier install injected into this harness's instructions/rules/system-prompt mechanism: the block that begins with the heading `# OutSystems - Remote MCP` and ends where the text of its last section, `## Feedback`, ends. Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and replace that whole block with the fetched contents, leaving everything else in place. If you can't find the block, or can't tell where it ends, write nothing and tell me what you found.
 ```
 
 ## Troubleshooting
@@ -217,18 +289,18 @@ Step 5: depending on the harness, the new MCP server may not be visible until yo
 | No browser window opens (Claude Desktop), or you can't tell if one did | The `mcp-remote` local proxy may need a moment before it opens the sign-in window on the first tool call, or after a token expires. Retry the request once. If a window still never appears, check the `npx` PATH row below first — a proxy that can't resolve `npx` never opens a window at all. If that isn't it, remove and re-add the `outsystems` entry in your MCP config, restart Claude Desktop, and try again; if it persists, open an issue here. |
 | "Server Disconnected" or "failed authorization" | Usually a stale or partial OAuth grant. Run the reset below. If it persists, the tenant hostname is likely wrong: confirm it resolves and that `https://<my-tenant>/mcp` returns `401` rather than `404`. |
 | Nothing connects on Windows, or `npx` is "not found" | Applies to the Claude Desktop local-proxy install only. Claude Desktop launches processes with a minimal PATH, and a broken, stale, or mistyped `"command"` value looks identical to Desktop. macOS/Linux: replace whatever the `"command"` value currently is with the full path from `which npx`. Windows: if the entry is `cmd`-shaped (its `args` begin with `/c`), ensure `"command"` is `"cmd"` — restore it if it is anything else — then replace whatever token stands in for `npx` inside the `/c` argument string with the `.cmd` path from `where npx` (the line ending in `.cmd`), quoting it if it contains a space (e.g. `"C:\Program Files\nodejs\npx.cmd"`); if instead the entry invokes `npx` directly (its `args` begin with `mcp-remote`), apply the macOS/Linux remedy above using the `.cmd` path from `where npx` as the `"command"` value, without converting it to the `cmd`-shaped form. Restart Claude Desktop again after any change and retry. |
-| Browser windows keep reopening, and the proxy log shows `EADDRINUSE` | Applies whenever you reach the server through the `mcp-remote` proxy, which is the Claude Desktop install above and any harness you wired up that way. The proxy reuses the callback port saved in its own client registration and exits before sign-in completes, so the host restarts it and no token is ever stored. Clear the saved registration, in the reset below. |
+| Browser windows keep reopening, and the proxy log shows `EADDRINUSE` | Applies whenever you reach the server through the `mcp-remote` proxy, which is the Claude Desktop install above and any harness you wired up that way. On `mcp-remote` versions before 0.13.5, the proxy reused the callback port saved in its own client registration and exited before sign-in completed, so the host restarted it and no token was ever stored; upgrading to 0.14.0 or later (`npm install -g mcp-remote@latest`, the minimum the `IssuerMismatchError` row below requires) resolves this unless you pinned a specific port yourself, in which case a conflict on that exact port still fails. Clear the saved registration, in the reset below. |
 | Sign-in fails and the proxy log shows `IssuerMismatchError: Issuer mismatch in authorization response (RFC 9207)` ending in `received undefined` | Applies whenever you reach the server through the `mcp-remote` proxy. Releases 0.9.0 through 0.13.5 check the `iss` parameter of the sign-in callback but drop it before the check, so every sign-in fails on any tenant; 0.14.0 fixed it. `npx mcp-remote` runs your global install when there is one, so an old global copy keeps failing until you upgrade it. Run `npm install -g mcp-remote@latest`, confirm `npm ls -g mcp-remote` reports 0.14.0 or later, then restart the host (Claude Desktop, or whichever harness launches the proxy) and sign in again. Do not pin an older release such as 0.8.7 instead: it predates the check, so it signs in only by dropping the protection the check provides. |
-| The Cursor agent ignores the OutSystems conventions | An earlier version of the Cursor CLI recipe saved the conventions file to `.cursor/rules/outsystems.md`. Cursor's rules loader only enumerates `.mdc` files carrying rule frontmatter, so a plain `.md` there never loaded. Move it to `AGENTS.md` in your workspace root, which Cursor loads verbatim, and delete the old copy. |
+| The Cursor agent ignores the OutSystems skill | An earlier version of the Cursor CLI recipe saved the skill to `.cursor/rules/outsystems.md`. Cursor's rules loader only enumerates `.mdc` files carrying rule frontmatter, so a plain `.md` there never loaded. Move it to `AGENTS.md` in your workspace root, which Cursor loads verbatim, and delete the old copy. |
 | Tools are listed but greyed out (Visual Studio) | MCP tools are disabled by default. Enable them in the Tools picker. |
 | Nothing appears at all on a Copilot Business or Enterprise plan | An admin must enable the "MCP servers in Copilot" policy. |
 | No "Add custom connector" button in Claude Desktop | The native connector flow is not a working install path today regardless of button visibility; use the local-proxy steps in the Claude Desktop section. |
 | Can't find a plugin-install option in Claude Desktop | Plugins require a paid plan (Pro, Max, Team, Enterprise); on Free there is no plugin install surface. On a paid plan, an Enterprise admin may also restrict which plugins install. |
-| The agent isn't asking for confirmation before a destructive tenant operation on Claude Desktop | Usually the plugin isn't installed, or you're on the Free plan where plugins aren't available: install the plugin above, or read [SKILL.md](SKILL.md) manually and apply the conventions yourself. If the plugin is installed and this still happens, Desktop's Chat tab may not be applying the skill doc's Rules; open an issue here with what you observed. |
+| The agent isn't asking for confirmation before a destructive tenant operation on Claude Desktop | Usually the plugin isn't installed, or you're on the Free plan where plugins aren't available: install the plugin above, or read [SKILL.md](SKILL.md) manually and apply its rules yourself. If the plugin is installed and this still happens, Desktop's Chat tab may not be applying the skill's rules; open an issue here with what you observed. |
 
 ### Reset
 
-When an install is wedged and updates don't stick, do a clean cycle rather than reinstalling on top:
+For a routine skill update, use the **Update** step in your harness's section. When an install is wedged and updates don't stick, do a clean cycle rather than reinstalling on top:
 
 1. Write down the whole `outsystems` entry first, on any harness, because removing it destroys the only record of your tenant URL and of any extra proxy arguments, and later steps need both. On Claude Code, `claude mcp get outsystems` prints the URL and the scope. Then remove the server: `claude mcp remove outsystems`, or delete the `outsystems` entry from the relevant config file on other harnesses. Removing it is also what drops a callback port pinned by an earlier setup step. Omitting `-s` clears whichever scope holds the entry; if the name exists in more than one the command removes nothing and lists them, so repeat it per scope with `-s <scope>`, and leave a `project` scope alone if the config is shared with other people. If the server comes from the plugin instead (`plugin:outsystems:outsystems` in `claude mcp list`), there is no entry to remove, but write down the hostname that line shows before step 2: uninstalling the plugin also deletes the option, and the reinstall in step 6 needs the value again. To change the tenant without a reset, run `claude plugin install outsystems@outsystems --config tenant_hostname=<new-tenant>` (bare hostname, no `https://`, no path) or `/plugin configure outsystems@outsystems`.
 2. Uninstall the plugin or Power, if you installed one.
@@ -248,7 +320,7 @@ When an install is wedged and updates don't stick, do a clean cycle rather than 
 
    If a different port does not help, the store itself can be cleared: it lives at `~/.mcp-auth`, or wherever `MCP_REMOTE_CONFIG_DIR` points. Removing it makes every server you reach through this proxy sign in again, so prefer the port change above, and never delete it to work around a port conflict you have not confirmed.
 
-   None of this is a permanent fix. The failure returns if the host exits without shutting the proxy down, leaving an orphaned proxy still running and holding the port. When that happens you do not need this block at all: find the orphan with `lsof -nP -iTCP:<port> -sTCP:LISTEN`, or `netstat -ano | findstr :<port>` on Windows, and stop it. A second proxy started while the first is still running normally waits for it, but only while the first one's lock is under 30 minutes old; past that the wait is skipped and the crash returns. On Windows the proxy never waits at all. The durable fix is proposed upstream but not yet merged, in [mcp-remote PR #262](https://github.com/geelen/mcp-remote/pull/262).
+   None of this is a permanent fix for a pinned port: it stays mandatory once you've added it as an argument, so a genuine conflict on that exact port still fails outright. The underlying orphaned-proxy failure returns if the host exits without shutting the proxy down, leaving an orphaned proxy still running and holding the port. When that happens you do not need this block at all: find the orphan with `lsof -nP -iTCP:<port> -sTCP:LISTEN`, or `netstat -ano | findstr :<port>` on Windows, and stop it. A second proxy started while the first is still running normally waits for it, but only while the first one's lock is under 30 minutes old; past that the wait is skipped and a fresh proxy tries to bind the held port. On Windows the proxy never waits at all. mcp-remote 0.13.5 fixed that bind to fall back to a random port instead of crashing, per [mcp-remote PR #262](https://github.com/punkpeye/mcp-remote/pull/262); an older, cached `mcp-remote` still crashes there, so upgrade it to 0.14.0 or later (`npm install -g mcp-remote@latest`) before working through this block.
 
    </details>
 
