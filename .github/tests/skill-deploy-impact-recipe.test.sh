@@ -21,11 +21,13 @@ recipe_block() { # doc -> the recipe, heading through the first blank line
   sed -n '/^\*\*Run a deployment-impact analysis:\*\*/,/^$/p' "$REPO_ROOT/$1"
 }
 
-first_line_matching() { # text, extended regex -> 1-based line number or 0
-  printf '%s\n' "$1" | grep -nE -- "$2" | head -n 1 | cut -d: -f1 | grep . || echo 0
+caveat_bullet() { # doc -> the Caveats bullet the recipe and the Rules bullet point to
+  grep -F -- '- **A deployment-impact analysis needs an already-deployed asset.**' "$REPO_ROOT/$1"
 }
 
+report_tag='`report`'
 first_hash=""
+first_caveat_hash=""
 for doc in "${DOCS[@]}"; do
   section "$doc"
   block=$(recipe_block "$doc")
@@ -38,15 +40,14 @@ for doc in "${DOCS[@]}"; do
   check_match "keeps analyzedRevision from the launch" "$block" '`analyzedRevision`'
   check_match "keeps sourceEnvironmentKey from the launch" "$block" '`sourceEnvironmentKey`'
 
-  gate=$(first_line_matching "$block" '`impactKnown`')
-  verdict=$(first_line_matching "$block" '`report`')
-  check "names impactKnown in the recipe" "$([ "$gate" -gt 0 ] && echo yes || echo no)" yes
-  check "gates report on impactKnown before reading it" \
-    "$([ "$gate" -gt 0 ] && [ "$verdict" -ge "$gate" ] && echo yes || echo no)" yes
+  check_match "names impactKnown in the recipe" "$block" '`impactKnown`'
+  check_match "gates report on impactKnown before reading it" \
+    "${block%%"$report_tag"*}" '`impactKnown`'
 
+  caveat=$(caveat_bullet "$doc")
+  check_match "carries the already-deployed Caveats bullet" "$caveat" 'needs an already-deployed asset'
   check_match "states the already-deployed precondition for a deployment analysis" \
-    "$(grep -i 'impact' "$REPO_ROOT/$doc")" \
-    '(already[- ]deployed|never been deployed|deployed somewhere|has no deployment|publish (it )?first)'
+    "$caveat" 'never been deployed[^.]*until it is published'
 
   check_no_match "leaves the report.status enum to the live tool descriptions" \
     "$block" 'NoIssuesFound|WarningsFound|ErrorsFound'
@@ -56,6 +57,10 @@ for doc in "${DOCS[@]}"; do
   hash=$(printf '%s' "$block" | git hash-object --stdin)
   [ -n "$first_hash" ] || first_hash=$hash
   check "recipe is byte-identical to ${DOCS[0]}" "$hash" "$first_hash"
+
+  caveat_hash=$(printf '%s' "$caveat" | git hash-object --stdin)
+  [ -n "$first_caveat_hash" ] || first_caveat_hash=$caveat_hash
+  check "Caveats bullet is byte-identical to ${DOCS[0]}" "$caveat_hash" "$first_caveat_hash"
 done
 
 finish
