@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs every suite in this directory. No GitHub Actions workflow invokes
 # it: run it locally before pushing a change to `ai-review.yml`, whose
-# shell steps only ever execute on a privileged runner otherwise.
+# shell steps only ever execute on a privileged runner otherwise, or to
+# any skill doc, whose deployment-impact recipe a suite here pins.
 #
 # Needs: bash, git, jq, python3 with PyYAML.
 

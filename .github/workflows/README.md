@@ -14,7 +14,8 @@ into `.claude/agents/`.
   (skill docs, slash commands, plugin manifests - no compiled language,
   no CI to gate on).
 - `.github/tests/` - the test suite for this workflow's shell steps and
-  for the guarantees its structure makes. See "Tests" below.
+  for the guarantees its structure makes, plus a suite pinning the skill
+  docs' deployment-impact recipe. See "Tests" below.
 
 ## What this repo runs
 
@@ -180,7 +181,7 @@ review silently instead of failing the job.
 
 Needs `bash`, `git`, `jq` and `python3` with PyYAML. Nothing invokes it
 automatically: this repo runs no CI beyond the review itself, so run it
-before pushing a change to `ai-review.yml`.
+before pushing a change to `ai-review.yml` or to a skill doc.
 
 The step suites extract the `run:` bodies from the committed workflow and
 execute them under the command the shell each step declares expands to.
