@@ -30,7 +30,7 @@ This Power doesn't ship its own MCP server config. The first time you ask Kiro C
 
 Two ways to install the Power into Kiro:
 
-Both snippets below omit `iconUrl` — the Power installs but shows no logo in Kiro's Powers UI. To enable the logo, add `"iconUrl": "data:image/png;base64,<base64-encoded contents of kiro/outsystems/icon.png>"` to the registry JSON (Kiro's webview CSP blocks `file://`, so a data URL is required). Encode with `base64 -w0` on Linux or `base64 -i` on macOS.
+Both snippets below omit `iconUrl` — the Power installs but shows no logo in Kiro's Powers UI. To enable the logo, base64-encode the Power's logo (the only PNG image in the Power folder, kiro/outsystems in the repository) with `base64 -w0` on Linux or `base64 -i` on macOS, and add `"iconUrl": "data:image/png;base64,<that base64 string>"` to the registry JSON (Kiro's webview CSP blocks `file://`, so a data URL is required).
 
 **Option A - clone locally, point Kiro at the local copy.** Most deterministic; doesn't depend on Kiro shelling out to git.
 
@@ -79,7 +79,7 @@ cat > ~/.kiro/powers/registries/outsystems.json <<EOF
 EOF
 ```
 
-Restart Kiro after dropping the registry file. On startup Kiro auto-installs the Power: it copies the Power folder (`plugin.json`, `skills/outsystems/SKILL.md`, this file, and `icon.png`) into `~/.kiro/powers/installed/outsystems/`. The Power appears in Kiro's Powers UI; the MCP server itself gets registered by the agent on first use (see the skill content).
+Restart Kiro after dropping the registry file. On startup Kiro auto-installs the Power: it copies the Power folder (`plugin.json`, `skills/outsystems/SKILL.md`, this file, and the logo image) into `~/.kiro/powers/installed/outsystems/`. The Power appears in Kiro's Powers UI; the MCP server itself gets registered by the agent on first use (see the skill content).
 
 Then open Kiro Chat and ask it for anything OutSystems-related; the skill content takes over and the agent walks you through the tenant prompt + OAuth on first use.
 

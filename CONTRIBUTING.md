@@ -59,13 +59,14 @@ kiro/
   outsystems/
     plugin.json           # Kiro Power manifest (Agent Plugins format: name, version, keywords, license)
     POWER.md              # Operator-facing Power documentation (onboarding + troubleshooting). Kiro's agent loader ignores it once plugin.json is present, but the Powers panel's details view still reads its frontmatter and body, so keep both
-    icon.png              # Logo shown in Kiro's Powers UI
     skills/
       outsystems/
         SKILL.md          # Agent-facing skill loaded into Kiro Chat
 SKILL.md                  # Generic skill content for other harnesses
 README.md                 # Install instructions for each supported harness
 ```
+
+The kiro/outsystems folder also holds the Power's logo, a 200x200 PNG that Kiro shows in its Powers UI, and the Claude plugin folder holds a copy of the same logo next to its manifest as the directory listing icon. Both are left out of the tree above on purpose: the Claude plugin directory validator holds any plugin whose code blocks or backticks name a bundled image file, so refer to those files in plain prose only. Keep each one the only image in its folder: the README's Kiro registry recipe and POWER.md's iconUrl note both identify the Kiro logo as the only PNG image there.
 
 All five skill documents overlap in intent (they all describe the same MCP tools and conventions):
 - `claude/skills/outsystems/SKILL.md` (Claude Code, and Claude Desktop via the same plugin)
