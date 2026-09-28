@@ -89,12 +89,6 @@ The Cursor skill doc is included in the plugin and deployed via `cursor/.cursor-
 
 All five files carry a `## Rules` section that is identical but for two wording drifts: the "Go straight to the task" bullet, and the `data.category` bullet's third named exception (root necessarily differs there, since it has no `## First use / setup` section to point at). Otherwise broadly the same `## Tools at a glance`, `### Caveats`, `## Workflows`, and `## Feedback` sections. Any behavioral change to one must be applied to all five, and to `kiro/outsystems/POWER.md`, whose `## Conventions` section carries the same rules for Kiro operators while sitting outside the grep below.
 
-Use the lockstep grep check before opening a PR:
-```bash
-PHRASE="<distinctive substring from your change>"
-for f in skills/outsystems/SKILL.md kiro/outsystems/skills/outsystems/SKILL.md copilot/skill.md cursor/skills/outsystems/SKILL.md SKILL.md; do
-  printf '%s  %s\n' "$(grep -c "$PHRASE" "$f")" "$f"
-done
-```
+Before opening a PR, run the lockstep grep check from `CLAUDE.md` (section "Check before opening a PR"): it counts one distinctive phrase from your change across the five files.
 
 All counts must be equal for a phrase in a lockstepped section. A phrase that also appears in a host-specific setup section legitimately differs; see CLAUDE.md for how to count those.
