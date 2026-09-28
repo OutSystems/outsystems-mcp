@@ -81,9 +81,11 @@ for doc in "${DOCS[@]}"; do
     "$block" '`deletion` for a `delete: true` launch, otherwise `deployment`'
   check_match "stops polling on a terminal processStatus" "$block" '`Finished` or `Failed`'
   check_match "bounds the Unknown processStatus retries" \
-    "$block" 'If `processStatus` is `Unknown`, poll at most 3 more times'
+    "$block" 'If `processStatus` is `Unknown`, poll at most 3 more times while it stays `Unknown`'
+  check_match "restarts the Unknown count on any other status" \
+    "$block" 'restarting that count whenever a poll returns any other status'
   check_match "stops and reports not known once the Unknown retries run out" \
-    "$block" 'if it is still `Unknown`, stop and report the impact as not known'
+    "$block" 'if all 3 of those polls return `Unknown`, stop and report the impact as not known'
   check_match "has a verdict only when impactKnown is true and report is present" \
     "$block" 'Only when `impactKnown` is true and `report` is present'
   check_match "never reads an absent or empty report as no impacts" \

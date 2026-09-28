@@ -4,8 +4,8 @@
 # with kind carried from the launch response, analyzedRevision and
 # sourceEnvironmentKey surfaced with the verdict, report gated on
 # impactKnown, the never-deployed precondition on delete=false, a bounded
-# Unknown retry and the truncation instruction; POWER.md names the
-# precondition under Limitations; the five manifests carry one version.
+# consecutive Unknown retry and the truncation instruction; POWER.md names
+# the precondition under Limitations; the five manifests carry one version.
 
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -79,11 +79,13 @@ for d in "${DOCS[@]}"; do
   check_match "$d: names processStatus" "$txt" 'processStatus'
 done
 
-section "R9: Unknown status retried exactly 3 more times"
+section "R9: Unknown status retried at most 3 more consecutive times"
 for d in "${DOCS[@]}"; do
   txt=$(lines_matching "$d" 'Unknown')
   check_match "$d: Unknown bounded to 3 more polls" "$txt" \
     '(3|three) more (poll|time|attempt)'
+  check_match "$d: Unknown count restarts on any other status" "$txt" \
+    '(restart|reset)[a-z]* (that|the) count whenever a poll returns any other status'
 done
 
 section "R11: truncation instruction without the 200 number"
