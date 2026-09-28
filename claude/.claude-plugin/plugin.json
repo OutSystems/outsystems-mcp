@@ -18,6 +18,11 @@
   "license": "MIT",
   "homepage": "https://github.com/OutSystems/outsystems-mcp",
   "repository": "https://github.com/OutSystems/outsystems-mcp",
+  "icon": "./.claude-plugin/icon.png",
+  "documentationUrl": "https://github.com/OutSystems/outsystems-mcp#readme",
+  "supportUrl": "https://github.com/OutSystems/outsystems-mcp/issues",
+  "privacyPolicyUrl": "https://www.outsystems.com/legal/terms-of-use/privacy-statement",
+  "termsOfServiceUrl": "https://www.outsystems.com/legal/outsystems-msa/master-subscription-agreement",
   "skills": "./skills/",
   "commands": "./commands/",
   "userConfig": {
