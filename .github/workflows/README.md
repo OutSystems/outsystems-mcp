@@ -14,8 +14,8 @@ into `.claude/agents/`.
   (skill docs, slash commands, plugin manifests - no compiled language,
   no CI to gate on).
 - `.github/tests/` - the test suite for this workflow's shell steps and
-  for the guarantees its structure makes, plus a suite pinning the skill
-  docs' deployment-impact recipe. See "Tests" below.
+  for the guarantees its structure makes, plus two suites checking the
+  skill docs' deployment-impact recipe. See "Tests" below.
 
 ## What this repo runs
 
@@ -236,6 +236,13 @@ the suites pin down:
   `id-token: write`
   is scoped to the `ai-review` job alone, no credential file is written
   on any trigger, and this README does not deny the surface.
+- `skill-deploy-impact-recipe.test.sh` - the deployment-impact recipe's
+  exact wording in the five skill docs, the Caveats bullet and the Rules
+  sentence it relies on, each byte-identical across the five, and the
+  operator-facing mirror in `kiro/outsystems/POWER.md`.
+- `spec_deploy_impact_recipe.test.sh` - the same recipe checked against
+  its requirements rather than its wording, and the five plugin manifests
+  carrying one version.
 
 A case that needs `gh` behaviour the stub does not have belongs in the
 stub, not in a mock of the step: a test that reimplements the step
