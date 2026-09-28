@@ -118,6 +118,7 @@ for d in "${DOCS[@]}"; do
   for t in Workflow ExtensionLibrary LowCodeLibrary WidgetLibrary MobileLibrary; do
     check_match "$d: R16 names $t as never analysable" "$lib" "$t"
   done
+  check_match "$d: unanalysable asset still gets deploy confirmation" "$lib" '(ask|confirm)[^.]*no impact analysis is available'
 done
 
 section "precondition in the confirm-before-mutation Rules bullet (R12)"
