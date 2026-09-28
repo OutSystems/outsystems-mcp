@@ -75,11 +75,17 @@ for doc in "${DOCS[@]}"; do
     "$block" 'returns an analysis id'
   check_match "does not switch to a deletion analysis past a missing deployment" \
     "$block" 'do not switch to `delete: true`'
+  check_match "asks before publishing a never-deployed asset" \
+    "$block" 'tell the user and ask before publishing it'
   check_match "maps a delete: true launch to the deletion kind" \
     "$block" '`deletion` for a `delete: true` launch, otherwise `deployment`'
   check_match "stops polling on a terminal processStatus" "$block" '`Finished` or `Failed`'
   check_match "bounds the Unknown processStatus retries" \
     "$block" 'If `processStatus` is `Unknown`, poll at most 3 more times'
+  check_match "stops and reports not known once the Unknown retries run out" \
+    "$block" 'if it is still `Unknown`, stop and report the impact as not known'
+  check_match "has a verdict only when impactKnown is true and report is present" \
+    "$block" 'Only when `impactKnown` is true and `report` is present'
   check_match "never reads an absent or empty report as no impacts" \
     "$block" 'an absent or empty `report` never means "no impacts"'
   check_match "passes on the error of a Failed analysis" \
