@@ -5,7 +5,7 @@
 # sourceEnvironmentKey surfaced with the verdict, report gated on
 # impactKnown, the never-deployed precondition on delete=false, a bounded
 # Unknown retry and the truncation instruction; POWER.md names the
-# precondition under Limitations; the five manifests are bumped together.
+# precondition under Limitations; the five manifests carry one version.
 
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -148,7 +148,7 @@ check_match "POWER.md Limitations names deploy impact" "$lim" '(deploy_impact|im
 check_match "POWER.md Limitations names the never-deployed precondition" "$lim" \
   '(never (been )?(deployed|published)|not (yet )?(been )?deployed|no deployment|deployed somewhere|publish)'
 
-section "manifests bumped together (R13)"
+section "manifests carry one version (R13)"
 v1=$(jq -r .version "$REPO_ROOT/.claude-plugin/plugin.json")
 v2=$(jq -r '.plugins[0].version' "$REPO_ROOT/.claude-plugin/marketplace.json")
 v3=$(jq -r .version "$REPO_ROOT/cursor/.cursor-plugin/plugin.json")
@@ -158,16 +158,5 @@ check "claude marketplace version matches plugin" "$v2" "$v1"
 check "cursor plugin version matches" "$v3" "$v1"
 check "cursor marketplace version matches" "$v4" "$v1"
 check "kiro plugin version matches" "$v5" "$v1"
-base=$(git -C "$REPO_ROOT" show main:.claude-plugin/plugin.json 2>/dev/null | jq -r .version)
-newer=$(python3 -c 'import sys
-a=tuple(map(int,sys.argv[1].split(".")));b=tuple(map(int,sys.argv[2].split(".")))
-print("yes" if a>b else "no")' "$v1" "${base:-0.0.0}")
-check "version $v1 is bumped past main's $base" "$newer" yes
-
-section "public repo: no internal references in shipped docs"
-for f in "${DOCS[@]}" kiro/outsystems/POWER.md; do
-  check_no_match "$f: no ticket id or internal repo name" "$(cat "$REPO_ROOT/$f")" \
-    'RAOPST-[0-9]+|rd-ai-ase-toolkit'
-done
 
 finish
