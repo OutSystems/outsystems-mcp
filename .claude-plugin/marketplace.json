@@ -14,7 +14,7 @@
       "author": {
         "name": "OutSystems AI Platform"
       },
-      "source": "./"
+      "source": "./claude"
     }
   ]
 }

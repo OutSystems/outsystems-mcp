@@ -71,7 +71,7 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
 ## Version Alignment
 
 Cursor, Claude, and Kiro plugin versions must stay in sync:
-- `.claude-plugin/plugin.json` -> `version`
+- `claude/.claude-plugin/plugin.json` -> `version`
 - `.claude-plugin/marketplace.json` -> `plugins[0].version`
 - `cursor/.cursor-plugin/plugin.json` → `version`
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
@@ -82,7 +82,7 @@ Update all five together in the same commit when bumping the version. `CLAUDE.md
 ## Skill Docs Lockstep
 
 The Cursor skill doc is included in the plugin and deployed via `cursor/.cursor-plugin/plugin.json`. It must stay synchronized with the other harness skill docs:
-- `skills/outsystems/SKILL.md` (Claude Code)
+- `claude/skills/outsystems/SKILL.md` (Claude Code)
 - `kiro/outsystems/skills/outsystems/SKILL.md` (Kiro)
 - `copilot/skill.md` (GitHub Copilot)
 - `SKILL.md` (root, generic)
