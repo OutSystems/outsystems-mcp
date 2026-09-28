@@ -15,10 +15,10 @@ A wrong instruction here is the same defect class as a wrong status code in a se
 ## Scope
 
 - **Agent-facing contract drift** - an instruction, a slash command's frontmatter, or a manifest field versus what actually happens: a renamed or removed MCP tool argument the skill doc still tells the agent to pass, a slash command's `argument-hint` that no longer matches how the body parses `$ARGUMENTS`, an install step that no longer matches the actual `claude mcp add` / `mcp.json` shape for that harness
-- **Cross-harness lockstep drift** - per `CLAUDE.md`'s "Skill docs must stay in lockstep across hosts": a behavioral rule (a confirm-before-destructive rule, a new caveat, a changed workflow) added to one of the five skill docs (or the curated `POWER.md` subset) but not the others. Use the lockstep grep `CLAUDE.md` documents to check counts across all five files, not just the one the diff touched
-- **Manifest version lockstep drift** - per `CLAUDE.md`'s "Manifest version lockstep": `claude/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, and `kiro/outsystems/plugin.json` bumped out of sync
-- **Config-key drift** - a JSON config example (`servers` vs `mcpServers`, the file path, the server key name) that doesn't match what the harness in question actually reads, per the table in `CLAUDE.md`
-- **Slash-command naming collision** - a new `claude/commands/*.md` file whose name is not prefixed `outsystems-` and would be shadowed by a host built-in (the `/feedback` collision `CLAUDE.md` documents is the known instance; the same risk applies to any new command name)
+- **Cross-harness lockstep drift** - per `AGENTS.md`'s "Skill docs must stay in lockstep across hosts": a behavioral rule (a confirm-before-destructive rule, a new caveat, a changed workflow) added to one of the five skill docs (or the curated `POWER.md` subset) but not the others. Use the lockstep grep `AGENTS.md` documents to check counts across all five files, not just the one the diff touched
+- **Manifest version lockstep drift** - per `AGENTS.md`'s "Manifest version lockstep": `claude/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, and `kiro/outsystems/plugin.json` bumped out of sync
+- **Config-key drift** - a JSON config example (`servers` vs `mcpServers`, the file path, the server key name) that doesn't match what the harness in question actually reads, per the table in `AGENTS.md`
+- **Slash-command naming collision** - a new `claude/commands/*.md` file whose name is not prefixed `outsystems-` and would be shadowed by a host built-in (the `/feedback` collision `AGENTS.md` documents is the known instance; the same risk applies to any new command name)
 - **Tool discriminability and argument derivability** - an instruction that tells the agent to call a remote MCP tool with an argument the agent has no way to obtain from prior output or the instructions themselves, or that describes two tools/flows so similarly an agent reading only the skill doc cannot pick between them
 - **Instruction coherence** - a skill doc or `POWER.md` section that contradicts another instruction in the same surface, or that still describes a tool, flag, or flow that no longer exists
 - **Coordinated-surface drift** - a change here that assumes a specific shape from the remote MCP server (e.g. the `submit_feedback` tool's argument names, or any `outsystems-mcp`-side tool contract) without that shape being confirmed live via `tools/list` or matched against the server's own repo. Report it once, naming which side needs to move
@@ -29,7 +29,7 @@ A wrong instruction here is the same defect class as a wrong status code in a se
 - Whether a tool or command should exist at all, or whether its granularity is right - that is the architecture-reviewer's call
 - Whether agent-facing text is exploitable (prompt injection, instruction smuggling) - that is the security-reviewer's
 - Human-facing documentation of the same surface written for a person, not an agent (README.md, CONTRIBUTING.md prose) - the docs-reviewer's. Flag the instruction or the manifest field, not the surrounding prose about it
-- Setup/installation flows that legitimately diverge per harness (per `CLAUDE.md`'s documented exception) - only flag a divergence in the lockstepped `## Rules` / behavioral sections, not the install recipe itself
+- Setup/installation flows that legitimately diverge per harness (per `AGENTS.md`'s documented exception) - only flag a divergence in the lockstepped `## Rules` / behavioral sections, not the install recipe itself
 
 ## Inputs
 
@@ -56,7 +56,7 @@ If the diff doesn't touch any of these categories, say so and stop — this PR h
 If the diff touches one of the five skill docs (or `POWER.md`):
 
 1. Read the changed section in the touched doc, then the corresponding section in the other four (map via `POWER.md`'s documented correspondence table when that's the one touched).
-2. Run the lockstep grep pattern `CLAUDE.md` prescribes: pick a phrase unique to the change and grep all five files for it. Behavioral text (`## Rules` and equivalent) must match 5/5; setup/install recipes are the documented exception and may legitimately diverge.
+2. Run the lockstep grep pattern `AGENTS.md` prescribes: pick a phrase unique to the change and grep all five files for it. Behavioral text (`## Rules` and equivalent) must match 5/5; setup/install recipes are the documented exception and may legitimately diverge.
 3. Flag any file where the count is short, naming which file is missing the update.
 
 ### Step 3: Verify Manifest Fields and Version Lockstep
@@ -64,15 +64,15 @@ If the diff touches one of the five skill docs (or `POWER.md`):
 For each changed manifest:
 
 1. **Required fields**: `name`, `description`, `version` present and non-empty; `skills` / `commands` paths in `plugin.json` actually resolve to a directory that exists; every `${user_config.<key>}` placeholder in `claude/.mcp.json` names a key declared under `userConfig` in `claude/.claude-plugin/plugin.json`, and the install recipes pass that key's value in the shape the URL template expects (a bare hostname for `tenant_hostname`).
-2. **Version lockstep**: per `CLAUDE.md`'s "Manifest version lockstep" table, a version bump in one of the five manifest files (`plugin.json` / `marketplace.json` for Claude and Cursor each, plus the Kiro Power's `kiro/outsystems/plugin.json`) must land in all five in the same diff. Read all five and compare.
-3. **Config-key accuracy**: any `mcpServers` vs `servers` example, file path, or server key named in a skill doc matches the harness table in `CLAUDE.md`.
+2. **Version lockstep**: per `AGENTS.md`'s "Manifest version lockstep" table, a version bump in one of the five manifest files (`plugin.json` / `marketplace.json` for Claude and Cursor each, plus the Kiro Power's `kiro/outsystems/plugin.json`) must land in all five in the same diff. Read all five and compare.
+3. **Config-key accuracy**: any `mcpServers` vs `servers` example, file path, or server key named in a skill doc matches the harness table in `AGENTS.md`.
 
 ### Step 4: Verify Slash-Command Contracts
 
 For each changed or new `claude/commands/*.md`:
 
 1. **Frontmatter against body.** Does `argument-hint` describe what the body's `$ARGUMENTS` parsing actually accepts? Does `description` match what the command does?
-2. **Naming collision.** Per `CLAUDE.md`'s naming note, a new command MUST be prefixed `outsystems-` so it isn't shadowed by a host built-in of the same short name. Flag any that isn't.
+2. **Naming collision.** Per `AGENTS.md`'s naming note, a new command MUST be prefixed `outsystems-` so it isn't shadowed by a host built-in of the same short name. Flag any that isn't.
 3. **Flag/mode drift.** If the body defines flags or modes (e.g. a dry-run or quiet flag), check that every branch the frontmatter or the body's own table promises is actually implemented, and vice versa.
 
 ### Step 5: Verify Remote-Tool-Contract Assumptions

@@ -106,7 +106,7 @@ Hunt for these eight categories:
    enough to displace the instructions the agent actually needs for
    the task at hand; guidance duplicated near-verbatim across two of
    the five skill docs where a single cross-reference would do (see
-   the lockstep rule in `CLAUDE.md` before proposing this - lockstep
+   the lockstep rule in `AGENTS.md` before proposing this - lockstep
    intentionally keeps each doc self-contained per harness, so
    collapsing duplication across docs is usually NOT the fix; collapsing
    duplication *within* one doc is); a manifest field or example JSON
@@ -119,7 +119,7 @@ Hunt for these eight categories:
   deterministic lint gate; use judgment, but do not raise a finding
   over a stylistic preference alone.
 - Duplication across the five parallel skill docs (or the `POWER.md`
-  curated subset) that exists because the lockstep rule in `CLAUDE.md`
+  curated subset) that exists because the lockstep rule in `AGENTS.md`
   requires each doc to be self-contained per harness. That duplication
   is the design, not a redundancy category 8 or 6 should flag.
 - Abstraction the plan or ticket explicitly requires for a second

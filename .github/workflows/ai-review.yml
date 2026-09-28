@@ -770,7 +770,7 @@ jobs:
                    shell command runs through Read instead: the
                    cross-harness lockstep counts come from Reading each of
                    the five skill-doc paths and counting the phrase, not
-                   from the shell loop `CLAUDE.md` writes. A measurement or
+                   from the shell loop `AGENTS.md` writes. A measurement or
                    a build, lint or test step a contract prescribes has
                    nothing this session can run (the workflow's own suite
                    under `.github/tests/` needs a shell); reason from the
@@ -823,7 +823,7 @@ jobs:
                  - For agent-facing / consistency claims, VERIFY by quoting the
                    instruction or manifest field and the behavior it describes
                    side by side. A cross-harness lockstep claim must count
-                   the phrase in all five skill docs (per `CLAUDE.md`'s
+                   the phrase in all five skill docs (per `AGENTS.md`'s
                    documented technique, done by Reading each), not just
                    the one the diff touched.
                  - Attribute correctly: is the issue net-new in this PR or
