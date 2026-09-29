@@ -14,7 +14,7 @@
 
 DOCS=(
   SKILL.md
-  skills/outsystems/SKILL.md
+  claude/skills/outsystems/SKILL.md
   copilot/skill.md
   kiro/outsystems/skills/outsystems/SKILL.md
   cursor/skills/outsystems/SKILL.md

@@ -161,7 +161,7 @@ in all, and its header says whether it is complete or which cap cut it
 short; when it cannot be built, a stub says so and the review proceeds.
 The prompt sends every search a critic file prescribes (the Grep and
 Glob it names, `rg`) to those two files and `Read`, and the shell forms -
-the `for`/`grep -c` lockstep loop from `CLAUDE.md`, plus
+the `for`/`grep -c` lockstep loop from `AGENTS.md`, plus
 `simplification-reviewer.md`'s `wc -c` measurement and its
 build/lint/test step - to `Read`, or to inspection, since the session
 has no shell to run a measurement, a build or the `.github/tests/`

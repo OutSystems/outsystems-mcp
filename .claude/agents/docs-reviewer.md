@@ -8,7 +8,7 @@ model: inherit
 
 ## Purpose
 
-Verify that standard documentation files (README.md, CLAUDE.md, ARCHITECTURE.md, CONTRIBUTING.md)
+Verify that standard documentation files (README.md, AGENTS.md, ARCHITECTURE.md, CONTRIBUTING.md)
 stay accurate when code or structure changes, and that manifest files (plugin.json, marketplace.json,
 package.json, pyproject.toml, etc.) contain the required fields with sensible values.
 
@@ -20,16 +20,16 @@ police style.
 
 - **README completeness** — user-facing changes (new features, new plugins, breaking changes) that
   are not reflected in README.md
-- **CLAUDE.md / ARCHITECTURE.md / CONTRIBUTING.md accuracy** — structural changes (new packages,
+- **AGENTS.md / ARCHITECTURE.md / CONTRIBUTING.md accuracy** — structural changes (new packages,
   new major components, changed workflows) that leave these optional docs out of date **when they
   exist**
 - **`.github/workflows/README.md` accuracy** — when the AI-review workflow, its config, or the
   vendored `.claude/agents/*.md` critics change, check that doc against the actual behavior.
 - **Manifest required fields** — missing `name`, `version`, or `description` in the five manifests
-  this repo ships: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`,
+  this repo ships: `claude/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`,
   `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, `kiro/outsystems/plugin.json`
-  (which additionally needs `$schema`, `author.name`, `keywords`, and `license` for the Kiro catalog); and, for the root `.mcp.json`,
-  a `${user_config.<key>}` placeholder whose key is not declared under `userConfig` in `.claude-plugin/plugin.json`.
+  (which additionally needs `$schema`, `author.name`, `keywords`, and `license` for the Kiro catalog); and, for the plugin's `claude/.mcp.json`,
+  a `${user_config.<key>}` placeholder whose key is not declared under `userConfig` in `claude/.claude-plugin/plugin.json`.
 - **Version format** — version fields that clearly do not match the project's scheme (e.g., not
   semver where semver is used)
 - **Plugin-level documentation** — new plugins added without the supporting documentation that
@@ -40,7 +40,7 @@ police style.
 - Typos, grammar, phrasing, or formatting preferences
 - Missing comments or docstrings inside source files — that is not documentation in this sense
 - Documentation updates for purely internal refactors that do not change behavior or structure
-- Optional doc files (CLAUDE.md, ARCHITECTURE.md, CONTRIBUTING.md) when they **do not exist** —
+- Optional doc files (AGENTS.md, ARCHITECTURE.md, CONTRIBUTING.md) when they **do not exist** —
   do not propose creating them
 - Style of existing documentation that was not touched in this PR
 - Nitpicks about wording or section ordering
@@ -87,13 +87,13 @@ If the PR has user-facing changes:
 
 **Severity:** SHOULD for significant user-facing changes not in README; COULD for minor gaps.
 
-### Step 3: Check CLAUDE.md / ARCHITECTURE.md / CONTRIBUTING.md / docs/*.md (If They Exist)
+### Step 3: Check AGENTS.md / ARCHITECTURE.md / CONTRIBUTING.md / docs/*.md (If They Exist)
 
 For each of these files that **already exists** in the repository:
 
 1. Read it.
 2. Check whether structural changes in the diff contradict or outdate what it says:
-   - New major package not listed in CLAUDE.md's "Key Directories" or equivalent
+   - New major package not listed in AGENTS.md's "Key Directories" or equivalent
    - New external integration not in ARCHITECTURE.md's integrations section
    - Changed build/test commands not reflected in CONTRIBUTING.md
    - `.github/workflows/README.md` describing an AI-review panel, gate, or
@@ -107,18 +107,18 @@ Do not propose creating these files if they do not exist.
 
 ### Step 4: Validate Manifest Content
 
-For every manifest file changed in the diff - in this repo that means `.claude-plugin/plugin.json`,
+For every manifest file changed in the diff - in this repo that means `claude/.claude-plugin/plugin.json`,
 `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`,
-`kiro/outsystems/plugin.json`, and the root `.mcp.json`:
+`kiro/outsystems/plugin.json`, and the plugin's `claude/.mcp.json`:
 
 1. **Required fields**: `name`, `version`, `description` (and `source` for the marketplace entry).
    For `plugin.json`, also confirm `skills` and `commands` point at directories that actually exist.
    For `.mcp.json`, confirm every `${user_config.<key>}` placeholder names a key declared under
-   `userConfig` in `.claude-plugin/plugin.json`, and that each `userConfig` entry carries `type`,
+   `userConfig` in `claude/.claude-plugin/plugin.json`, and that each `userConfig` entry carries `type`,
    `title`, and `description`.
 2. **Version format**: Verify the version follows `MAJOR.MINOR.PATCH`. Check for obvious format
    errors.
-3. **Cross-file version consistency**: per `CLAUDE.md`'s "Manifest version lockstep" table, all
+3. **Cross-file version consistency**: per `AGENTS.md`'s "Manifest version lockstep" table, all
    five manifest files (Claude's `plugin.json` + `marketplace.json`, Cursor's `plugin.json` +
    `marketplace.json`, and Kiro's `kiro/outsystems/plugin.json`) track the same version and must be
    bumped together in the same diff. Read all five and flag any divergence.

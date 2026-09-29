@@ -1,0 +1,19 @@
+# OutSystems - MCP
+
+Work with your OutSystems Developer Cloud tenant from Claude Code: edit apps, publish, deploy, search tenant elements, and manage external libraries, following the OutSystems conventions (confirm before a destructive change, poll long-running operations until they finish, retry only on the right error category).
+
+## What is inside
+
+- The `outsystems` skill, which teaches Claude how to use the OutSystems MCP tools.
+- The `/outsystems-feedback` slash command, which sends feedback about the agent experience to OutSystems. It is tested in Claude Code; Anthropic's plugin docs say Cowork also runs plugin commands (typed as `/outsystems:outsystems-feedback`) and claude.ai chat loads them as skills, which this project has not tested yet.
+- The OutSystems MCP server entry. In Claude Code its URL is built from the tenant hostname you enter at install time (`tenant_hostname`, for example `mycompany.outsystems.dev`). In claude.ai chat and in Cowork, Claude skips a server entry whose URL depends on such an option and does not ask for the value, so there the plugin delivers the skill without the server.
+
+## Install in Claude Code
+
+Run `claude plugin marketplace add OutSystems/outsystems-mcp`, then `claude plugin install outsystems@outsystems --config tenant_hostname=<my-tenant>` with the bare hostname, and restart Claude Code. The first OutSystems request opens the sign-in for your tenant in the browser. The repository README has the recipes for Claude Desktop and other assistants, plus troubleshooting: https://github.com/OutSystems/outsystems-mcp
+
+## Data
+
+Requests go only to your own OutSystems tenant at `https://<my-tenant>/mcp`, where you sign in with your tenant account; OutSystems hosts that server. Feedback sent with `/outsystems-feedback` goes to OutSystems. Privacy: https://www.outsystems.com/legal/terms-of-use/privacy-statement
+
+On Claude Desktop's Chat tab, the skill's setup recipe (it runs only when you ask for that setup) installs the `mcp-remote` package (0.14.0 or later) from the npm registry and adds an `outsystems` entry to `claude_desktop_config.json` that starts it with `npx` as a local proxy to `https://<my-tenant>/mcp`. That proxy runs on your machine, opens the browser sign-in for your tenant, and talks only to your tenant; it is not one of the plugin's declared servers. In Claude Code the plugin's declared server connects to `https://<my-tenant>/mcp` directly and installs nothing.

@@ -2,7 +2,7 @@
   "name": "outsystems",
   "displayName": "OutSystems - MCP",
   "description": "Edit, publish, deploy, and search OutSystems apps, and manage external libraries, from your AI assistant. Connects to your own OutSystems tenant's MCP server over OAuth.",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "author": {
     "name": "OutSystems AI Platform",
     "url": "https://www.outsystems.com"
@@ -18,6 +18,11 @@
   "license": "MIT",
   "homepage": "https://github.com/OutSystems/outsystems-mcp",
   "repository": "https://github.com/OutSystems/outsystems-mcp",
+  "icon": "./.claude-plugin/icon.png",
+  "documentationUrl": "https://github.com/OutSystems/outsystems-mcp#readme",
+  "supportUrl": "https://github.com/OutSystems/outsystems-mcp/issues",
+  "privacyPolicyUrl": "https://www.outsystems.com/legal/terms-of-use/privacy-statement",
+  "termsOfServiceUrl": "https://www.outsystems.com/legal/outsystems-msa/master-subscription-agreement",
   "skills": "./skills/",
   "commands": "./commands/",
   "userConfig": {

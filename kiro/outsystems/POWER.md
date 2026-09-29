@@ -30,7 +30,7 @@ This Power doesn't ship its own MCP server config. The first time you ask Kiro C
 
 Two ways to install the Power into Kiro:
 
-Both snippets below omit `iconUrl` — the Power installs but shows no logo in Kiro's Powers UI. To enable the logo, add `"iconUrl": "data:image/png;base64,<base64-encoded contents of kiro/outsystems/icon.png>"` to the registry JSON (Kiro's webview CSP blocks `file://`, so a data URL is required). Encode with `base64 -w0` on Linux or `base64 -i` on macOS.
+Both snippets below omit `iconUrl` — the Power installs but shows no logo in Kiro's Powers UI. To enable the logo, base64-encode the Power's logo (the only PNG image in the Power folder, kiro/outsystems in the repository) with `base64 -w0` on Linux or `base64 -i` on macOS, and add `"iconUrl": "data:image/png;base64,<that base64 string>"` to the registry JSON (Kiro's webview CSP blocks `file://`, so a data URL is required).
 
 **Option A - clone locally, point Kiro at the local copy.** Most deterministic; doesn't depend on Kiro shelling out to git.
 
@@ -79,7 +79,7 @@ cat > ~/.kiro/powers/registries/outsystems.json <<EOF
 EOF
 ```
 
-Restart Kiro after dropping the registry file. On startup Kiro auto-installs the Power: it copies the Power folder (`plugin.json`, `skills/outsystems/SKILL.md`, this file, and `icon.png`) into `~/.kiro/powers/installed/outsystems/`. The Power appears in Kiro's Powers UI; the MCP server itself gets registered by the agent on first use (see the skill content).
+Restart Kiro after dropping the registry file. On startup Kiro auto-installs the Power: it copies the Power folder (`plugin.json`, `skills/outsystems/SKILL.md`, this file, and the logo image) into `~/.kiro/powers/installed/outsystems/`. The Power appears in Kiro's Powers UI; the MCP server itself gets registered by the agent on first use (see the skill content).
 
 Then open Kiro Chat and ask it for anything OutSystems-related; the skill content takes over and the agent walks you through the tenant prompt + OAuth on first use.
 
@@ -132,7 +132,7 @@ Workflows below describe the call sequence in prose; read the live `tools/list` 
 - **Operations return immediately.** Every deployment operation, publishing, and every external-library operation returns an id; poll the matching status surface until it's terminal.
 - **Never invent IDs.** App keys, env keys, build keys, operation keys are opaque. Resolve them via the listing and lookup calls, or ask the user.
 - **Only `status` says a run finished.** `complete` is an event name that appears while the run is still going, and a cancel still in progress is non-terminal too, so neither means the turn is done. A run abandoned before `status` reaches `succeeded`, `failed`, or `cancelled` never shows its completion signals, and anything its terminal payload carries for the next call is lost with it. An error on a poll is not a dead run either: a stale-cursor error just means the cursor went stale over a long pause, and re-polling the way the tool's description says picks the run back up.
-- **A `tenant_not_allowed` rejection is a server-side per-tenant allowlist gate, not a lapsed sign-in.** The token is valid, so re-authenticating, re-registering, and removing and re-adding the server all fail identically while risking a working configuration. Confirm with the user which host the server is pointed at, because a right account on the wrong tenant gets this same rejection and is fixed by pointing it at the right one. If the host is right, tell the user to ask their OutSystems contact to have the tenant enabled.
+- **A `tenant_not_allowed` rejection is a server-side per-tenant allowlist gate, not a lapsed sign-in.** The sign-in is valid, so re-authenticating, re-registering, and removing and re-adding the server all fail identically while risking a working configuration. Confirm with the user which host the server is pointed at, because a right account on the wrong tenant gets this same rejection and is fixed by pointing it at the right one. If the host is right, tell the user to ask their OutSystems contact to have the tenant enabled.
 
 ## Troubleshooting
 
