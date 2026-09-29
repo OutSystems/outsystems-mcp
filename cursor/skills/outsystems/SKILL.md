@@ -258,7 +258,7 @@ Scope rules for the offer:
 - Skip the offer when you already have the id in scope from a mentor tool call earlier in this conversation — attach it directly and confirm in the reply which id you attached.
 - Do NOT invent or guess ids. If the user replies with a value that isn't shaped like an id (e.g., not a UUID for `mentor_session_id`), tell them and skip the field rather than pass junk.
 
-**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call the feedback tool on your own when a situation clearly matches one of the six defined categoricals below. Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
+**Agent-observation (you self-report).** Useful for optimizing tool composition and output quality. Call the feedback tool on your own when a situation clearly matches one of the six defined categoricals below, and the user has agreed to them in this conversation (see the consent gate below). Do NOT fire on routine or expected outcomes (e.g., an empty search result for an obviously-made-up query is NOT `empty_results` — that's a search legitimately returning nothing).
 
 **Scope.** `agent_observation` reports on how OutSystems tools composed to fulfill a specific user request in the current turn. An OutSystems tool is any tool from the connected OutSystems MCP server — the ones that let you inspect and change tenant state. Three invariants must all hold before you fire:
 
@@ -285,11 +285,22 @@ Use:
 - `mentor_session_id`: only when the observation is about a mentor turn (always true for `builder_retry_friction`), and only if you have a UUID.
 - `agent_context`: OPTIONAL structured recap of what you were doing when you constructed this observation. JSON-encoded string, ≤2048 bytes. Same shape and secrets rules as user-initiated.
 
-**When to fire.** When any of the six categoricals above clearly matches the just-completed tool interaction, fire it. One row is cheap; silence when a categorical actually applies costs the team a real signal. Do NOT wait for the user to grant permission — the SKILL is the permission. Fire at most one `agent_observation` per user turn.
+**Consent gate (ask once per conversation, before the first observation).** Agent observations are off until the user agrees in this conversation. The first time one of the six categoricals matches, do NOT fire. Finish the task, then ask once, as a single line at the end of your reply:
+
+> "Separately: I can report tool friction like this back to the OutSystems team so they can fix it. It sends a fixed category label plus one sentence I write myself, never your messages, your code, or your app content. OK to send these for the rest of this conversation?"
+
+- **Yes** → fire the observation that triggered the ask, and every later match in this conversation, without asking again.
+- Once agreed, send observations silently. Do not mention individual sends; the agreement already covers them, and a note on every reply turns a one-time decision into a recurring interruption.
+- **No, or any reply that is not a clear yes** → send nothing for the rest of the conversation and do not ask again. A later failure, a new task, or a different categorical does not reopen it.
+- The agreement covers this conversation only. Nothing is stored, so a new session starts from off and asks again on its first match. Tell the user that plainly if they ask why they are being asked again.
+- Ask ONLY when a categorical has actually matched. Never open a session with it, never interrupt a task with it, never raise it as a standalone question.
+- The agreement covers `agent_observation` alone. It is not needed for `user_feedback`, which the user asked for, and it does not extend to anything else.
+
+**When to fire.** Once the user has agreed in this conversation, fire whenever any of the six categoricals above clearly matches the just-completed tool interaction. One row is cheap; silence when a categorical actually applies costs the team a real signal. Fire at most one `agent_observation` per user turn.
 
 **When to skip.** Only when NONE of the six categoricals clearly matches AND all three scope invariants hold. If your draft rationale sentence would be about the agent's own workflow rather than a specific OutSystems tool call, skip. If the situation is genuinely borderline and you would have to argue with yourself that it is noteworthy, skip. `shorter-path-available` in particular should stay low-frequency — fires per successful multi-step task, not per turn; never on a one-step task that already took the direct path.
 
-**Positive triggers (fire immediately, do not deliberate)**:
+**Positive triggers (unambiguous matches, subject to the consent gate above; do not deliberate over whether they count)**:
 - Just did a lookup for a concrete resource the user named (an app, a deploy, a session) and it returned empty → fire `empty_results`.
 - Just called a tool, it errored or returned an unusable shape, you had to fall back to a different tool to make progress → fire `wrong_path`.
 - The user's last message corrected your tool choice ("no, use X instead") after you had already picked one → fire `wrong_path`.
