@@ -12,7 +12,7 @@ set -uo pipefail
 
 DOCS=(
   SKILL.md
-  skills/outsystems/SKILL.md
+  claude/skills/outsystems/SKILL.md
   copilot/skill.md
   kiro/outsystems/skills/outsystems/SKILL.md
   cursor/skills/outsystems/SKILL.md
@@ -152,7 +152,7 @@ check_match "POWER.md Limitations names the never-deployed precondition" "$lim" 
   '(never (been )?(deployed|published)|not (yet )?(been )?deployed|no deployment|deployed somewhere|publish)'
 
 section "manifests carry one version (R13)"
-v1=$(jq -r .version "$REPO_ROOT/.claude-plugin/plugin.json")
+v1=$(jq -r .version "$REPO_ROOT/claude/.claude-plugin/plugin.json")
 v2=$(jq -r '.plugins[0].version' "$REPO_ROOT/.claude-plugin/marketplace.json")
 v3=$(jq -r .version "$REPO_ROOT/cursor/.cursor-plugin/plugin.json")
 v4=$(jq -r '.plugins[0].version' "$REPO_ROOT/.cursor-plugin/marketplace.json")
