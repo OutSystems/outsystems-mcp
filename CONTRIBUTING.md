@@ -39,8 +39,12 @@ claude/                   # The Claude plugin folder: what `claude plugin instal
   .mcp.json               # MCP server the Claude plugin declares; URL built from the tenant_hostname plugin option
   LICENSE                 # Copy of the root LICENSE (the directory wants one inside the plugin folder)
   README.md               # Plugin-folder README (40+ words): the directory listing description
+  agents/
+    status-watcher.md     # Fresh-context poller for long-running operations, shipped by the Claude plugin
   commands/
     outsystems-feedback.md  # Slash command shipped by the Claude plugin
+  hooks/
+    hooks.json            # PreToolUse hook limiting the status-watcher agent's Bash use to a single sleep
   skills/
     outsystems/
       SKILL.md            # Agent-facing skill loaded by the Claude Code plugin (and Claude Desktop via the same plugin)
