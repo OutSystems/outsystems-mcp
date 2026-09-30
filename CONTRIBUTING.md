@@ -60,6 +60,8 @@ cursor/
     outsystems/
       SKILL.md            # Agent guidance loaded by Cursor plugin
 kiro/
+  agents/
+    status-watcher.json   # Kiro status-watcher agent; the README's Kiro recipe copies it into a workspace's .kiro/agents/
   outsystems/
     plugin.json           # Kiro Power manifest (Agent Plugins format: name, version, keywords, license)
     skills/
