@@ -7,8 +7,8 @@
 # deployment analysis (not `delete: true`) needs an asset that is already
 # deployed somewhere in the tenant. Also pins the Rules sentence that
 # routes a never-deployed asset to a publish question, the placement of
-# the recipe and the Caveats bullet, the intended wording drifts of root
-# `SKILL.md`, and the operator-facing mirror in `kiro/outsystems/POWER.md`.
+# the recipe and the Caveats bullet, and the intended wording drifts of root
+# `SKILL.md`.
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
@@ -16,7 +16,7 @@ DOCS=(
   SKILL.md
   claude/skills/outsystems/SKILL.md
   copilot/skill.md
-  kiro/outsystems/skills/outsystems/SKILL.md
+  kiro/skills/outsystems/SKILL.md
   cursor/skills/outsystems/SKILL.md
 )
 
@@ -165,18 +165,5 @@ for doc in "${DOCS[@]}"; do
   [ -n "$first_rules_hash" ] || first_rules_hash=$rules_hash
   check "Rules bullet is byte-identical to ${DOCS[0]}" "$rules_hash" "$first_rules_hash"
 done
-
-POWER=kiro/outsystems/POWER.md
-section "$POWER"
-limitations=$(section_body "$POWER" '## Limitations')
-power_bullet=$(printf '%s\n' "$limitations" | grep -F -- '- **A deployment-impact analysis needs a deployed asset.**')
-check "carries the deployed-asset bullet once, under ## Limitations" \
-  "$(grep -cF -- '- **A deployment-impact analysis needs a deployed asset.**' "$REPO_ROOT/$POWER")/$(printf '%s' "$power_bullet" | grep -c .)" 1/1
-check_match "says a development publish is enough" "$power_bullet" 'a development publish is enough'
-check_match "names the types that are never analysable" "$power_bullet" \
-  'a Workflow or an Extension, LowCode, Widget, Mobile or External library cannot be analysed'
-check_match "keeps the precondition off the deletion path" \
-  "$power_bullet" 'A deletion-impact analysis needs no deployed revision'
-check "names no literal deployment-impact tool" "$(grep -c deploy_impact "$REPO_ROOT/$POWER")" 0
 
 finish

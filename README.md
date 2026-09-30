@@ -75,10 +75,10 @@ If the flow starts working: on a Team or Enterprise plan you may not see "Add cu
 **Skill:** the OutSystems Power carries it. Install the Power yourself from the Powers panel: **Add Custom Power** > **Import power from GitHub**, paste the URL below, then **Install**.
 
 ```
-https://github.com/OutSystems/outsystems-mcp/tree/main/kiro/outsystems
+https://github.com/OutSystems/outsystems-mcp/tree/main/kiro
 ```
 
-The Power uses Kiro's Agent Plugins format: `plugin.json` declares it and `skills/outsystems/SKILL.md` is the skill. `POWER.md` in the same folder is the human-readable guide to onboarding and troubleshooting.
+The Power uses Kiro's Agent Plugins format: `plugin.json` declares it and `skills/outsystems/SKILL.md` is the skill.
 
 **MCP server:** then paste into Kiro Chat:
 
@@ -91,18 +91,18 @@ Step 3: tell me the OAuth sign-in opens automatically on the next OutSystems too
 
 The tenant URL goes under the **top-level** `mcpServers`, not under `powers.mcpServers`. Kiro rewrites the whole `powers` block on every Power install, uninstall or update, so a URL stored there is lost on the next update; a URL at the top level is untouched.
 
-**Update:** update the OutSystems Power from the Powers panel, or, if the panel offers no update, uninstall it and import it again from the same URL. If you installed through the registry file below, run `git pull` in `~/git/outsystems-mcp` instead; Kiro watches that directory. The MCP server URL stays in place either way, because it lives at the top level. Whether Kiro compares the Power's version on update is unverified, so afterwards compare the `version` in `~/.kiro/powers/installed/outsystems/plugin.json` with the one in [`kiro/outsystems/plugin.json`](kiro/outsystems/plugin.json) on `main`; if they differ, uninstall and import again.
+**Update:** update the OutSystems Power from the Powers panel, or, if the panel offers no update, uninstall it and import it again from the same URL. If you installed through the registry file below, run `git pull` in `~/git/outsystems-mcp` instead; Kiro watches that directory. The MCP server URL stays in place either way, because it lives at the top level. Whether Kiro compares the Power's version on update is unverified, so afterwards compare the `version` in `~/.kiro/powers/installed/outsystems/plugin.json` with the one in [`kiro/plugin.json`](kiro/plugin.json) on `main`; if they differ, uninstall and import again.
 
 <details>
 <summary>Alternative: install via a registry file (adds the icon to the Powers list)</summary>
 
-The GitHub import registers the Power without an icon. If you want the OutSystems logo (the PNG image in the kiro/outsystems folder of the clone) in the Powers list, register it yourself instead. Paste into Kiro Chat:
+The GitHub import registers the Power without an icon. If you want the OutSystems logo (the PNG image in the kiro folder of the clone) in the Powers list, register it yourself instead. Paste into Kiro Chat:
 
 ```
 Install the OutSystems Power from https://github.com/OutSystems/outsystems-mcp.
 Step 1: clone the repo to ~/git/outsystems-mcp if it isn't there yet: `git clone https://github.com/OutSystems/outsystems-mcp.git ~/git/outsystems-mcp`.
-Step 2: the folder ~/git/outsystems-mcp/kiro/outsystems contains exactly one PNG image, the OutSystems logo. List that folder to find it, then base64-encode that file with `base64 -w0` (Linux) or `base64 -i` (macOS). Then write ~/.kiro/powers/registries/outsystems.json with this content (substitute the literal value of $HOME, and inline the base64 string in place of <ICON_BASE64>):
-{"name":"OutSystems","type":"local","powers":[{"name":"outsystems","displayName":"OutSystems - MCP","description":"Edit, publish, deploy OutSystems apps from your AI assistant.","iconUrl":"data:image/png;base64,<ICON_BASE64>","source":{"type":"local","path":"$HOME/git/outsystems-mcp/kiro/outsystems"},"autoInstall":true}]}
+Step 2: the folder ~/git/outsystems-mcp/kiro contains exactly one PNG image, the OutSystems logo. List that folder to find it, then base64-encode that file with `base64 -w0` (Linux) or `base64 -i` (macOS). Then write ~/.kiro/powers/registries/outsystems.json with this content (substitute the literal value of $HOME, and inline the base64 string in place of <ICON_BASE64>):
+{"name":"OutSystems","type":"local","powers":[{"name":"outsystems","displayName":"OutSystems - MCP","description":"Edit, publish, deploy OutSystems apps from your AI assistant.","iconUrl":"data:image/png;base64,<ICON_BASE64>","source":{"type":"local","path":"$HOME/git/outsystems-mcp/kiro"},"autoInstall":true}]}
 Step 3: Kiro watches that directory and installs the Power within a few seconds. Restart only if it doesn't appear.
 Step 4: then complete Steps 1 to 3 of the main recipe above to set the tenant URL.
 ```

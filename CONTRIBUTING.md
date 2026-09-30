@@ -56,26 +56,24 @@ cursor/
     outsystems/
       SKILL.md            # Agent guidance loaded by Cursor plugin
 kiro/
-  outsystems/
-    plugin.json           # Kiro Power manifest (Agent Plugins format: name, version, keywords, license)
-    POWER.md              # Operator-facing Power documentation (onboarding + troubleshooting). Kiro's agent loader ignores it once plugin.json is present, but the Powers panel's details view still reads its frontmatter and body, so keep both
-    skills/
-      outsystems/
-        SKILL.md          # Agent-facing skill loaded into Kiro Chat
+  plugin.json              # Kiro Power manifest (Agent Plugins format: name, version, keywords, license)
+  skills/
+    outsystems/
+      SKILL.md             # Agent-facing skill loaded into Kiro Chat
 SKILL.md                  # Generic skill content for other harnesses
 README.md                 # Install instructions for each supported harness
 ```
 
-The kiro/outsystems folder also holds the Power's logo, a 200x200 PNG that Kiro shows in its Powers UI, and the Claude plugin folder holds a copy of the same logo next to its manifest as the directory listing icon. Both are left out of the tree above on purpose: the Claude plugin directory validator holds any plugin whose code blocks or backticks name a bundled image file, so refer to those files in plain prose only. Keep each one the only image in its folder: the README's Kiro registry recipe and POWER.md's iconUrl note both identify the Kiro logo as the only PNG image there.
+The kiro folder also holds the Power's logo, a 200x200 PNG that Kiro shows in its Powers UI, and the Claude plugin folder holds a copy of the same logo next to its manifest as the directory listing icon. Both are left out of the tree above on purpose: the Claude plugin directory validator holds any plugin whose code blocks or backticks name a bundled image file, so refer to those files in plain prose only. Keep each one the only image in its folder: the README's Kiro registry recipe identifies the Kiro logo as the only PNG image there.
 
 All five skill documents overlap in intent (they all describe the same MCP tools and conventions):
 - `claude/skills/outsystems/SKILL.md` (Claude Code, and Claude Desktop via the same plugin)
 - `cursor/skills/outsystems/SKILL.md` (Cursor)
-- `kiro/outsystems/skills/outsystems/SKILL.md` (Kiro)
+- `kiro/skills/outsystems/SKILL.md` (Kiro)
 - `copilot/skill.md` (GitHub Copilot)
 - `SKILL.md` (root, generic)
 
-Keep them aligned when changing tool semantics. `kiro/outsystems/POWER.md` carries the same conventions for Kiro operators under `## Conventions`; keep it aligned too. See AGENTS.md for the lockstep grep check to verify alignment before opening a PR.
+Keep them aligned when changing tool semantics. See AGENTS.md for the lockstep grep check to verify alignment before opening a PR.
 
 ## Development Workflow
 
@@ -97,12 +95,12 @@ chore(plugin): bump version 0.5.0 -> 0.6.0
 skills(mentor): switch references to async mentor primitive
 ```
 
-Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`, `POWER`.
+Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`.
 
 ### Pull requests
 
 1. Create a branch from `main`.
-2. Make your changes. If you touch tool semantics, update every place that documents them (`claude/skills/outsystems/SKILL.md`, `kiro/outsystems/skills/outsystems/SKILL.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and the root `SKILL.md`) so they stay aligned. `kiro/outsystems/POWER.md` carries the same conventions under `## Conventions`; update it too when a rule changes.
+2. Make your changes. If you touch tool semantics, update every place that documents them (`claude/skills/outsystems/SKILL.md`, `kiro/skills/outsystems/SKILL.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and the root `SKILL.md`) so they stay aligned.
 3. Open a PR targeting `main`.
 4. Account for every supported harness in the AGENTS.md table, each one verified, not applicable with the reason, or a recorded gap with a follow-up, and record the outcomes in the PR body (see "Testing" below).
 5. After review and merge, the version bump goes out as the next release (see [Versioning and Releases](#versioning-and-releases)).
@@ -185,7 +183,7 @@ Record the outcome (verified, gap, or not applicable with reason) in the PR body
 
 ### Kiro (Power)
 
-Point a local registry file at your checkout (Option A in `kiro/outsystems/POWER.md`), restart Kiro, and run an OutSystems-related prompt in Kiro Chat. Verify the agent walks through the tenant prompt and OAuth flow on first use, and that the Power appears in Kiro's Powers UI.
+Point a local registry file at your checkout (the registry-file alternative under README.md's "Install - Kiro Chat" section), restart Kiro, and run an OutSystems-related prompt in Kiro Chat. Verify the agent walks through the tenant prompt and OAuth flow on first use, and that the Power appears in Kiro's Powers UI.
 
 ### GitHub Copilot (VS Code, CLI, or Visual Studio)
 
@@ -224,7 +222,7 @@ For changes to the root `SKILL.md`, fetch the raw file from GitHub the way Step 
 ## Code Standards
 
 - **JSON manifests** (`marketplace.json`, `plugin.json`, `.mcp.json`): two-space indent, trailing newline, sorted alphabetically only where it doesn't reorder a meaningful sequence (e.g. plugin entries in `marketplace.json` should keep listing order).
-- **Markdown** (`SKILL.md`, `POWER.md`, skill files, `README.md`): one sentence per concept; prefer short paragraphs over deep heading nesting. Code fences need a language tag.
+- **Markdown** (`SKILL.md`, skill files, `README.md`): one sentence per concept; prefer short paragraphs over deep heading nesting. Code fences need a language tag.
 - **No internal references** in any file shipped to users: no stage hostnames, no internal Jira projects, no team-internal jargon. The repo is public — assume an external developer is reading.
 
 ## Versioning and Releases
@@ -240,11 +238,11 @@ Version lives in five places and must stay in sync:
 - `.cursor-plugin/marketplace.json` → `plugins[0].version`
 
 **Kiro:**
-- `kiro/outsystems/plugin.json` → `version`
+- `kiro/plugin.json` → `version`
 
 Bump all five in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
 
-The same lockstep applies to the other shared manifest fields (`description`, `author`, `keywords`, `license`, `homepage`, `repository`, and `displayName` where the host supports it), to the description in both `marketplace.json` entries, and to the description and keywords in `kiro/outsystems/POWER.md`'s frontmatter. See AGENTS.md's "Manifest version lockstep" for the field-by-field rule.
+The same lockstep applies to the other shared manifest fields (`description`, `author`, `keywords`, `license`, `homepage`, `repository`, and `displayName` where the host supports it), and to the description in both `marketplace.json` entries. See AGENTS.md's "Manifest version lockstep" for the field-by-field rule. Kiro's own Powers-panel details view used to read the description and keywords from `kiro/outsystems/POWER.md`'s frontmatter; now that the file is gone, that panel shows an empty description and no keywords for this Power. That is a cost inside Kiro's own UI, not a doc gap here — see AGENTS.md's "Skill docs must stay in lockstep across hosts" section.
 
 For Claude Code, `claude plugin update` compares the version in `claude/.claude-plugin/plugin.json`. Leave that one behind and users are told "already at the latest version" and never pull the new content, even after `claude plugin marketplace update`. The marketplace entry is what a user browses before installing, so keeping it in step matters for what a release advertises rather than for whether the update fires.
 

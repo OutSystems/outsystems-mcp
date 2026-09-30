@@ -238,8 +238,7 @@ the suites pin down:
   on any trigger, and this README does not deny the surface.
 - `skill-deploy-impact-recipe.test.sh` - the deployment-impact recipe's
   exact wording in the five skill docs, the Caveats bullet and the Rules
-  sentence it relies on, each byte-identical across the five, and the
-  operator-facing mirror in `kiro/outsystems/POWER.md`.
+  sentence it relies on, each byte-identical across the five.
 - `spec_deploy_impact_recipe.test.sh` - the same recipe checked against
   its requirements rather than its wording, and the five plugin manifests
   carrying one version.

@@ -27,7 +27,7 @@ police style.
   vendored `.claude/agents/*.md` critics change, check that doc against the actual behavior.
 - **Manifest required fields** — missing `name`, `version`, or `description` in the five manifests
   this repo ships: `claude/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`,
-  `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, `kiro/outsystems/plugin.json`
+  `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, `kiro/plugin.json`
   (which additionally needs `$schema`, `author.name`, `keywords`, and `license` for the Kiro catalog); and, for the plugin's `claude/.mcp.json`,
   a `${user_config.<key>}` placeholder whose key is not declared under `userConfig` in `claude/.claude-plugin/plugin.json`.
 - **Version format** — version fields that clearly do not match the project's scheme (e.g., not
@@ -109,7 +109,7 @@ Do not propose creating these files if they do not exist.
 
 For every manifest file changed in the diff - in this repo that means `claude/.claude-plugin/plugin.json`,
 `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`,
-`kiro/outsystems/plugin.json`, and the plugin's `claude/.mcp.json`:
+`kiro/plugin.json`, and the plugin's `claude/.mcp.json`:
 
 1. **Required fields**: `name`, `version`, `description` (and `source` for the marketplace entry).
    For `plugin.json`, also confirm `skills` and `commands` point at directories that actually exist.
@@ -120,7 +120,7 @@ For every manifest file changed in the diff - in this repo that means `claude/.c
    errors.
 3. **Cross-file version consistency**: per `AGENTS.md`'s "Manifest version lockstep" table, all
    five manifest files (Claude's `plugin.json` + `marketplace.json`, Cursor's `plugin.json` +
-   `marketplace.json`, and Kiro's `kiro/outsystems/plugin.json`) track the same version and must be
+   `marketplace.json`, and Kiro's `kiro/plugin.json`) track the same version and must be
    bumped together in the same diff. Read all five and flag any divergence.
 
 **Severity:** MUST for missing required fields or cross-file version mismatch; SHOULD for malformed
