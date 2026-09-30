@@ -109,6 +109,7 @@ Since 0.20.0 the plugin's `claude/.mcp.json` declares the `outsystems` HTTP serv
 - Never write the path or file name of an image (the icon included) in backticks, a code block, a script, or anywhere in a manifest other than the `icon` key. The validator holds the plugin for review when a bundled image is named that way.
 - Keep credential words (token, bearer, credential, secret) out of any sentence that also carries a remote URL or a command line; the validator reads that pairing as a credential leaving the machine. Write "sign-in" instead.
 - `claude/README.md` needs at least 40 words outside code blocks; it is the directory listing description.
+- Do not write a home-folder path (`~/...`) or an environment-variable reference (`%APPDATA%`, `${VAR}`) in a command or file location inside the folder; the validator reads that as a credential read from the user's machine. Describe the location in words, or use a Claude Code command that reports the value, as the tenant check in the Claude Code setup recipe does with `claude mcp list`.
 - The listing keys `icon`, `documentationUrl`, `supportUrl`, `privacyPolicyUrl`, and `termsOfServiceUrl` live only in `claude/.claude-plugin/plugin.json`. Cursor and Kiro do not read them, and the Kiro manifest's schema rejects unknown keys, so they are intentionally not mirrored. `claude plugin validate ./claude` may list them as unknown fields on Claude Code before 2.1.281; that is a warning, not an error.
 
 ### Manifest version lockstep
