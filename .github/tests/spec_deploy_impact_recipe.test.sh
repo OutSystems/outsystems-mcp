@@ -4,8 +4,8 @@
 # with kind carried from the launch response, analyzedRevision and
 # sourceEnvironmentKey surfaced with the verdict, report gated on
 # impactKnown, the never-deployed precondition on delete=false, a bounded
-# consecutive Unknown retry and the truncation instruction; POWER.md names
-# the precondition under Limitations; the five manifests carry one version.
+# consecutive Unknown retry and the truncation instruction; the five
+# manifests carry one version.
 
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -17,7 +17,6 @@ DOCS=(
   kiro/outsystems/skills/outsystems/SKILL.md
   cursor/skills/outsystems/SKILL.md
 )
-POWER="$REPO_ROOT/kiro/outsystems/POWER.md"
 
 # Lines of a doc that mention the given (case-insensitive) extended regex.
 lines_matching() { # doc, regex
@@ -39,6 +38,8 @@ for d in "${DOCS[@]}"; do
 done
 check_file_absent "stale kiro steering path is not recreated" \
   "$REPO_ROOT/kiro/outsystems/steering/skill.md"
+check_file_absent "POWER.md is not recreated after its removal" \
+  "$REPO_ROOT/kiro/outsystems/POWER.md"
 
 section "behaviour 1: poll passes kind returned by the launch"
 for d in "${DOCS[@]}"; do
@@ -144,12 +145,6 @@ for pat in impactKnown analyzedRevision sourceEnvironmentKey; do
     check "$d: count of $pat equals root" "$(grep -c -- "$pat" "$REPO_ROOT/$d")" "$ref"
   done
 done
-
-section "POWER.md Limitations carries the precondition (R14)"
-lim=$(section_body "$POWER" Limitations)
-check_match "POWER.md Limitations names deploy impact" "$lim" '(deploy_impact|impact)'
-check_match "POWER.md Limitations names the never-deployed precondition" "$lim" \
-  '(never (been )?(deployed|published)|not (yet )?(been )?deployed|no deployment|deployed somewhere|publish)'
 
 section "manifests carry one version (R13)"
 v1=$(jq -r .version "$REPO_ROOT/claude/.claude-plugin/plugin.json")

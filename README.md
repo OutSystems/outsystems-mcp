@@ -78,7 +78,7 @@ If the flow starts working: on a Team or Enterprise plan you may not see "Add cu
 https://github.com/OutSystems/outsystems-mcp/tree/main/kiro/outsystems
 ```
 
-The Power uses Kiro's Agent Plugins format: `plugin.json` declares it and `skills/outsystems/SKILL.md` is the skill. `POWER.md` in the same folder is the human-readable guide to onboarding and troubleshooting.
+The Power uses Kiro's Agent Plugins format: `plugin.json` declares it and `skills/outsystems/SKILL.md` is the skill.
 
 **MCP server:** then paste into Kiro Chat:
 

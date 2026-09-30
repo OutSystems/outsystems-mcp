@@ -118,10 +118,10 @@ Hunt for these eight categories:
 - Formatting, naming, and lint-fixable style. This repo has no
   deterministic lint gate; use judgment, but do not raise a finding
   over a stylistic preference alone.
-- Duplication across the five parallel skill docs (or the `POWER.md`
-  curated subset) that exists because the lockstep rule in `AGENTS.md`
-  requires each doc to be self-contained per harness. That duplication
-  is the design, not a redundancy category 8 or 6 should flag.
+- Duplication across the five parallel skill docs that exists because
+  the lockstep rule in `AGENTS.md` requires each doc to be self-contained
+  per harness. That duplication is the design, not a redundancy category
+  8 or 6 should flag.
 - Abstraction the plan or ticket explicitly requires for a second
   consumer that is real or imminent. Read the plan before calling a
   seam speculative.
