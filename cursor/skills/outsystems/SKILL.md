@@ -167,6 +167,10 @@ Mentor is a multi-turn conversation backed by a server-side session that holds t
 
 The context lookups index by **visibility**, not ownership: app-scoped queries return owned rows plus rows inherited from referenced libraries (OutSystemsUI, Charts, etc.). Each row carries `isReferenced` and `producerAssetKey`/`producerAssetName`. `owned_only` defaults to `true` when `app` is set, `false` tenant-wide; pass `owned_only: false` with `app` to keep inherited rows.
 
+## App references coverage (`indexedKinds`)
+
+An app's references list the producers the Context Service records as referenced, and it does not record every kind of dependency. On a `context-service` answer, `indexedKinds` names the element kinds the index confirms as referenced in the tenant, often only `entities`. A kind missing from `indexedKinds` is unknown, not absent: a library the app uses only through that kind (actions, structures, blocks, themes) may be missing from `references`, so never present the list as complete and never conclude that an app does not use a library from its absence alone. When the answer depends on it, tell the user which kinds were covered. A listed kind does not prove the app's references of that kind are complete either. `indexedKinds` does not apply to an `oml-fallback` answer, which lists the modules the app declares, and a `context-service` answer without it comes from an older server whose coverage is unknown.
+
 ## Workflows
 
 **Describe an existing app (no OML needed):**

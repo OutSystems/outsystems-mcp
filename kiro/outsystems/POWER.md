@@ -169,6 +169,7 @@ Errors carry a structured category in `data.category` (`AuthError`, `ValidationE
 - **An idle mentor session does not live forever.** A short pause resumes where it left off, and the first turn after it may be slower; after the server's idle limit the session is gone, the error says so, and unpublished edits went with it. Publish before a long pause.
 - **An open mentor session holds server resources.** One left open holds them until it times out, so release it once its work is published if the surface offers a way to — releasing discards anything unpublished.
 - **A deployment-impact analysis needs a deployed asset.** It analyses the revision held by the environment with the asset's most recent deployment, so an asset that has never been deployed fails until it is published (a development publish is enough), and a Workflow or an Extension, LowCode, Widget, Mobile or External library cannot be analysed this way at all. A deletion-impact analysis needs no deployed revision.
+- **An app's references are not a complete dependency list.** They list the producers the Context Service records as referenced, and `indexedKinds` names the element kinds it covers, often only `entities`. A library used only through a kind missing from `indexedKinds` (actions, structures, blocks, themes) may be absent from the list, so a missing library does not prove the app does not use it.
 
 ## Configuration files
 
