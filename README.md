@@ -91,6 +91,17 @@ Step 3: tell me the OAuth sign-in opens automatically on the next OutSystems too
 
 The tenant URL goes under the **top-level** `mcpServers`, not under `powers.mcpServers`. Kiro rewrites the whole `powers` block on every Power install, uninstall or update, so a URL stored there is lost on the next update; a URL at the top level is untouched.
 
+**Status watcher (optional):** a long Mentor turn or publish makes the assistant check its status many times, and each check re-reads the whole conversation. The status watcher is a small agent that does that waiting on a cheaper model, in a context of its own, and can do nothing but read the status and pause. A Power can't ship an agent, so add it to each workspace where you build with OutSystems. Paste into Kiro Chat from that workspace:
+
+```
+Add the OutSystems status watcher to this workspace.
+Step 1: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/kiro/agents/status-watcher.json and save its exact bytes to `.kiro/agents/status-watcher.json` in my workspace root, creating the folder if needed. If that file already exists, overwrite it only if its `name` field is `status-watcher`; otherwise stop and tell me.
+Step 2: don't change the file: its `tools` list, and the `shell` setting that allows only `sleep`, are what keep the watcher read-only.
+Step 3: tell me to start a new chat session so Kiro loads the agent.
+```
+
+To update it, run the same recipe again. To remove it, delete `.kiro/agents/status-watcher.json`; the assistant then checks the status itself, as it does without the file. Verified in Kiro CLI 2.26; the Kiro IDE reads the same `.kiro/agents` folder, but the watcher has not been run there.
+
 **Update:** update the OutSystems Power from the Powers panel, or, if the panel offers no update, uninstall it and import it again from the same URL. If you installed through the registry file below, run `git pull` in `~/git/outsystems-mcp` instead; Kiro watches that directory. The MCP server URL stays in place either way, because it lives at the top level. Whether Kiro compares the Power's version on update is unverified, so afterwards compare the `version` in `~/.kiro/powers/installed/outsystems/plugin.json` with the one in [`kiro/outsystems/plugin.json`](kiro/outsystems/plugin.json) on `main`; if they differ, uninstall and import again.
 
 <details>
