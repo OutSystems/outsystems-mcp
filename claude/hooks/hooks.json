@@ -1,0 +1,16 @@
+{
+  "description": "Limits the status-watcher agent's Bash use to a single foreground sleep, so a poller cannot run any other command or background its wait.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tr -d '\\n' | awk 'match($0, /\"agent_type\" *: *\"outsystems:status-watcher\"/) && (!match($0, /\"command\" *: *\"sleep [1-9][0-9]*\"/) || match($0, /\"run_in_background\" *: *true/)) { print \"Denied: status-watcher may run no Bash command except exactly sleep <seconds>, run in the foreground. Poll with your status tools, and use Bash only to wait between polls.\" > \"/dev/stderr\"; exit 2 }'"
+          }
+        ]
+      }
+    ]
+  }
+}
