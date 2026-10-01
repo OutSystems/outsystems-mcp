@@ -3,7 +3,7 @@ name: outsystems-tenant-architecture
 description: "[Beta] Generate an interactive HTML graph of an OutSystems Developer Cloud tenant's assets (web/mobile apps, agents and agent definitions, AI model connections, knowledge bases, libraries, integrations) with filter-by-type controls, where each asset is deployed (revision drift per environment), a 7-day Production traffic/error overlay and an AI governance view (model providers, Trial vs Customer entitlement, test/demo-named and stale agents). ONE tenant-level pass per invocation, no per-app deep dives (use outsystems-app-architecture for one app). First run 2-5 min; cached re-runs ~5s. Use when the user asks for a tenant overview, architecture diagram, asset inventory, 'what's in my tenant', 'show me my apps', 'what is deployed where', an AI inventory, 'audit my AI', 'which models are we using', 'show me my agents', AI governance, or similar."
 license: MIT
 compatibility: Needs an agent that can run shell commands and Python 3.7+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The output HTML embeds the tenant data but loads its graph library and fonts from public CDNs; offline it falls back to a plain asset table.
-allowed-tools: Bash Write Edit mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__app_health mcp__plugin_outsystems_outsystems__context_agents mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__auth_status mcp__outsystems__env_list mcp__outsystems__app_list mcp__outsystems__env_apps mcp__outsystems__app_health mcp__outsystems__context_agents mcp__outsystems__context_connections
+allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__app_health mcp__plugin_outsystems_outsystems__context_agents mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__auth_status mcp__outsystems__env_list mcp__outsystems__app_list mcp__outsystems__env_apps mcp__outsystems__app_health mcp__outsystems__context_agents mcp__outsystems__context_connections
 metadata:
   version: "1.9.0"
   maturity: beta
@@ -38,8 +38,14 @@ to system fonts.
 - A shell with `python3` (3.7 or later, standard library only). The
   scripts read the saved tool results from disk and write the HTML; they
   never call the server and hold no sign-in of their own.
-- `SKILL` below is this skill's own folder (the one holding this file),
-  so `"$SKILL/scripts/build.py"` is the script next to it.
+- `<skill-folder>` below is this skill's own folder: the one holding this
+  file (in the OutSystems plugin, `skills/outsystems-tenant-architecture/`), so
+  `<skill-folder>/scripts/build.py` is the script next to it. Values in
+  angle brackets are placeholders you substitute; quote every path, since
+  a home folder can contain spaces.
+- No shell available? Stop and tell the user this skill needs one (for
+  example Claude Code, not Claude Desktop's Chat tab); don't try to build
+  the page by hand.
 
 **The core rule: keep large data off the model's context.** Tool results
 go to disk, `build.py` reads them from there, and the HTML comes out the
@@ -96,15 +102,16 @@ sign-in surfaces as an authentication error on the first MCP call (this
 one or the probe in Step 2): stop and ask the user to sign in to the
 OutSystems MCP server again, then start over. Don't retry in a loop.
 
-Get this skill's cache folder for the tenant; the script creates it:
+Create this skill's cache folder for the tenant. The script prints the
+folder's path; the steps below call it `<cache-folder>`:
 
 ```bash
-CACHE=$(python3 "$SKILL/scripts/build.py" --cache-dir <TENANT_ID>)
+python3 "<skill-folder>/scripts/build.py" --cache-dir <TENANT_ID>
 ```
 
 ### Step 2 — Cache freshness (only if cache exists)
 
-If `$CACHE/meta.json` is present:
+If `<cache-folder>/meta.json` is present:
 
 1. Call `app_list` with `limit: 1` (tiny — ~300 tokens).
 2. Compute `AGE = now - meta.fetched_at`.
@@ -130,7 +137,7 @@ If the user said "refresh" / "fresh data" / "rebuild", skip this step.
   `{results, total, displayed, truncated, next_offset, ...}`; `build.py`
   reads it, you never do.
 
-Save the env response verbatim to `$CACHE/envs-raw.json`. Its rows give
+Save the env response verbatim to `<cache-folder>/envs-raw.json`. Its rows give
 you each environment's `key`, `name` and `purpose` (`Development`,
 `NonProduction`, `Production`) for round 2.
 
@@ -163,13 +170,13 @@ default 24 h, or the app's logs and traces).
 context_connections) — inspect only the result text, never the payload:
 
 - **If it contains** `"Output has been saved to <path>"` (Claude Code's
-  harness auto-save for large results; a 500-row app_list page is ~90 KB,
-  a 100-row env_apps page ~31 KB): that path is the page file.
+  harness auto-save for large results, such as a 500-row app_list page of
+  ~90 KB; a 100-row env_apps page, ~31 KB, usually stays inline): that path is the page file.
 - **If it returned an inline JSON object** (small responses on Claude
   Code; every response on a harness without auto-save): write it
-  verbatim — envelope included — to `$CACHE/apps-page-<N>.json`,
-  `$CACHE/env-apps-<ENV_KEY>-<N>.json`, `$CACHE/health-<ENV_KEY>-<N>.json`,
-  `$CACHE/ai-agents-<N>.json` or `$CACHE/ai-connections-<N>.json`. That
+  verbatim — envelope included — to `<cache-folder>/apps-page-<N>.json`,
+  `<cache-folder>/env-apps-<ENV_KEY>-<N>.json`, `<cache-folder>/health-<ENV_KEY>-<N>.json`,
+  `<cache-folder>/ai-agents-<N>.json` or `<cache-folder>/ai-connections-<N>.json`. That
   is the page file.
 - **If a call failed** (for example `app_health` on a tenant whose
   analytics are not enabled, or an `env_apps` error for one environment):
@@ -185,13 +192,13 @@ Step 4's `build.py` does, from the envelopes.
 ### Step 4 — Build (fresh mode)
 
 One Python invocation does the entire pipeline: transform raw MCP
-responses into the bundle (`$CACHE/tenant-data.json`, see Data shape
-contract), then render the template from it. Write the HTML to the
-user's working folder unless they asked for another path.
+responses into the bundle (`<cache-folder>/tenant-data.json`, see Data shape
+contract), then render the template from it. `<output-file>` is
+`tenant-architecture.html` in the user's working folder (absolute path) unless they asked
+for another one.
 
 ```bash
-OUT="$(pwd)/tenant-architecture.html"
-python3 "$SKILL/scripts/build.py" "$CACHE" "$OUT" \
+python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>" \
   --tenant-id "<TENANT_ID>" --tenant-hostname "<TENANT_HOSTNAME>" \
   --apps "<apps page 1>" \
   --deployments "<DEV_KEY>=<dev page 1>" "<TEST_KEY>=<test page 1>" "<PROD_KEY>=<prod page 1>" \
@@ -262,8 +269,7 @@ just the cache and output path — it renders the bundle already on disk
 `3` with `STALE`: go back to Step 3.
 
 ```bash
-OUT="$(pwd)/tenant-architecture.html"
-python3 "$SKILL/scripts/build.py" "$CACHE" "$OUT"
+python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>"
 ```
 
 The HTML shows when each data set was fetched ("Data As Of": assets,
@@ -296,24 +302,30 @@ deployment status, the health summary); relay them, don't recompute:
 
 ## Token budget — by tenant size
 
-The first-run cost has **three distinct bands** depending on tenant size,
-because of how Claude Code's disk-save threshold (~25 KB tool result)
-interacts with `app_list` payload sizes. The overlays add one `env_apps`
-call per environment and one `app_health` call per Production
-environment; each is auto-saved or small on Claude Code (roughly +1-3K
-tokens). On a harness without auto-save every page passes through the
-model once and is written out once — see Harness notes.
+The first-run cost depends on how much of the data the harness saves to
+disk for you. Claude Code saves a tool result once it passes a size limit it sets in
+tokens (measured between 45 and 65 KB of JSON; a 500-row `app_list` page,
+~90 KB, is saved); anything smaller arrives
+inline and the model has to write it out, paying for it twice. A full
+100-row `env_apps` page (~31 KB) and the AI governance pages usually stay
+under that line, so each environment adds a few thousand tokens. On a
+harness without auto-save every page passes through the model once and
+is written out once — see Harness notes.
+
+Measured live on Claude Code (485 assets, 3 environments, one of them
+with 100+ deployments): about 6 minutes and ~75 KB of responses written
+out inline (the three `env_apps` pages and the AI governance pages); the
+asset list itself was auto-saved.
 
 | Tenant size | Mechanism | Tokens (first run) | Wall time |
 |---|---|---|---|
-| **Small** (<~150 assets, response ≤25 KB) | Inline response → model writes to disk | ~5-10K | ~2-3 min |
-| **Mid** (~150-300 assets, response 15-50 KB) | Inline-write OR borderline Claude Code auto-save | ~10-20K | ~3-7 min |
-| **Large** (>~300 assets, response >25 KB) | Claude Code auto-save → model never sees bytes → path passed straight to build.py | ~3-5K | ~2-5 min |
+| **Small** (<~150 assets) | Every response inline → model writes it to disk | ~5-10K | ~2-3 min |
+| **Mid** (~150-300 assets) | Asset list inline or borderline auto-save; overlays inline | ~15-30K | ~3-7 min |
+| **Large** (>~300 assets) | Asset list auto-saved (path passed straight to build.py); `env_apps` and AI pages inline | ~15-30K, mostly the overlays | ~4-7 min |
 | **Cached re-run (any size)** | Probe + build.py only | ~2-3K | ~5 s |
 
-**The trap:** mid-sized tenants (150-300 assets) cost MORE tokens than
-larger ones, because they pay twice (data once in the MCP result, once
-in the write).
+**The trap:** a response just under the auto-save line costs the most,
+because it is paid twice (once in the MCP result, once in the write).
 
 **Why runs get slow:** if the model reads an auto-saved file back in,
 every later turn carries the full asset list. That turns a 3-minute run
@@ -322,7 +334,7 @@ into 15-25 minutes. See the first anti-pattern below.
 ## Data shape contract
 
 **The bundle is the interface.** `build.py` writes one file,
-`$CACHE/tenant-data.json`, and the render step reads nothing else:
+`<cache-folder>/tenant-data.json`, and the render step reads nothing else:
 `{schema: 1, tenant, envs, assets, deployments, health, ai}`, each part
 injected into the template `const` of the same name (below). The render
 step validates the bundle first: a missing or mistyped field exits `1`
@@ -431,7 +443,8 @@ error. A metric in the `metrics` echo but absent from a row is shown as
 
 ## Harness notes
 
-- **Claude Code**: MCP results above ~25 KB are auto-saved to disk by
+- **Claude Code**: MCP results above its size limit (measured between 45
+  and 65 KB) are auto-saved to disk by
   the harness ("Output has been saved to <path>") and never enter
   model context. The saved file is the raw JSON payload, which is what
   `build.py` reads. This is what makes the Large-tenant band in the
@@ -477,7 +490,7 @@ error. A metric in the `metrics` echo but absent from a row is shown as
   under another environment's key. Fix the fetch, do not retry the same
   files.
 - **`build.py` exits 2 (`usage: ... not in envs-raw.json`)** → an
-  `<env_key>=` does not match any environment in `$CACHE/envs-raw.json`;
+  `<env_key>=` does not match any environment in `<cache-folder>/envs-raw.json`;
   use the `key` values from the env_list response.
 - **`build.py` exits 1 (`cache build failed: KeyError(...)`)** → a raw
   response is missing a field the script expects (see Data shape

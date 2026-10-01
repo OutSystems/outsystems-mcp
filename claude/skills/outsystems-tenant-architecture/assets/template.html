@@ -1066,7 +1066,12 @@
             } else {
               const deployedHere = deps.some(d => d.env === key);
               const st = (depStatus(key) || {}).status;
-              html += row(envName(key), !deployedHere && st === 'complete' ? 'not deployed here' : 'no reading', 'na');
+              // "Not deployed here" needs env_apps to be able to list the
+              // type at all: a Workflow, library or knowledge base never
+              // shows up there, so its absence proves nothing.
+              const verdict = !listedTypes.has(a.t) ? 'no reading (deployment not tracked for this type)'
+                : (!deployedHere && st === 'complete' ? 'not deployed here' : 'no reading');
+              html += row(envName(key), verdict, 'na');
             }
           });
         }

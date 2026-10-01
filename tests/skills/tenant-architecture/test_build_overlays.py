@@ -7,26 +7,21 @@ Runnable two ways:
     python3 test_build_overlays.py
     pytest tests/skills/tenant-architecture/
 
-Fixtures (tests/fixtures/, each carries a `_provenance` key saying what
-was recorded and what is constructed). Recorded responses are anonymised:
-hostnames, keys and names are replaced with fakes; shapes, counts and values
-are kept.
+Fixtures (tests/fixtures/, each carries a `_provenance` key). Names, keys
+and hostnames are invented; the shapes follow the server's responses.
   - envs-raw.json, apps-page.json, env-apps-dev-old-server.json,
-    auth-status.json: trimmed from recorded responses of a dev tenant
-    (2026-09-03). apps-page.json keeps one row per asset type the
-    515-asset tenant returned, plus every key the other fixtures reference.
-  - env-apps-test-p1/p2.json: recorded env_apps rows, split into two pages in the
-    envelope of the NEWER server (offset input, numeric next_offset). That
-    server change is not deployed yet, so the envelope is constructed.
-  - env-apps-prod.json: CONSTRUCTED from env_apps' outputSchema (no Production
-    listing was recorded); keys and names match the other fixtures.
-  - health-prod*.json: app_health. health-prod-empty.json is a recorded
-    whole-stage 168h Production response (0 rows). health-prod.json holds four
-    recorded rows from the same query shape on the Development env, re-pointed at
-    Production, plus one row constructed strictly from the AppHealthRow
-    outputSchema in live-tools-list.json (no `requests` reading).
-    health-prod-undetermined.json adds a `noData: undetermined` built from the
-    NoData outputSchema.
+    auth-status.json: env_list, app_list (one row per asset type of a
+    515-asset tenant, plus every key the other fixtures reference), env_apps
+    in the older server's envelope, and auth_status.
+  - env-apps-test-p1/p2.json: env_apps rows split into two pages in the
+    envelope of the NEWER server (offset input, numeric next_offset).
+  - env-apps-prod.json: constructed from env_apps' output schema to exercise
+    drift; keys and names match the other fixtures.
+  - health-prod*.json: app_health. health-prod-empty.json is a whole-stage
+    168h Production response with 0 rows. health-prod.json holds five
+    AppHealthRow rows, one with no `requests` reading.
+    health-prod-undetermined.json adds a `noData: undetermined` in the
+    server's NoData shape.
 """
 import importlib.util
 import json
@@ -36,6 +31,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+
+import pytest
 
 _SCRIPTS = pathlib.Path(__file__).resolve().parents[3] / "claude" / "skills" / "outsystems-tenant-architecture" / "scripts"
 _SKILL = _SCRIPTS.parent
@@ -52,7 +49,7 @@ DEV = "a00000b6-0000-4000-8000-0000000000b6"
 TEST = "a000011f-0000-4000-8000-00000000011f"
 PROD = "a000003f-0000-4000-8000-00000000003f"
 
-# Asset types app_list returned on the recorded tenant (2026-09-03, 515 assets).
+# Every asset type app_list returns (apps-page.json has one row of each).
 REAL_TYPES = {
     "AgentDefinition", "KnowledgeBase", "WebApplication", "MobileLibrary",
     "AIModelConnection", "LowCodeLibrary", "ExternalConnection", "ExternalLibrary",
@@ -62,7 +59,7 @@ REAL_TYPES = {
 
 SRI = "sha384-yxKDWWf0wwdUj/gPeuL11czrnKFQROnLgY8ll7En9NYoXibgg3C6NK/UDHNtUgWJ"
 
-KEY = {  # (anonymised) asset keys used by the fixtures
+KEY = {  # asset keys used by the fixtures
     "IT Assets Portal": "a0000077-0000-4000-8000-000000000077",
     "TestApp": "a0000035-0000-4000-8000-000000000035",
     "RequestFlowTestApp": "a0000010-0000-4000-8000-000000000010",
@@ -70,7 +67,7 @@ KEY = {  # (anonymised) asset keys used by the fixtures
     "Banking Account Services": "a0000018-0000-4000-8000-000000000018",
     "People Onboarding": "a0000101-0000-4000-8000-000000000101",
     "Lending Policy Agent": "a000000a-0000-4000-8000-00000000000a",
-    "ops-aug26": "a0000094",  # prefix; resolved below
+    "Ops Advisor": "a0000094",  # prefix; resolved below
 }
 
 
@@ -200,7 +197,7 @@ def test_new_server_both_pages_make_the_environment_complete():
 
 
 def test_old_server_truncated_without_next_offset_is_partial_and_builds(capsys):
-    # The real recording: 100 of 165, no `next_offset` key at all.
+    # The older server's envelope: 100 of 165, no `next_offset` key at all.
     assert "next_offset" not in _load("env-apps-dev-old-server.json")
     code, cache, tmp = _run(["--deployments", f"{DEV}={_fx('env-apps-dev-old-server.json')}"])
     assert code == 0
@@ -287,8 +284,8 @@ def test_deployments_json_shape():
     lpa = [e["env"] for e in dep["assets"][KEY["Lending Policy Agent"]]]
     assert lpa == [DEV, TEST]
     # A deployed AgentDefinition with no URL keeps an empty url, not a missing key.
-    ops = next(v for k, v in dep["assets"].items() if k.startswith(KEY["ops-aug26"]))
-    assert ops[0]["url"] == ""
+    adv = next(v for k, v in dep["assets"].items() if k.startswith(KEY["Ops Advisor"]))
+    assert adv[0]["url"] == ""
 
 
 def test_drift_is_measured_against_the_highest_deployed_environment():
@@ -327,8 +324,8 @@ def test_health_rows_are_classified_and_a_missing_metric_is_unavailable():
 
 
 def test_app_score_never_reaches_the_cache():
-    # The recorded "Ops Test timers" row: appScore 100 with 82% errors.
-    row = next(r for r in _load("health-prod.json")["results"] if r["applicationName"] == "Ops Test timers")
+    # The "Batch Scheduler" row: appScore 100 with 82% errors.
+    row = next(r for r in _load("health-prod.json")["results"] if r["applicationName"] == "Batch Scheduler")
     assert row["appScore"] == 100 and row["errorPercent"] > 80
     code, cache, _ = _run(ALL_DEPLOYMENTS + ["--health", f"{PROD}={_fx('health-prod.json')}"])
     assert code == 0
@@ -666,7 +663,7 @@ def test_ai_rows_join_assets_by_key_and_unlisted_rows_are_kept():
 def test_ai_provider_and_entitlement_not_reported_instead_of_a_wrong_bucket():
     code, cache, _ = _ai_run()
     conns = {c["n"]: c for c in _bundle(cache)["ai"]["connections"]}
-    bare = conns["everything_rename_test__"]              # real row with no provider/entitlement
+    bare = conns["legacy_connection_test"]              # row with no provider/entitlement
     assert bare["provider"] == "not reported" and bare["entitlement"] == "not reported"
     stats = _bundle(cache)["ai"]["stats"]
     assert stats["unreportedEntitlementConns"] >= 1 and stats["unreportedProviderConns"] >= 1
@@ -747,6 +744,46 @@ def test_skill_is_marked_beta():
     assert re.search(r'^\s*maturity: beta$', skill, re.M)
     assert re.search(r'^description: "\[Beta\] ', skill, re.M)
 
+
+
+# ---- review fixes ---------------------------------------------------------
+
+def test_newer_env_apps_page_without_total_but_a_next_offset_is_incomplete(capsys):
+    page = _load("env-apps-test-p1.json")
+    del page["total"]
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    code, _, _ = _run(["--deployments", f"{TEST}={_write(tmp, 'p1.json', page)}"])
+    cap = capsys.readouterr()
+    out = cap.out + cap.err
+    assert code == 3 and "INCOMPLETE" in out and "offset: 4" in out
+
+
+def test_app_list_page_of_fifty_without_envelope_is_a_bad_page(capsys):
+    page = _load("apps-page.json")
+    rows = (page["results"] * 50)[:50]
+    for i, r in enumerate(rows):
+        rows[i] = dict(r, assetKey=f"b{i:07d}-0000-4000-8000-000000000000")
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    code, cache, _ = _run([], apps=[_write(tmp, "bare.json", {"results": rows})])
+    assert code == 1
+    assert "no envelope" in capsys.readouterr().err
+    assert not (cache / "tenant-data.json").exists()
+
+
+def test_iso_timestamps_with_five_digit_fractions_parse_on_every_python():
+    d = build._parse_iso("2026-01-01T00:00:00.12345Z")
+    assert d.microsecond == 123450 and d.tzinfo is not None
+    assert build._parse_iso("2026-01-01").hour == 0
+    with pytest.raises(ValueError):
+        build._parse_iso("not a date")
+
+
+def test_health_fallback_never_says_not_deployed_for_untracked_types():
+    html = TEMPLATE.read_text(encoding="utf-8")
+    i = html.index("deployment not tracked for this type")
+    block = html[i - 400:i + 300]
+    assert "!listedTypes.has(a.t)" in block
+    assert block.index("!listedTypes.has(a.t)") < block.index("'not deployed here'")
 
 if __name__ == "__main__":
     import pytest

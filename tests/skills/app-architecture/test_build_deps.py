@@ -5,9 +5,9 @@ Runnable two ways:
     python3 test_build_deps.py          # standalone, no deps
     pytest tests/skills/app-architecture/   # discovered as test_* functions
 
-Fixtures are anonymised app_refs payloads captured live from a demo
-tenant on 2026-07-09 (schemaVersion 2, source context-service) plus the
-legacy and oml-fallback shapes the parser must stay tolerant of.
+Fixtures are app_refs payloads in the server's shape (schemaVersion 2,
+source context-service; names and keys invented) plus the legacy and
+oml-fallback shapes the parser must stay tolerant of.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _deps_for(payload: dict) -> list[dict]:
         path.unlink(missing_ok=True)
 
 
-# Anonymised Warehouse_PoC (a00000f5) app_refs response, 2026-07-09 live capture.
+# app_refs response for an example app, WebPortal (a00000f5).
 LIVE_CONTEXT_SERVICE = {
     "assetKey": "a00000f5-0000-4000-8000-0000000000f5",
     "schemaVersion": 2,
@@ -47,18 +47,18 @@ LIVE_CONTEXT_SERVICE = {
         {"kinds": ["entities"], "producerAssetKey": "a0000062-0000-4000-8000-000000000062", "producerAssetName": "OutSystemsSampleData"},
         {"kinds": ["entities"], "producerAssetKey": "a000007c-0000-4000-8000-00000000007c", "producerAssetName": "UltimatePDF"},
         {"kinds": ["entities"], "producerAssetKey": "a00000ba-0000-4000-8000-0000000000ba", "producerAssetName": "OutSystemsUI"},
-        {"kinds": ["entities"], "producerAssetKey": "a00000f7-0000-4000-8000-0000000000f7", "producerAssetName": "WarehouseTheme"},
+        {"kinds": ["entities"], "producerAssetKey": "a00000f7-0000-4000-8000-0000000000f7", "producerAssetName": "WebPortalTheme"},
         {"kinds": ["entities"], "producerAssetKey": "a0000125-0000-4000-8000-000000000125", "producerAssetName": "OutSystemsDataGrid"},
     ],
 }
 
 
 def test_live_context_service_shape_yields_nonbuiltin_deps():
-    """The headline bug: live producerAssetName/producerAssetKey/kinds shape
-    must NOT be dropped. Warehouse_PoC has 3 non-builtin refs after filtering."""
+    """The headline bug: the server's producerAssetName/producerAssetKey/kinds shape
+    must NOT be dropped. WebPortal has 3 non-builtin refs after filtering."""
     deps = _deps_for(LIVE_CONTEXT_SERVICE)
     names = sorted(d["n"] for d in deps)
-    assert names == ["OutSystemsDataGrid", "UltimatePDF", "WarehouseTheme"], names
+    assert names == ["OutSystemsDataGrid", "UltimatePDF", "WebPortalTheme"], names
     by_name = {d["n"]: d for d in deps}
     pdf = by_name["UltimatePDF"]
     assert pdf["k"] == "a000007c-0000-4000-8000-00000000007c", pdf

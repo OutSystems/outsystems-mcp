@@ -1,5 +1,5 @@
 {
- "_comment": "SYNTHETIC: no app-scoped context_connections call was recorded. Shape from the tool's outputSchema (SearchResult) and src/commands/context.rs: connections are application-typed rows narrowed to assetType AIModelConnection; on an app-scoped query a connection the app uses is a referenced row (isReferenced true, assetKey/ownerAppKey = the visiting app) identified by its own key/name. The Context Service never sets producerAssetKey/producerAssetName on agent or connection rows (test helper cs_application_row). Connection name, key and provider copied from the (anonymised) tenant-wide context_connections recording.",
+ "_comment": "SYNTHETIC: app-scoped context_connections page in the server's shape. Connections are application-typed rows narrowed to assetType AIModelConnection; on an app-scoped query a connection the app uses is a referenced row (isReferenced true, assetKey/ownerAppKey = the visiting app) identified by its own key/name. The server never sets producerAssetKey/producerAssetName on agent or connection rows.",
  "data": [
   {
    "additionalData": {
@@ -12,7 +12,7 @@
    "isReferenced": true,
    "isStatic": false,
    "key": "a00000e7-0000-4000-8000-0000000000e7",
-   "name": "MyAzureFixUpdate",
+   "name": "AzureOpenAIDefault",
    "objectType": "application",
    "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
    "providerName": "Azure OpenAI"

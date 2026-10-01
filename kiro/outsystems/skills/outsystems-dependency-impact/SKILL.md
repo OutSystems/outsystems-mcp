@@ -3,7 +3,7 @@ name: outsystems-dependency-impact
 description: "[Beta] Build an interactive HTML REVERSE-dependency explorer — answers 'who depends on this library/agent/connection?' from the platform's deletion-impact analysis (read-only; nothing is deleted). One named target is one analysis: seconds, a few K tokens. A whole-tenant map is one analysis per library/agent/connection in parallel batches (estimate: ~0.5K tokens per target plus ~0.1–0.15K per dependent found). Use ONLY for reverse questions like 'who depends on [library/agent]', 'if I publish [library] who breaks', 'blast radius of [library/agent]', 'reverse dependency map', 'library impact audit', 'agent impact audit'. For forward questions about a specific app ('what does App X depend on', 'deps of App X'), use outsystems-app-architecture or the app's references directly."
 license: MIT
 compatibility: Needs an agent that can run shell commands and Python 3.7+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it.
-allowed-tools: Bash Write Edit mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__deploy_impact mcp__plugin_outsystems_outsystems__deploy_impact_status mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__app_refs mcp__outsystems__env_list mcp__outsystems__deploy_impact mcp__outsystems__deploy_impact_status
+allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__deploy_impact mcp__plugin_outsystems_outsystems__deploy_impact_status mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__app_refs mcp__outsystems__env_list mcp__outsystems__deploy_impact mcp__outsystems__deploy_impact_status
 metadata:
   version: "1.5.0"
   maturity: beta
@@ -14,7 +14,8 @@ metadata:
 
 # OutSystems Dependency Impact
 
-Produces a self-contained HTML reverse-dependency explorer. Pick a
+Produces a single-file HTML reverse-dependency explorer (it loads only its
+fonts from a public CDN). Pick a
 library, agent or connection — the page shows every asset that would
 break if it were removed, in which environments, at which deployed
 revision, and with what severity (`Error` / `Warning`).
@@ -50,8 +51,14 @@ the one-target path whenever the user names a target.
 - A shell with `python3` (3.7 or later, standard library only). The
   script reads the saved analysis results from disk and writes the HTML;
   it never calls the server and holds no sign-in of its own.
-- `SKILL` below is this skill's own folder (the one holding this file),
-  so `"$SKILL/scripts/build.py"` is the script next to it.
+- `<skill-folder>` below is this skill's own folder: the one holding this
+  file (in the OutSystems plugin, `skills/outsystems-dependency-impact/`), so
+  `<skill-folder>/scripts/build.py` is the script next to it. Values in
+  angle brackets are placeholders you substitute; quote every path, since
+  a home folder can contain spaces.
+- No shell available? Stop and tell the user this skill needs one (for
+  example Claude Code, not Claude Desktop's Chat tab); don't try to build
+  the page by hand.
 
 ## The reality checks
 
@@ -105,34 +112,48 @@ In one message:
   with an authentication error, in which case ask the user to sign in to
   the OutSystems MCP server again and retry once.
 - `env_list` — environment names for the page. Save it to
-  `$CACHE/env-list.json` (`results[].(key, name, purpose)`) once you have
+  `<cache-folder>/env-list.json` (`results[].(key, name, purpose)`) once you have
   the cache folder below.
 
 ```
 TENANT_ID = <auth_status.tenant_id>
 ```
 
-Get this skill's cache folder for the tenant (the script creates it),
-plus the folder for the per-target records:
+Create this skill's cache folder for the tenant. The script prints the
+folder's path; the steps below call it `<cache-folder>`. Then create the
+folder for the per-target records:
 
 ```bash
-CACHE=$(python3 "$SKILL/scripts/build.py" --cache-dir <TENANT_ID>)
-mkdir -p "$CACHE/impact/raw"
+python3 "<skill-folder>/scripts/build.py" --cache-dir <TENANT_ID>
+mkdir -p "<cache-folder>/impact/raw"
 ```
 
 ### Step 2 — Cache freshness (Branch D only)
 
-Records in `$CACHE/impact/` less than 24h old are reused (Step 5 skips
+Records in `<cache-folder>/impact/` less than 24h old are reused (Step 5 skips
 those targets), so an interrupted map resumes where it stopped. If the
-user said "refresh" / "rescan" / "fresh data", delete `$CACHE/impact/`
-first. Branch C always runs fresh — one analysis takes seconds.
+user said "refresh" / "rescan" / "fresh data", start the folder over:
+
+```bash
+rm -rf "<cache-folder>/impact" && mkdir -p "<cache-folder>/impact/raw"
+```
+
+Branch C always runs fresh, in its own folder, so the page shows only the
+named targets and never an older map's records — one analysis takes
+seconds:
+
+```bash
+rm -rf "<cache-folder>/impact-named" && mkdir -p "<cache-folder>/impact-named/raw"
+```
+
+In Branch C, read `impact-named` wherever the steps below say `impact`.
 
 ### Step 3 — Targets and the asset list
 
 **Branch C:** resolve each named target with `app_list`
 `{search: "<name>"}` (1 match → use it; several → ask the user to pick;
 0 → ask for a more specific name). Save the matching page(s) as
-`$CACHE/tenant-assets.json`.
+`<cache-folder>/tenant-assets.json`.
 
 **Branch D:** the full tenant asset list.
 
@@ -140,24 +161,29 @@ first. Branch C always runs fresh — one analysis takes seconds.
 when that skill ran within the last 24 hours. Its folder is:
 
 ```bash
-TA_CACHE=$(python3 "$SKILL/scripts/build.py" --cache-dir <TENANT_ID> --skill outsystems-tenant-architecture)
+python3 "<skill-folder>/scripts/build.py" --cache-dir <TENANT_ID> --skill outsystems-tenant-architecture
 ```
 
-If `$TA_CACHE/tenant-data.json` exists and `$TA_CACHE/meta.json`'s
-`fetched_at` is under 24 hours old, pass `$TA_CACHE/tenant-data.json`
+It prints that folder's path (it does not create it); call it
+`<tenant-cache-folder>`.
+
+If `<tenant-cache-folder>/tenant-data.json` exists and `<tenant-cache-folder>/meta.json`'s
+`fetched_at` is under 24 hours old, pass `<tenant-cache-folder>/tenant-data.json`
 as the asset list (`--tenant-assets`). Check the age with a one-line
 `python3 -c` over `meta.json`; don't read the bundle itself.
 
 **Fallback:** `app_list` with `limit: 500` (larger values are clamped to
 500), then `offset: <next_offset>` while `truncated` is true; save each
-page as `$CACHE/assets-page-<n>.json` and pass every page to `build.py`.
+page as `<cache-folder>/assets-page-<n>.json` and pass every page to `build.py`.
 On Claude Code a large page is saved to disk by the harness ("Output has
 been saved to <path>") — `cp` it. On a harness that truncates large tool
 results a 500-row page arrives cut, so page with `limit: 100` there.
 
 ### Step 4 — Filter to targets (Branch D)
 
-Keep assets whose `assetType` is a producer:
+Keep assets whose type is a producer — the `assetType` field of an
+`app_list` page's `results[]`, or the `t` field of the tenant bundle's
+`assets[]` (whose key and name are `k` and `n`):
 
 - libraries: `LowCodeLibrary`, `MobileLibrary`, `ExtensionLibrary`,
   `WidgetLibrary`, `ExternalLibrary`
@@ -166,8 +192,10 @@ Keep assets whose `assetType` is a producer:
   `ExternalConnection`, `MCPConnection`, `SearchServiceConnection`,
   `A2AConnection`
 
-Save the list (key, name, type) to `$CACHE/targets.json`, with a short
+Save the list (key, name, type) to `<cache-folder>/targets.json`, with a short
 `python3` one-liner over the asset list file rather than by reading it.
+`targets.json` is your work list only: keep passing the asset list itself
+as `--tenant-assets`.
 
 ### Step 4.5 — Pre-flight confirmation
 
@@ -190,7 +218,10 @@ tokens_k   = count * 0.5                      # estimate, before dependents
 Ask: *"Run {count} deletion-impact analyses ({libs} libraries, {agents}
 agents, {conns} connections) to map who depends on what? Read-only:
 nothing is deleted. Estimate: ~{wall_min} min, ~{tokens_k}K tokens plus
-~0.1–0.15K per dependent found. Results are cached for 24h."* Offer
+~0.1–0.15K per dependent found. Results are cached for 24h."* Offer to
+list the target names first (the main OutSystems skill asks for named
+targets before a deletion-impact analysis), and list them if the user
+wants. Offer
 three choices: **Yes — all {count}**, **Libraries only ({libs})**, and
 **No — cancel**.
 
@@ -209,7 +240,9 @@ For each target:
    `processStatus` is `InProgress`, pause 5–15 seconds between rounds
    (the response has no poll-interval hint), using your harness's
    background wait as the main OutSystems skill's "Pacing polls"
-   describes, never a bare foreground `sleep`. Stop at `Finished` or
+   describes, never a bare foreground `sleep`. Poll the batch yourself:
+   a status-watcher sub-agent waits on one operation at a time, which
+   does not fit a batch of ten with a two-minute give-up. Stop at `Finished` or
    `Failed`. On `Unknown`, poll at most 3 more times while it stays
    `Unknown` (restart the count on any other status), then stop with
    `gaveUp: "unknown-status"`. Still `InProgress` after about 2 minutes:
@@ -242,7 +275,7 @@ resumes on re-run) rather than pushing on.
 `Progress: 40/143 targets · 31 impact known · 9 unknown · est. 6 min left`
 (recompute from actual throughput).
 
-**Record per target** → `$CACHE/impact/<targetKey>.json`:
+**Record per target** → `<cache-folder>/impact/<targetKey>.json`:
 
 ```js
 {
@@ -261,43 +294,48 @@ error` and `report.(status, total, truncated,
 impactedAssets[].(assetKey, name, type,
 deployedRevisions[].(environmentKey, revision, severity, consumerType)))`.
 When the harness saved the result to disk (Claude Code, large reports),
-`cp` that file to `$CACHE/impact/raw/<targetKey>.status.json` and write a
-record with `resultFile` instead of re-typing the rows. When a harness
+`cp` that file to `<cache-folder>/impact/raw/<targetKey>.status.json` and write a
+record with `resultFile` instead of re-typing the rows. When a large
+result arrived inline instead (a report with many dependents can stay
+under the auto-save threshold), write the response verbatim with your
+file-write tool to `<cache-folder>/impact/raw/<targetKey>.status.json` and point
+the record at it with `resultFile` the same way. Never go looking for a
+result in the harness's own session transcripts or logs. When a harness
 cut the result, keep `processStatus`, `impactKnown`, `report.status`,
 `report.total` and `report.truncated` from the visible tail, the rows
 that arrived intact, and set `harnessTruncated: true`.
 
-**Resume.** Before launching, skip targets whose record exists and is
+**Resume (Branch D).** Before launching, skip targets whose record exists and is
 under 24h old. "rescan failures" re-runs the targets whose record has no
 verdict.
 
 ### Step 6 — Build
 
-Write the HTML to the user's working folder unless they asked for
-another path:
+`<output-file>` is `dependency-impact.html` in the user's working folder (absolute path)
+unless they asked for another one:
 
 ```bash
-OUT="$(pwd)/dependency-impact.html"
-python3 "$SKILL/scripts/build.py" "$CACHE" "$OUT" \
-  --impact-dir    "$CACHE/impact"            \
-  --tenant-assets "$CACHE/tenant-assets.json" \
-  --env-list      "$CACHE/env-list.json"     \
+python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>" \
+  --impact-dir    "<cache-folder>/impact"            \
+  --tenant-assets "<cache-folder>/tenant-assets.json" \
+  --env-list      "<cache-folder>/env-list.json"     \
   --tenant-id     "<TENANT_ID>"
+# Branch C: --impact-dir "<cache-folder>/impact-named"
 # Paged asset list: repeat --tenant-assets once per page.
-# Reused tenant-architecture bundle: --tenant-assets "$TA_CACHE/tenant-data.json"
+# Reused tenant-architecture bundle: --tenant-assets "<tenant-cache-folder>/tenant-data.json"
 ```
 
 `build.py` produces:
-- `$CACHE/impact-data.json` — the unified data bundle
-- `$CACHE/meta.json` — timestamp + stats
-- `$OUT` — the final HTML
+- `<cache-folder>/impact-data.json` — the unified data bundle
+- `<cache-folder>/meta.json` — timestamp + stats
+- `<output-file>` — the final HTML
 
 It never renders a target without a verdict as "no dependents".
 
 ### Step 7 — Cached re-render
 
 ```bash
-python3 "$SKILL/scripts/build.py" "$CACHE" "$OUT"
+python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>"
 ```
 
 ### Step 8 — Report (3–5 lines)
@@ -312,7 +350,7 @@ python3 "$SKILL/scripts/build.py" "$CACHE" "$OUT"
 
 ## Data shape contract
 
-`build.py` writes `$CACHE/impact-data.json`:
+`build.py` writes `<cache-folder>/impact-data.json`:
 
 ```js
 {
@@ -401,6 +439,10 @@ same ratio.
   deletion analysis deletes nothing; nothing in this skill should.
 - **Don't chase dependencies of dependencies yourself.** The report's
   `consumerType` says how each consumer depends on the target.
+- **Don't recover a tool result from the harness's session transcript,
+  logs or caches.** Those files are the harness's internals, not an
+  interface: use the saved-to path it printed, or write the response you
+  received.
 - **Don't read a harness-saved report or asset page into context.**
   `cp` it into the cache and pass the path; check content with
   `head -c 1000 <path>` in a shell if you must.

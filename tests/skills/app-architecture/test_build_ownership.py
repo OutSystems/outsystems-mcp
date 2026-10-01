@@ -5,7 +5,7 @@ Runnable two ways:
     python3 test_build_ownership.py
     pytest tests/skills/app-architecture/
 
-Fixtures mirror the live Context Service rows observed on 2026-09-03: on an
+Fixtures mirror the server's context_* rows: on an
 app-scoped query EVERY row carries the visiting app's key in `ownerAppKey`
 and `assetKey`; `isReferenced` is the ownership signal and
 `additionalData.actionTypeStr` labels the action kind.
@@ -197,7 +197,7 @@ def _ctx_page(rows, offset, next_offset, floor_total=True, pag_total=None):
     pag = {"limit": 100, "offset": offset, "nextPageOffset": next_offset}
     if pag_total is not None:
         pag["total"] = pag_total
-    # Server behaviour (src/models/search.rs fill_cap_contract): while more pages exist the
+    # Server behaviour: while more pages exist the
     # total is offset + rows + 1; on the last page without a real total it is the page's own row count.
     total = pag_total if not floor_total else ((offset + len(rows) + 1) if next_offset is not None else len(rows))
     return {"data": rows, "displayed": len(rows), "total": total, "truncated": next_offset is not None,
@@ -239,7 +239,7 @@ def test_context_chain_with_a_gap_is_missing_and_truncated_last_page_asks_for_ne
 
 
 def test_context_chain_tolerates_an_unfaithful_offset_echo_on_later_pages():
-    # Only offset 0 has been observed live in pagination.offset; if page 2 echoes 0 too,
+    # Only offset 0 is known to be echoed in pagination.offset; if page 2 echoes 0 too,
     # the pages are taken in the order passed and linked through next_offset.
     import tempfile
     tmp = pathlib.Path(tempfile.mkdtemp())

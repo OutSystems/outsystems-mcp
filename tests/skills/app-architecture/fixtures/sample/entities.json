@@ -1,5 +1,5 @@
 {
- "_comment": "Anonymised context_entities {app, owned_only: false, limit: 100} page from a dev tenant (2026-09-03), trimmed from 73 rows to 14 (owned, user-library and three platform rows); total/displayed/pagination adjusted to the kept rows.",
+ "_comment": "Illustrative context_entities {app, owned_only: false, limit: 100} page: 14 rows (owned, user-library and three platform rows); total/displayed/pagination match the rows. Names and keys are invented.",
  "data": [
   {
    "additionalData": {
@@ -733,7 +733,7 @@
    "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
    "physicalName": null,
    "producerAssetKey": "a000004a-0000-4000-8000-00000000004a",
-   "producerAssetName": "contracts_test",
+   "producerAssetName": "vendor_contracts",
    "providerName": null,
    "timestamp": "2026-08-11T13:08:49.600000+00:00"
   },

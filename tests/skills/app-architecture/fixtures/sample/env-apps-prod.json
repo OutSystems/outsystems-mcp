@@ -1,5 +1,5 @@
 {
- "_comment": "SYNTHETIC: no Production env_apps call was recorded. Shape from the env_apps outputSchema (DeployedApplication); the second row is a name-substring false positive (search is a server-side substring) with another applicationKey.",
+ "_comment": "SYNTHETIC: Production env_apps page in the env_apps output shape (DeployedApplication); the second row is a name-substring false positive (search is a server-side substring) with another applicationKey.",
  "displayed": 2,
  "total": 2,
  "truncated": false,

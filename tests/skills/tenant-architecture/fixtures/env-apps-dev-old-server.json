@@ -1,5 +1,5 @@
 {
- "_provenance": "env_apps {env_key: dev}, dev tenant, recorded 2026-09-03 and anonymised; rows trimmed from 100 to 8, envelope (total 165, truncated, no next_offset, hint) is the real old-server one",
+ "_provenance": "Illustrative env_apps {env_key: dev} page: 8 rows in the older server's envelope (total 165, truncated, no next_offset, hint). Names and keys are invented.",
  "displayed": 8,
  "pagination_hint": "Showing 100 of 165. env_apps does not accept an offset; re-run with a more specific search.",
  "results": [
@@ -8,18 +8,18 @@
    "buildKey": "a0000091-0000-4000-8000-000000000091",
    "deploymentDateTime": "2026-08-25T14:02:08.383Z",
    "deploymentKey": "a00000a2-0000-4000-8000-0000000000a2",
-   "name": "web_orders",
+   "name": "Order Tracker",
    "revision": 1,
-   "url": "https://acme-dev.outsystems.app/web_orders"
+   "url": "https://acme-dev.outsystems.app/OrderTracker"
   },
   {
    "applicationKey": "a0000005-0000-4000-8000-000000000005",
    "buildKey": "a0000046-0000-4000-8000-000000000046",
    "deploymentDateTime": "2026-08-25T14:49:53.753Z",
    "deploymentKey": "a0000045-0000-4000-8000-000000000045",
-   "name": "csv_test_data_conversion",
+   "name": "Data Conversion Tool",
    "revision": 10,
-   "url": "https://acme-dev.outsystems.app/csv_test_data_conversion"
+   "url": "https://acme-dev.outsystems.app/DataConversionTool"
   },
   {
    "applicationKey": "a000000a-0000-4000-8000-00000000000a",
@@ -44,7 +44,7 @@
    "buildKey": "00000000-0000-0000-0000-000000000000",
    "deploymentDateTime": "2026-07-14T09:42:45.283Z",
    "deploymentKey": "a0000139-0000-4000-8000-000000000139",
-   "name": "QA Test 3",
+   "name": "Claims Advisor",
    "revision": 5,
    "url": ""
   },
@@ -62,18 +62,18 @@
    "buildKey": "a0000020-0000-4000-8000-000000000020",
    "deploymentDateTime": "2026-08-27T12:36:31.807Z",
    "deploymentKey": "a00000d5-0000-4000-8000-0000000000d5",
-   "name": "StaticEntities_1000",
+   "name": "Reference Data Admin",
    "revision": 1,
-   "url": "https://acme-dev.outsystems.app/StaticEntities_1000"
+   "url": "https://acme-dev.outsystems.app/ReferenceDataAdmin"
   },
   {
    "applicationKey": "a000001a-0000-4000-8000-00000000001a",
    "buildKey": "a000002a-0000-4000-8000-00000000002a",
    "deploymentDateTime": "2026-09-02T15:40:52.007Z",
    "deploymentKey": "a000008c-0000-4000-8000-00000000008c",
-   "name": "TEstAcCMS",
+   "name": "Content CMS",
    "revision": 3,
-   "url": "https://acme-dev.outsystems.app/TEstAcCMS"
+   "url": "https://acme-dev.outsystems.app/ContentCMS"
   }
  ],
  "total": 165,

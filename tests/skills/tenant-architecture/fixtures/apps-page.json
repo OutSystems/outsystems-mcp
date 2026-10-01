@@ -1,5 +1,5 @@
 {
- "_provenance": "app_list {limit: 500}, dev tenant, recorded 2026-09-03 and anonymised; 29 of 515 rows kept (one per assetType seen, plus every key the other fixtures reference); envelope rewritten to a complete single page",
+ "_provenance": "Illustrative app_list {limit: 500} page: 29 of a 515-asset tenant (one row per assetType, plus every key the other fixtures reference), envelope rewritten to a complete single page. Names and keys are invented.",
  "displayed": 29,
  "next_offset": null,
  "results": [
@@ -23,7 +23,7 @@
    "assetKey": "a000006f-0000-4000-8000-00000000006f",
    "assetType": "AgentDefinition",
    "isExternal": false,
-   "name": "ZAgentTester",
+   "name": "Zone Routing Agent",
    "revision": 3,
    "revisionDateTime": "2026-08-24T19:10:53.703263Z"
   },
@@ -31,7 +31,7 @@
    "assetKey": "a00000d7-0000-4000-8000-0000000000d7",
    "assetType": "KnowledgeBase",
    "isExternal": false,
-   "name": "wertyu",
+   "name": "Product FAQ",
    "revision": 1,
    "revisionDateTime": "2026-07-30T09:46:05.534919Z"
   },
@@ -39,7 +39,7 @@
    "assetKey": "a00000da-0000-4000-8000-0000000000da",
    "assetType": "SearchServiceConnection",
    "isExternal": false,
-   "name": "Vectortest",
+   "name": "Product Search",
    "revision": 1,
    "revisionDateTime": "2026-06-30T14:15:31.703664Z"
   },
@@ -55,7 +55,7 @@
    "assetKey": "a0000116-0000-4000-8000-000000000116",
    "assetType": "MobileLibrary",
    "isExternal": false,
-   "name": "TTFDPerformancePlugin",
+   "name": "Performance Plugin",
    "revision": 4,
    "revisionDateTime": "2026-07-21T09:55:32.189159Z"
   },
@@ -71,7 +71,7 @@
    "assetKey": "a000004a-0000-4000-8000-00000000004a",
    "assetType": "ExternalConnection",
    "isExternal": false,
-   "name": "contracts_test",
+   "name": "vendor_contracts",
    "revision": 1,
    "revisionDateTime": "2026-08-11T11:04:44.954541Z"
   },
@@ -79,7 +79,7 @@
    "assetKey": "a0000026-0000-4000-8000-000000000026",
    "assetType": "MobileApplication",
    "isExternal": false,
-   "name": "TestPhoneOsUI",
+   "name": "Field Service Mobile",
    "revision": 2,
    "revisionDateTime": "2026-09-03T04:50:22.653388Z"
   },
@@ -103,7 +103,7 @@
    "assetKey": "a000012e-0000-4000-8000-00000000012e",
    "assetType": "MCPConnection",
    "isExternal": false,
-   "name": "NRTMCP_withinvalid_",
+   "name": "Docs MCP Server",
    "revision": 1,
    "revisionDateTime": "2026-07-16T16:43:05.742317Z"
   },
@@ -111,7 +111,7 @@
    "assetKey": "a0000102-0000-4000-8000-000000000102",
    "assetType": "A2AConnection",
    "isExternal": false,
-   "name": "NRTA2A",
+   "name": "Partner A2A Agent",
    "revision": 2,
    "revisionDateTime": "2026-07-16T11:21:03.669413Z"
   },
@@ -143,7 +143,7 @@
    "assetKey": "a000001a-0000-4000-8000-00000000001a",
    "assetType": "WebApplication",
    "isExternal": false,
-   "name": "TEstAcCMS",
+   "name": "Content CMS",
    "revision": 3,
    "revisionDateTime": "2026-09-02T15:40:51.166926Z"
   },
@@ -167,7 +167,7 @@
    "assetKey": "a0000019-0000-4000-8000-000000000019",
    "assetType": "WebApplication",
    "isExternal": false,
-   "name": "StaticEntities_1000",
+   "name": "Reference Data Admin",
    "revision": 1,
    "revisionDateTime": "2026-08-27T12:36:31.234186Z"
   },
@@ -191,7 +191,7 @@
    "assetKey": "a0000001-0000-4000-8000-000000000001",
    "assetType": "WebApplication",
    "isExternal": false,
-   "name": "web_orders",
+   "name": "Order Tracker",
    "revision": 1,
    "revisionDateTime": "2026-08-25T14:02:07.704649Z"
   },
@@ -199,7 +199,7 @@
    "assetKey": "a0000094-0000-4000-8000-000000000094",
    "assetType": "AgentDefinition",
    "isExternal": false,
-   "name": "ops-aug26",
+   "name": "Ops Advisor",
    "revision": 4,
    "revisionDateTime": "2026-08-26T17:12:22.766012Z"
   },
@@ -207,7 +207,7 @@
    "assetKey": "a0000014-0000-4000-8000-000000000014",
    "assetType": "AgentDefinition",
    "isExternal": false,
-   "name": "QA Test 3",
+   "name": "Claims Advisor",
    "revision": 5,
    "revisionDateTime": "2026-07-14T09:42:44.954391Z"
   },
@@ -223,7 +223,7 @@
    "assetKey": "a0000005-0000-4000-8000-000000000005",
    "assetType": "WebApplication",
    "isExternal": false,
-   "name": "csv_test_data_conversion",
+   "name": "Data Conversion Tool",
    "revision": 10,
    "revisionDateTime": "2026-08-25T14:49:22.228136Z"
   },

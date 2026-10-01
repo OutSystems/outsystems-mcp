@@ -48,7 +48,7 @@
   {
    "appScore": 100,
    "applicationKey": "a0000127-0000-4000-8000-000000000127",
-   "applicationName": "Ops Test timers",
+   "applicationName": "Batch Scheduler",
    "errorPercent": 82.11,
    "errors": 1404,
    "lastErrorOccurred": "2026-09-16T03:25:28",
@@ -67,5 +67,5 @@
  "to": "2026-09-16T08:24:53Z",
  "total": 5,
  "unresolved": [],
- "_provenance": "app_health {apps: \"\", env_key, hours: 168}: rows 1-4 are anonymised rows from a whole-stage 168h query on a dev tenant's Development env (2026-09-16), re-pointed at the Production stageKey; row 5 is constructed from the AppHealthRow outputSchema (no `requests` reading). Envelope keys are the real ones (noData absent = page proven complete)."
+ "_provenance": "Illustrative app_health {apps: \"\", env_key, hours: 168} page for Production: four AppHealthRow rows plus one with no `requests` reading; noData absent = page proven complete. Names and keys are invented."
 }

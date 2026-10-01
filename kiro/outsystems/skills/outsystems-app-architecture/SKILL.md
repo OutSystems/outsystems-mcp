@@ -3,7 +3,7 @@ name: outsystems-app-architecture
 description: "[Beta] Generate an interactive HTML graph of a single OutSystems app's architecture — UI flows + screens, server/client/service actions with signatures, entities with attributes and relationships, static enums, structures, roles, AI model connections, library dependencies and where the app is deployed — with OutSystems-themed dark mode styling. ONE app per invocation — do NOT iterate over multiple apps in a single call (run the skill explicitly per-app; if N>3, ask the user and wait for an explicit answer first). For tenant-wide views, use outsystems-tenant-architecture instead. Use when the user asks for the architecture of a specific app, 'show me the architecture of [app]', 'explore [app]', 'what's inside [app]', 'give me an overview of [app]', or similar."
 license: MIT
 compatibility: Needs an agent that can run shell commands and Python 3.7+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The generated HTML loads its graph library from a CDN; offline it shows a plain listing instead.
-allowed-tools: Bash Read Write Edit mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_info mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__app_revisions mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__context_screens mcp__plugin_outsystems_outsystems__context_actions mcp__plugin_outsystems_outsystems__context_entities mcp__plugin_outsystems_outsystems__context_structures mcp__plugin_outsystems_outsystems__context_roles mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__app_list mcp__outsystems__app_info mcp__outsystems__app_refs mcp__outsystems__app_revisions mcp__outsystems__env_list mcp__outsystems__env_apps mcp__outsystems__context_screens mcp__outsystems__context_actions mcp__outsystems__context_entities mcp__outsystems__context_structures mcp__outsystems__context_roles mcp__outsystems__context_connections
+allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_info mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__app_revisions mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__context_screens mcp__plugin_outsystems_outsystems__context_actions mcp__plugin_outsystems_outsystems__context_entities mcp__plugin_outsystems_outsystems__context_structures mcp__plugin_outsystems_outsystems__context_roles mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__app_list mcp__outsystems__app_info mcp__outsystems__app_refs mcp__outsystems__app_revisions mcp__outsystems__env_list mcp__outsystems__env_apps mcp__outsystems__context_screens mcp__outsystems__context_actions mcp__outsystems__context_entities mcp__outsystems__context_structures mcp__outsystems__context_roles mcp__outsystems__context_connections
 metadata:
   version: "1.7.0"
   maturity: beta
@@ -38,8 +38,14 @@ instead of the graph.
 - A shell with `python3` (3.7 or later, standard library only). The
   script reads the saved tool results from disk and writes the HTML; it
   never calls the server and holds no sign-in of its own.
-- `SKILL` below is this skill's own folder (the one holding this file),
-  so `"$SKILL/scripts/build.py"` is the script next to it.
+- `<skill-folder>` below is this skill's own folder: the one holding this
+  file (in the OutSystems plugin, `skills/outsystems-app-architecture/`), so
+  `<skill-folder>/scripts/build.py` is the script next to it. Values in
+  angle brackets are placeholders you substitute; quote every path, since
+  a home folder can contain spaces.
+- No shell available? Stop and tell the user this skill needs one (for
+  example Claude Code, not Claude Desktop's Chat tab); don't try to build
+  the page by hand.
 
 **The core rule: keep large data off the model's context.** Tool results
 go to disk, `build.py` reads them from there, and the HTML comes out the
@@ -95,18 +101,19 @@ APP_NAME = <human-readable name, exactly as app_list / app_info report it>
 ENV_KEYS = <key of every env_list result>
 ```
 
-Get this skill's cache folder for the app; the script creates it:
+Create this skill's cache folder for the app. The script prints the
+folder's path; the steps below call it `<cache-folder>`:
 
 ```bash
-CACHE=$(python3 "$SKILL/scripts/build.py" --cache-dir <APP_KEY>)
+python3 "<skill-folder>/scripts/build.py" --cache-dir <APP_KEY>
 ```
 
-Save the `env_list` response to `$CACHE/env-list.json` (it is small;
+Save the `env_list` response to `<cache-folder>/env-list.json` (it is small;
 write it as returned).
 
 ### Step 2 — Cache freshness (only if cache exists)
 
-If `$CACHE/meta.json` is present:
+If `<cache-folder>/meta.json` is present:
 
 1. Call `app_info` with `key: <APP_KEY>` (cheap, ~500 tokens; skip if
    Step 1 already called it).
@@ -173,19 +180,21 @@ For **each** response, follow this rule:
 
 - **If the response is the "Output has been saved to <path>" notice**
   (Claude Code's harness auto-save kicked in, typical for large apps):
-  extract the path. `cp` it into the cache via Bash (no model tokens
-  spent on content). **This is the cheapest path.**
-- **If the response is inline JSON** (under the ~25 KB threshold on
-  Claude Code, and on harnesses without auto-save): write the
+  extract the path and `cp` it into the cache via Bash, so its content
+  never enters the conversation. **This is the cheapest path.**
+- **If the response is inline JSON** (under Claude Code's auto-save
+  line, measured between 45 and 65 KB, and every response on harnesses without
+  auto-save): write the
   `context_*` responses in the **compact form** below to
-  `$CACHE/<file>`, keeping the top-level envelope keys. Write the small
+  `<cache-folder>/<file>`, keeping the top-level envelope keys. Write the small
   responses (#1, #8, #9, #10+) as returned.
 - **If a call errors**: for `app_refs`, save
   `{"assetKey": "<APP_KEY>", "failed": true}` as `refs-raw.json` and
   continue (the graph then renders without libraries; connections still
-  show). For an `env_apps` call, leave that environment's file out: it
-  renders as "unknown". A `context_*` or `app_info` error stops the run —
-  report it.
+  show). For `context_connections`, `app_revisions` or an `env_apps`
+  call, leave that file out (see Step 4): the section degrades, and an
+  environment renders as "unknown". An `app_info` error or an error on
+  any other `context_*` call stops the run — report it.
 
 Every `context_*` response is one server page and carries `total`,
 `truncated` and `next_offset`. You do not check them; `build.py` does
@@ -240,24 +249,23 @@ inline-written files and harness-saved files interchangeably.
 
 One Python invocation does everything: transforms the raw responses into
 the compact bundle, then injects it into the template. Pass one
-`ENV_KEY=PATH` pair per saved `env_apps` response. Write the HTML to the
-user's working folder unless they asked for another path.
+`ENV_KEY=PATH` pair per saved `env_apps` response. `<output-file>` is
+`app-architecture.html` in the user's working folder (absolute path) unless they asked
+for another one.
 
 ```bash
-OUT="$(pwd)/app-architecture.html"
-
-python3 "$SKILL/scripts/build.py" "$CACHE" "$OUT" \
-  --app-info     "$CACHE/app-info-raw.json"     \
-  --screens      "$CACHE/screens-raw.json"      \
-  --actions      "$CACHE/actions-raw.json"      \
-  --entities     "$CACHE/entities-raw.json"     \
-  --structures   "$CACHE/structures-raw.json"   \
-  --roles        "$CACHE/roles-raw.json"        \
-  --connections  "$CACHE/connections-raw.json"  \
-  --refs         "$CACHE/refs-raw.json"         \
-  --revisions    "$CACHE/revisions-raw.json"    \
-  --env-list     "$CACHE/env-list.json"         \
-  --env-apps     "<ENV_KEY_1>=$CACHE/env-apps-<ENV_KEY_1>.json" "<ENV_KEY_2>=$CACHE/env-apps-<ENV_KEY_2>.json"
+python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>" \
+  --app-info     "<cache-folder>/app-info-raw.json"     \
+  --screens      "<cache-folder>/screens-raw.json"      \
+  --actions      "<cache-folder>/actions-raw.json"      \
+  --entities     "<cache-folder>/entities-raw.json"     \
+  --structures   "<cache-folder>/structures-raw.json"   \
+  --roles        "<cache-folder>/roles-raw.json"        \
+  --connections  "<cache-folder>/connections-raw.json"  \
+  --refs         "<cache-folder>/refs-raw.json"         \
+  --revisions    "<cache-folder>/revisions-raw.json"    \
+  --env-list     "<cache-folder>/env-list.json"         \
+  --env-apps     "<ENV_KEY_1>=<cache-folder>/env-apps-<ENV_KEY_1>.json" "<ENV_KEY_2>=<cache-folder>/env-apps-<ENV_KEY_2>.json"
 ```
 
 The six flags from `--app-info` to `--roles` are required; the others
@@ -265,13 +273,15 @@ are optional and each only adds its part (an omitted `--env-apps`
 and `--env-list` mean no deployment section).
 
 **When an optional call (#7–#10, `env_list`) fails, still pass its path.**
-Save the error result as the file (or leave the file missing): `build.py`
-treats a missing file or a saved error result as "unavailable" and
-degrades only that section — the libraries are left out, the revisions
-table is left out, and an environment whose `env_apps` call failed
-renders as **unknown (not fetched)**, never "not deployed". Do not drop
-the flag and do not invent an empty response: an empty `results` list
-would read as "not deployed".
+Leave that file missing, or write `{"error": "<the error message>"}` to
+it (JSON, never the raw error text, which fails as `BAD INPUT`):
+`build.py` treats a missing file or an error object as "unavailable" and
+degrades only that section — AI model connections or libraries are left
+out of Dependencies (it prints a `warning:`), the revisions table is left
+out, and an environment whose `env_apps` call failed renders as
+**unknown (not fetched)**, never "not deployed". Do not drop the flag and
+do not invent an empty response: an empty `results` list would read as
+"not deployed".
 
 Deployment status also depends on the asset type: `env_apps` never lists
 **Workflow** assets (every environment renders "unknown: env_apps does
@@ -286,7 +296,7 @@ Exit codes and what to do:
   plus `offset: M`, save the response as `<section>-raw.2.json`
   (auto-saved path or compact write, as in Step 3), and re-run passing
   every page after that flag in order, e.g.
-  `--entities "$CACHE/entities-raw.json" "$CACHE/entities-raw.2.json"`.
+  `--entities "<cache-folder>/entities-raw.json" "<cache-folder>/entities-raw.2.json"`.
   Repeat while it exits `3`. Do not compute the number of pages from
   `total`: on the `owned_only: false` calls it is a lower bound ("at
   least N" in the message), so only exit `0` tells you the section is
@@ -323,7 +333,7 @@ that wrote it).
 
 ## Data shape contract
 
-`build.py` writes a single compact bundle to `$CACHE/app-data.json`
+`build.py` writes a single compact bundle to `<cache-folder>/app-data.json`
 that the template reads. Fields marked `?` are omitted when empty or
 false.
 
@@ -343,9 +353,10 @@ APP_DATA = {
   structures: [{ k, n, desc, attrs: [Attr] }],
   roles: [{ k, n, desc, pub }],
   deps: [{ k, n, kind, cat: "AIModel"|"Library", rev }],   // connections first, deduped with app_refs
-  depsSource: "app_refs"|"dependency-impact cache"|null,   // where the libraries came from
+  depsSource: "app_refs"|null,                            // where the libraries came from
+  depsUnavailable: ["libraries"?, "AI model connections"?], // parts not fetched: the page says so
   deployments: { fetchedAt, latestRevision,
-                 envs: [{ k, n, purpose, status: "deployed"|"not-deployed"|"unknown",
+                 envs: [{ k, n, purpose, status: "deployed"|"not-deployed"|"unknown"|"n/a",
                           rev?, at?, behind?, reason? }] } | null,
   revisions: { rows: [{ rev, at, digest, tag? }], total } | null,   // newest first, at most 10
   inheritedCount: number,              // every inherited entity row, platform modules included
@@ -403,7 +414,8 @@ writes are the main cost (see the whitelist's token trade-off).
 
 ## Harness notes
 
-- **Claude Code**: `context_*` MCP results above ~25 KB are auto-saved
+- **Claude Code**: `context_*` MCP results above its size limit
+  (measured between 45 and 65 KB) are auto-saved
   to disk by the harness ("Output has been saved to <path>") and never
   enter model context. On a large app this is what keeps the first-run
   cost down, and it's why the first anti-pattern below exists — don't
@@ -450,7 +462,7 @@ writes are the main cost (see the whitelist's token trade-off).
   connection (or the call was made with `owned_only: true`, which hides
   them — it must be `false`).
 - **`app_refs` errors or times out** → save
-  `{"assetKey": "<key>", "failed": true}` to `$CACHE/refs-raw.json`.
+  `{"assetKey": "<key>", "failed": true}` to `<cache-folder>/refs-raw.json`.
   `build.py` renders without libraries (connections still show).
 - **An environment shows "unknown"** → its `env_apps` response was not
   saved, or was truncated without a row for this app (the tool has no
@@ -471,7 +483,7 @@ writes are the main cost (see the whitelist's token trade-off).
 - 🔴 **Don't dump an inline `context_*` payload back into the
   conversation or re-read the compact cache file (harnesses without
   auto-save).** Each response arrives inline (see Step 3) and is
-  compacted straight to `$CACHE/<section>-raw.json`. Pass that file path
+  compacted straight to `<cache-folder>/<section>-raw.json`. Pass that file path
   to `build.py` — never re-print or re-load the raw payload into context
   on a later turn.
 - **Don't parse the payloads yourself** (no `jq`, no hand-written

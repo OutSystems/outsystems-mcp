@@ -1,5 +1,5 @@
 {
- "_provenance": "env_apps {env_key: test} rows from a dev tenant, recorded 2026-09-03 and anonymised (6 of 23 kept); the offset/next_offset envelope is CONSTRUCTED for the newer server (offset input) — no recording of it exists yet",
+ "_provenance": "Illustrative env_apps {env_key: test} rows (6 in total) split into two pages in the newer server's offset/next_offset envelope. Names and keys are invented.",
  "displayed": 2,
  "next_offset": null,
  "results": [

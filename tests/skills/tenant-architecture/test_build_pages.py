@@ -5,8 +5,8 @@ Runnable two ways:
     python3 test_build_pages.py
     pytest tests/skills/tenant-architecture/
 
-Fixtures mirror the live `env_list` and `app_list` envelopes observed on
-2026-09-03 (portfolios/v2 environments with `builtinDomain`; app_list capped
+Fixtures mirror the server's `env_list` and `app_list` envelopes
+(portfolios/v2 environments with `builtinDomain`; app_list capped
 at 500 rows per page with `total/displayed/truncated/next_offset`).
 """
 import importlib.util
@@ -83,7 +83,7 @@ def test_legacy_hostname_rows_still_work():
 
 
 def test_truncated_single_page_is_refused_and_writes_nothing():
-    # 515 assets, one page of 500: exactly the live tenant shape.
+    # 515 assets, one page of 500: the shape of a tenant over the cap.
     code, cache = _run(ENVS_V2, [_page([_asset(i) for i in range(500)], 515, 0)])
     assert code == 3
     assert not (cache / "tenant-data.json").exists()

@@ -3,19 +3,16 @@
 records, action signatures, screen inputs (and the absence of screen
 roles), AI model connections, the
 dependency-impact cache checks, deployments / revisions, Codex truncation
-rejection, and an end-to-end build of the real fixtures.
+rejection, and an end-to-end build of the sample fixtures.
 
 Runnable two ways:
     python3 test_build_schema3.py
     pytest tests/skills/app-architecture/
 
-Fixtures under fixtures/sample/ are responses recorded on a dev tenant on
-2026-09-03 for one app, trimmed and anonymised (hostnames, keys, names and
-emails replaced; renamed here to "IT Assets Portal"). connections.json and
-env-apps-prod.json are synthetic and say so in their `_comment`: no
-app-scoped context_connections call and no Production env_apps call was
-recorded, so they are built from the tools' outputSchema and the server
-source.
+Fixtures under fixtures/sample/ are responses in the server's shapes for
+one example app, "IT Assets Portal" (names, keys, hostnames and emails are
+invented). connections.json and env-apps-prod.json are synthetic and say so
+in their `_comment`.
 """
 import argparse
 import contextlib
@@ -47,7 +44,7 @@ def _tmp():
 
 
 def _args(**over):
-    """Namespace over the real fixtures; override any flag."""
+    """Namespace over the sample fixtures; override any flag."""
     base = dict(app_info=FX / "app-info.json", screens=[FX / "screens.json"], actions=[FX / "actions.json"],
                 entities=[FX / "entities.json"], structures=[FX / "structures.json"], roles=[FX / "roles.json"],
                 connections=None, refs=None, refs_cache=None, revisions=None, env_list=None, env_apps=None)
@@ -264,11 +261,11 @@ def test_screen_inputs_and_title():
 
 def test_screen_roles_never_reach_the_bundle_or_the_html():
     # The payload's additionalData.roles comes from the model's screen.Roles list
-    # without the access mode (ScreensProcessor.cs): a screen open to Everyone
+    # without the access mode: a screen open to Everyone
     # can list the app role. Nothing may present it, so it is not in the bundle.
     tmp = _tmp()
     page = json.loads((FX / "screens.json").read_text())
-    assert all(r["additionalData"]["roles"] for r in page["data"])      # the real payload carries them
+    assert all(r["additionalData"]["roles"] for r in page["data"])      # the payload carries them
     for r in page["data"]:
         r["additionalData"]["roles"].append({"key": "zz-role", "name": "ScreenOnlyRoleXyz", "isReferenced": True})
     p = tmp / "screens.json"; p.write_text(json.dumps(page))
@@ -293,8 +290,8 @@ def test_structure_attributes_are_kept():
 def test_context_connections_become_aimodel_deps():
     b = _fixture_bundle(connections=[FX / "connections.json"], refs=FX / "refs.json")
     ai = [d for d in b["deps"] if d["cat"] == "AIModel"]
-    assert [(d["n"], d["kind"]) for d in ai] == [("MyAzureFixUpdate", "Azure OpenAI")]
-    assert sorted(d["n"] for d in b["deps"] if d["cat"] == "Library") == ["PeopleOnboarding", "contracts_test"]
+    assert [(d["n"], d["kind"]) for d in ai] == [("AzureOpenAIDefault", "Azure OpenAI")]
+    assert sorted(d["n"] for d in b["deps"] if d["cat"] == "Library") == ["PeopleOnboarding", "vendor_contracts"]
     assert b["depsSource"] == "app_refs"
 
 
@@ -518,3 +515,22 @@ if __name__ == "__main__":
     for f in fns:
         f(); print(f"PASS {f.__name__}")
     print(f"{len(fns)} tests passed")
+
+
+def test_failed_context_connections_degrades_and_is_shown_as_not_fetched(tmp_path):
+    missing = tmp_path / "connections-raw.json"            # the call failed: no file
+    bundle, err = _quiet(build._build_from_raw, _args(connections=[missing], refs=FX / "refs.json"))
+    assert "AI model connections unavailable" in err
+    assert bundle["depsUnavailable"] == ["AI model connections"]
+    assert all(d["cat"] != "AIModel" for d in bundle["deps"])
+    errfile = tmp_path / "connections-error.json"
+    errfile.write_text('{"error": "upstream timed out"}', encoding="utf-8")
+    bundle, _ = _quiet(build._build_from_raw, _args(connections=[errfile], refs=FX / "refs.json"))
+    assert bundle["depsUnavailable"] == ["AI model connections"]
+
+
+def test_missing_refs_marks_libraries_as_not_fetched():
+    bundle = _fixture_bundle(connections=[FX / "connections.json"])
+    assert bundle["depsUnavailable"] == ["libraries"]
+    assert "deps-unavailable" in (build.pathlib.Path(build.__file__).parent.parent
+                                  / "assets" / "template.html").read_text(encoding="utf-8")

@@ -9,23 +9,21 @@ Every test runs build.py as a subprocess (fresh mode) and reads the data
 bundle back out of the rendered HTML, so what is asserted is what the page
 renders.
 
-Fixture provenance (tests/fixtures/). Recorded live on a dev tenant,
-2026-09-03, through the remote MCP server, then anonymised (hostnames, keys
-and names replaced):
+Fixtures (tests/fixtures/) follow the remote MCP server's response shapes;
+names, keys and hostnames are invented:
     launch-deletion-*.json          deploy_impact {key, delete: true} responses
     status-deletion-*.json          deploy_impact_status {analysis_id, kind}
                                     terminal responses (Inventory Core Library:
                                     1 dependent, WarningsFound; OutSystems UI:
-                                    74 dependents, ErrorsFound; portfolio
-                                    fields dropped, nothing else changed)
+                                    74 dependents, ErrorsFound)
     launch-deletion-testlib.json    a launch whose poll was never made correctly
-                                    (the recorded poll used `analysisKey`)
-    tool-error-validation.json      that poll's real error envelope
-    tenant-assets.json, env-list.json  trimmed tenant asset list / env_list
-Derived (the shapes the server emits, but not recorded on that tenant): the
-capped 200-of-N report, the Failed / Unknown / Finished-without-verdict
-results and the `analysis_launch_rejected` launch. Each derivation is next to
-the test that uses it.
+                                    (the poll used `analysisKey`)
+    tool-error-validation.json      that poll's error envelope
+    tenant-assets.json, env-list.json  tenant asset list / env_list
+Derived in the tests (shapes the server emits): the capped 200-of-N report,
+the Failed / Unknown / Finished-without-verdict results and the
+`analysis_launch_rejected` launch. Each derivation is next to the test that
+uses it.
 """
 import copy
 import json
@@ -108,7 +106,7 @@ def test_real_deletion_reports_list_the_dependents():
 
 def test_capped_report_says_showing_n_of_m():
     # Derived: the server caps impactedAssets at 200 and reports the real
-    # total with truncated: true. Built from the recorded OutSystems UI rows.
+    # total with truncated: true. Built from the OutSystems UI fixture rows.
     status = fx("status-deletion-outsystems-ui.json")
     rows = status["report"]["impactedAssets"]
     capped = []
@@ -199,22 +197,22 @@ def test_still_in_progress_is_impact_unknown():
 
 
 def test_launched_but_never_polled_is_impact_unknown():
-    # Real: the recorded TestLib analysis was launched, but the poll used the
+    # The TestLib analysis was launched, but the poll used the
     # wrong parameter name and errored, so no result exists.
     _, b = run_build({TESTLIB: {"launch": fx("launch-deletion-testlib.json")}})
     _assert_unknown(b["byTarget"][TESTLIB], "never polled")
 
 
 def test_errored_poll_saved_as_result_is_impact_unknown():
-    # Real error envelope from that same session, saved in place of a result.
+    # That poll's error envelope, saved in place of a result.
     _, b = run_build({TESTLIB: {"launch": fx("launch-deletion-testlib.json"),
                                 "result": fx("tool-error-validation.json")}})
     _assert_unknown(b["byTarget"][TESTLIB], "Impact unknown")
 
 
 def _rejected(message):
-    # Derived from the real tool-error envelope, with the code and wording
-    # deploy_impact uses for a refused launch (src/clients/dependency.rs).
+    # Derived from the tool-error envelope, with the code and wording
+    # deploy_impact uses for a refused launch (server behaviour).
     err = fx("tool-error-validation.json")
     err["category"] = err["data"]["category"] = "UpstreamError"
     err["data"]["code"] = "analysis_launch_rejected"
@@ -382,3 +380,22 @@ def _run():
 
 if __name__ == "__main__":
     _run()
+
+
+def test_cut_report_without_total_is_never_no_dependents():
+    status = fx("status-deletion-inventory-core.json")
+    rep = status["report"]
+    rep.pop("total", None)
+    rep["impactedAssets"] = []
+    _, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                 "result": status, "harnessTruncated": True}})
+    t = b["byTarget"][LIB_CORE]
+    assert t["state"] == "unknown" and "No dependents" not in t["summary"]
+
+    status = fx("status-deletion-inventory-core.json")
+    status["report"].pop("total", None)
+    status["report"]["truncated"] = True
+    _, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                 "result": status}})
+    t = b["byTarget"][LIB_CORE]
+    assert t["state"] == "known" and t["truncated"] and t["summary"].startswith("At least 1 dependent")

@@ -48,7 +48,7 @@
   {
    "appScore": 100,
    "applicationKey": "a0000127-0000-4000-8000-000000000127",
-   "applicationName": "Ops Test timers",
+   "applicationName": "Batch Scheduler",
    "errorPercent": 82.11,
    "errors": 1404,
    "lastErrorOccurred": "2026-09-16T03:25:28",
@@ -67,7 +67,7 @@
  "to": "2026-09-16T08:24:53Z",
  "total": 5,
  "unresolved": [],
- "_provenance": "health-prod.json with a noData {status: undetermined} built from the NoData outputSchema; reason text copied from src/commands/health.rs",
+ "_provenance": "health-prod.json with a noData {status: undetermined} in the server's NoData shape; the reason text follows the server's wording",
  "noData": {
   "status": "undetermined",
   "reason": "These rows were not established to be the whole result set: the response carried no result count, so the rows in hand cannot be checked against the size of the result set. Do not read any app's absence from them as no traffic in the window."

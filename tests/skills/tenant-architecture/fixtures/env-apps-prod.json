@@ -1,5 +1,5 @@
 {
- "_provenance": "env_apps {env_key: prod} CONSTRUCTED from the DeployedApplication outputSchema (live-tools-list.json); app keys and names match the other (anonymised) fixtures, revisions/dates/urls are invented to exercise drift",
+ "_provenance": "env_apps {env_key: prod} constructed from the DeployedApplication output schema; app keys and names match the other fixtures, revisions/dates/urls chosen to exercise drift",
  "displayed": 5,
  "results": [
   {

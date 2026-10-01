@@ -844,7 +844,17 @@ def _build_from_raw(args) -> dict:
     structures_raw = _load_section(args.structures, "structures")
     roles_raw      = _load_section(args.roles, "roles")
     connections = getattr(args, "connections", None)
-    connections_raw = _load_section(connections, "connections") if connections else {"data": []}
+    connections_raw = {"data": []}
+    connections_unavailable = not connections
+    if connections:
+        # Optional like refs / revisions: a single missing file or saved error
+        # result degrades the AI-model part of Dependencies, never the build.
+        if len(connections) == 1 and _read_optional(connections[0], "connections") is None:
+            connections_unavailable = True
+            print("warning: AI model connections unavailable: the Dependencies layer "
+                  "lists libraries only", file=sys.stderr)
+        else:
+            connections_raw = _load_section(connections, "connections")
 
     app_key = app_info["assetKey"]
     revision_at = _parse_ts(app_info.get("revisionDateTime"))
@@ -1017,6 +1027,10 @@ def _build_from_raw(args) -> dict:
         "roles":             roles,
         "deps":              deps,
         "depsSource":        deps_source,   # where the library refs came from; None = unavailable
+        # Parts of Dependencies that could not be fetched, so an empty layer is
+        # never read as "no dependencies".
+        "depsUnavailable":   ([] if deps_source else ["libraries"]) +
+                             (["AI model connections"] if connections_unavailable else []),
         "deployments":       deployments,
         "revisions":         revisions,
         "inheritedCount":    inherited_entity_count,

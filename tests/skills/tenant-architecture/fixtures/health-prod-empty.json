@@ -17,5 +17,5 @@
  "to": "2026-09-16T08:24:53Z",
  "total": 0,
  "unresolved": [],
- "_provenance": "app_health {apps: \"\", env_key: prod, hours: 168}, dev tenant Production, 2026-09-16; anonymised stageKey (0 rows, noData absent)"
+ "_provenance": "Illustrative app_health {apps: \"\", env_key: prod, hours: 168} response with 0 rows (noData absent)"
 }

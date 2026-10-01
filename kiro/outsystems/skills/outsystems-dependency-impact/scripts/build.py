@@ -300,12 +300,26 @@ def classify_target(record: dict, meta: dict, env_names: dict) -> dict:
     rows = [normalize_row(r, env_names) for r in (report.get("impactedAssets") or [])
             if isinstance(r, dict)]
     rows.sort(key=lambda u: (-u["rank"], u["n"].lower()))
-    total = report.get("total")
-    if not isinstance(total, int) or total < len(rows):
-        total = len(rows)
+    total_seen = isinstance(report.get("total"), int)
+    total = report["total"] if total_seen and report["total"] >= len(rows) else len(rows)
     truncated = bool(report.get("truncated")) or len(rows) < total
     harness_cut = bool(record.get("harnessTruncated"))
     report_status = report.get("status") or "?"
+
+    # The count is report.total. Without it (a cut response, or a server that
+    # left it out) the rows that arrived are a floor, never proof of zero.
+    if not total_seen and not rows:
+        return {**base, "state": "unknown", "reportStatus": report_status,
+                "summary": ("Impact unknown: the report arrived without its total "
+                            "and without rows" + (" (the harness cut the response)"
+                                                  if harness_cut else "") +
+                            ". This is not the same as 'no dependents'.")}
+    if not total_seen and (truncated or harness_cut):
+        return {**base, "state": "known", "reportStatus": report_status,
+                "total": len(rows), "shown": len(rows), "truncated": True, "users": rows,
+                "summary": (f"At least {len(rows)} dependents ({report_status}); the "
+                            f"total was not visible. The full list is in the ODC "
+                            f"Portal's impact analysis view.")}
 
     if total == 0:
         summary = (f"No dependents: the platform's deletion analysis found none "

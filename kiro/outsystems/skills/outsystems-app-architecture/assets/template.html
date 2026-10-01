@@ -337,8 +337,8 @@
             <span class="meta-value" id="hdr-type">—</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Status</span>
-            <span class="meta-value" style="display:flex;align-items:center;gap:8px;"><span class="pulse"></span>Live</span>
+            <span class="meta-label">Deployed</span>
+            <span class="meta-value" style="display:flex;align-items:center;gap:8px;"><span class="pulse" id="hdr-pulse" style="display:none"></span><span id="hdr-deployed">—</span></span>
           </div>
         </div>
       </header>
@@ -396,6 +396,8 @@
             <div class="ctx-row"><span class="ctx-key">Updated</span><span class="ctx-val" id="ctx-date">—</span></div>
             <div class="ctx-row"><span class="ctx-key">Inherited items</span><span class="ctx-val" id="ctx-inherited">—</span></div>
           </div>
+
+          <div id="deps-unavailable" class="ctx-block" style="display:none;color:var(--os-text-muted);font-size:11px;margin-bottom:12px"></div>
 
           <div id="deploy-wrap" style="display:none">
             <div class="panel-title"><span>Deployments</span><span id="deploy-asof" style="font-size:9px;letter-spacing:0.04em;text-transform:none;color:var(--os-text-dim)"></span></div>
@@ -550,6 +552,27 @@
       document.getElementById('ctx-rev').textContent  = `r${app.revision}`;
       document.getElementById('ctx-date').textContent = app.date || '—';
       document.getElementById('ctx-inherited').textContent = (D.inheritedBuiltinCount ? `${D.inheritedCount || 0} (${D.inheritedBuiltinCount} platform, hidden)` : String(D.inheritedCount || 0));
+
+      // ----- Dependencies that could not be fetched (never shown as "none") -----
+      if ((D.depsUnavailable || []).length) {
+        const box = document.getElementById('deps-unavailable');
+        box.textContent = `Not fetched: ${D.depsUnavailable.join(' and ')}. The Dependencies counts below leave them out; they do not mean "none".`;
+        box.style.display = '';
+      }
+
+      // ----- Header deployment summary (never a hardcoded "Live") -----
+      {
+        const envs = (D.deployments && D.deployments.envs) || [];
+        const up = envs.filter(e => e.status === 'deployed');
+        let summary;
+        if (!D.deployments) summary = 'not fetched';
+        else if (up.length) summary = up.map(e => e.n + (e.rev == null ? '' : ` r${e.rev}`)).join(' · ');
+        else if (envs.length && envs.every(e => e.status === 'n/a')) summary = 'n/a (library)';
+        else if (envs.length && envs.every(e => e.status === 'not-deployed')) summary = 'not deployed';
+        else summary = 'unknown';
+        document.getElementById('hdr-deployed').textContent = summary;
+        if (up.length) document.getElementById('hdr-pulse').style.display = '';
+      }
 
       // ----- Deployments (time-sensitive: shown with their "as of") -----
       if (D.deployments && (D.deployments.envs || []).length) {

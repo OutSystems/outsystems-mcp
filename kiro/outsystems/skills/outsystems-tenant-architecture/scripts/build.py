@@ -492,6 +492,9 @@ def _is_int(v) -> bool:
 # app_list
 # ---------------------------------------------------------------------------
 
+APP_LIST_SMALL_LIMIT = 50   # the page size SKILL.md gives for harnesses that truncate results
+
+
 def _merge_pages(pages: list[dict]) -> tuple[list[dict], int]:
     """Concatenate app_list pages, de-duplicated by assetKey, in order.
 
@@ -507,9 +510,10 @@ def _merge_pages(pages: list[dict]) -> tuple[list[dict], int]:
             raise KeyError("results")
         if "truncated" not in page:
             # The envelope is what tells us whether this page is the whole
-            # tenant; a saved page must keep it. A 500-row page without it is
-            # almost certainly a clamped first page that was re-shaped.
-            if len(page["results"]) >= APP_LIST_MAX_LIMIT:
+            # tenant; a saved page must keep it. A page as long as either page
+            # size the skill uses (500, or 50 on a truncating harness) without
+            # it is almost certainly a clamped page that was re-shaped.
+            if len(page["results"]) >= APP_LIST_SMALL_LIMIT:
                 raise BadPage(
                     f"page {i} has {len(page['results'])} rows but no envelope "
                     f"(truncated/total/next_offset missing); save the app_list "
@@ -608,7 +612,9 @@ def _merge_deployments(env: dict, pages: list[dict]) -> tuple[list[dict], dict]:
                        f"next page (this server takes no offset, or the listing was cut "
                        f"short upstream); the rest could not be fetched"),
         }
-    if len(rows) >= total:
+    # A last page that says more rows exist wins over a count that looks
+    # whole (a page without `total` falls back to the rows seen so far).
+    if len(rows) >= total and not (last.get("truncated") is True and _is_int(last.get("next_offset"))):
         return rows, {"status": "complete", "shown": len(rows), "total": total}
     if last.get("truncated") is True:
         raise IncompleteOverlay(
@@ -767,6 +773,11 @@ def _merge_health(env: dict, pages: list[dict]) -> tuple[list[dict], dict]:
     elif len(rows) < total:
         status.update(status="partial",
                       reason=f"the pages passed carry {len(rows)} of {total} rows")
+    elif len(pages) > 1 and not _is_int(last.get("total")):
+        # Several pages add up only against the server's `total`; without it a
+        # missing middle page would pass as complete.
+        status.update(status="partial",
+                      reason="the pages carry no total, so their completeness cannot be checked")
     else:
         # One page with no noData is the server's own proof. Several pages
         # that end on nextPageOffset 0 and add up to `total` are complete by
@@ -874,9 +885,29 @@ def _health(envs_raw: list[dict], assets: list[dict], deployments: dict | None,
     return data, incomplete, all_paths
 
 
+# datetime.fromisoformat before Python 3.11 rejects fractions that are not 3
+# or 6 digits, and the server writes 5 to 7: parse by hand instead.
+_ISO_TS = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:?\d{2})?$")
+
+
+def _parse_iso(value):
+    """Aware UTC datetime for an ISO-8601 string; raises ValueError otherwise."""
+    m = _ISO_TS.match(value.strip()) if isinstance(value, str) else None
+    if not m:
+        raise ValueError(f"not an ISO-8601 timestamp: {value!r}")
+    y, mo, d, h, mi, sec, frac, tz = m.groups()
+    us = int((frac or "0")[:6].ljust(6, "0"))
+    dt = datetime.datetime(int(y), int(mo), int(d), int(h or 0), int(mi or 0), int(sec or 0), us,
+                           tzinfo=datetime.timezone.utc)
+    if tz and tz != "Z":
+        digits = tz[1:].replace(":", "")
+        offset = datetime.timedelta(hours=int(digits[:2]), minutes=int(digits[2:]))
+        dt = dt - offset if tz[0] == "+" else dt + offset
+    return dt
+
+
 def _window_hours(since: str | None, to: str | None) -> int | None:
-    def parse(s):
-        return datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+    parse = _parse_iso
     try:
         return round((parse(to) - parse(since)).total_seconds() / 3600)
     except (TypeError, ValueError, AttributeError):
@@ -1210,8 +1241,7 @@ def _ai(assets: list[dict], args) -> tuple[dict, list[str], list[pathlib.Path]]:
         stale = False
         if date:
             try:
-                d = datetime.datetime.fromisoformat(date.replace("Z", "+00:00"))
-                d = d if d.tzinfo else d.replace(tzinfo=datetime.timezone.utc)
+                d = _parse_iso(date)
                 stale = (now - d).days > AI_STALE_DAYS
             except ValueError:
                 pass
