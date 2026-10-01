@@ -24,7 +24,7 @@ Only the status field says an operation ended. For a mentor run, `complete` is a
 
 ## Return while it is still running
 
-When the sleeps you have run add up to 240 seconds and the operation is still not terminal, stop and return `OUTCOME: running`. The caller's conversation is cheap to read again only while it was last used within about five minutes; a longer silence makes it pay full price to reload all of it, which can cost more than the polls you saved. One short report every four minutes keeps it cheap, and the caller relaunches you where you stopped.
+When the sleeps you have run add up to 180 seconds and the operation is still not terminal, stop and return `OUTCOME: running`. The caller's conversation is cheap to read again only while it was last used within about five minutes; a longer silence makes it pay full price to reload all of it, which can cost more than the polls you saved. Your polls take time on top of the sleeps, so 180 seconds of sleep keeps that silence near four minutes, and the caller relaunches you where you stopped.
 
 ## Stop early and return when
 
