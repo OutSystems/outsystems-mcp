@@ -534,3 +534,33 @@ def test_missing_refs_marks_libraries_as_not_fetched():
     assert bundle["depsUnavailable"] == ["libraries"]
     assert "deps-unavailable" in (build.pathlib.Path(build.__file__).parent.parent
                                   / "assets" / "template.html").read_text(encoding="utf-8")
+
+
+SERVER_ERROR = {"error": "UpstreamError: upstream timed out",
+                "data": {"category": "UpstreamError", "code": "upstream_error"}}
+
+
+def test_server_error_shape_with_data_metadata_is_an_error_not_data(tmp_path):
+    assert build._is_error_result(SERVER_ERROR)
+    assert not build._is_error_result({"data": [], "error": None})
+    f = tmp_path / "err.json"
+    f.write_text(json.dumps(SERVER_ERROR), encoding="utf-8")
+    # A failed env_apps call renders "unknown", never "not deployed".
+    raw, _ = _quiet(build._read_optional, f, "env-apps d")
+    dep = build._build_deployments(ENVS, {"d": raw}, APP, 13, "2026-09-29T10:00:00Z")
+    assert {e["n"]: e for e in dep["envs"]}["dev"]["status"] == "unknown"
+    # A failed context_connections call degrades instead of stopping the build.
+    bundle, err = _quiet(build._build_from_raw, _args(connections=[f], refs=FX / "refs.json"))
+    assert bundle["depsUnavailable"] == ["AI model connections"]
+
+
+def test_refs_coverage_is_kept_and_shown():
+    raw = json.loads((FX / "refs.json").read_text(encoding="utf-8"))
+    assert build._refs_coverage(raw) == {"source": "context-service", "indexedKinds": None}
+    raw["indexedKinds"] = ["entities"]
+    assert build._refs_coverage(raw) == {"source": "context-service", "indexedKinds": ["entities"]}
+    assert build._refs_coverage({"source": "oml-fallback", "references": []})["source"] == "oml-fallback"
+    bundle = _fixture_bundle(refs=FX / "refs.json", connections=[FX / "connections.json"])
+    assert bundle["refsCoverage"]["source"] == "context-service"
+    html = (_SCRIPTS.parent / "assets" / "template.html").read_text(encoding="utf-8")
+    assert "D.refsCoverage" in html and "may be missing" in html

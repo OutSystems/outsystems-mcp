@@ -138,19 +138,20 @@ user said "refresh" / "rescan" / "fresh data", start the folder over:
 rm -rf "<cache-folder>/impact" && mkdir -p "<cache-folder>/impact/raw"
 ```
 
-Branch C always runs fresh, in its own folder, so the page shows only the
-named targets and never an older map's records — one analysis takes
-seconds:
+Branch C never reuses records; it starts its own folder in Step 3.
+
+### Step 3 — Targets and the asset list
+
+**Branch C:** start a fresh folder for this question, so the page shows
+only the targets named now and never an earlier run's records (one
+analysis takes seconds):
 
 ```bash
 rm -rf "<cache-folder>/impact-named" && mkdir -p "<cache-folder>/impact-named/raw"
 ```
 
-In Branch C, read `impact-named` wherever the steps below say `impact`.
-
-### Step 3 — Targets and the asset list
-
-**Branch C:** resolve each named target with `app_list`
+Read `impact-named` wherever the steps below say `impact`. Then resolve
+each named target with `app_list`
 `{search: "<name>"}` (1 match → use it; several → ask the user to pick;
 0 → ask for a more specific name). Save the matching page(s) as
 `<cache-folder>/tenant-assets.json`.
@@ -360,6 +361,7 @@ python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>"
     unknownCount,      // includes refusedCount
     refusedCount,      // launch refused / type skipped
     edgeCount,         // sum of report.total over known targets
+    edgeCountIsLowerBound, // a known target's report had no visible total
     consumerCount,     // distinct consumer assets in the listed rows
   },
   byTarget: {
@@ -368,7 +370,7 @@ python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>"
       state: "known" | "unknown" | "refused",
       summary,                             // the sentence the page shows
       analysisKey, processStatus, reportStatus,
-      total, shown, truncated,
+      total, totalKnown, shown, truncated,   // totalKnown false: total = rows seen, a floor
       users: [{ k, n, t, sev, rank, indirect,
                 envs: [{ e, en, r, s, c }] }]   // env key/name, revision, severity, consumerType
     }

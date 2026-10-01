@@ -399,3 +399,12 @@ def test_cut_report_without_total_is_never_no_dependents():
                                  "result": status}})
     t = b["byTarget"][LIB_CORE]
     assert t["state"] == "known" and t["truncated"] and t["summary"].startswith("At least 1 dependent")
+    # Every counter carries the lower bound, not an exact count.
+    assert t["totalKnown"] is False and b["stats"]["edgeCountIsLowerBound"] is True
+    html, b2 = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                     "result": status}})
+    assert "edgeCountIsLowerBound ? '≥'" in html and "t.totalKnown === false" in html
+    _, exact = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                     "result": fx("status-deletion-inventory-core.json")}})
+    assert exact["byTarget"][LIB_CORE]["totalKnown"] is True
+    assert exact["stats"]["edgeCountIsLowerBound"] is False

@@ -184,7 +184,8 @@ def main(argv: list[str]) -> int:
     print(f"wrote {out_path} ({size_kb:.1f} KB)")
     print(f"  targets: {s['targetCount']} analysed · {s['knownCount']} impact known · "
           f"{s['unknownCount']} impact unknown ({s['refusedCount']} not available)")
-    print(f"  dependents: {s['edgeCount']} (sum of report totals) · "
+    print(f"  dependents: {'at least ' if s.get('edgeCountIsLowerBound') else ''}"
+          f"{s['edgeCount']} (sum of report totals) · "
           f"{s['consumerCount']} distinct consumer assets listed")
     return 0
 
@@ -235,6 +236,8 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
             "unknownCount":  len(by_target) - len(known),
             "refusedCount":  len(refused),
             "edgeCount":     sum(t["total"] for t in known),
+            # True when a known target's count is only the rows that arrived.
+            "edgeCountIsLowerBound": any(t.get("totalKnown") is False for t in known),
             "consumerCount": len(consumers),
         },
         "byTarget": by_target,
@@ -316,7 +319,8 @@ def classify_target(record: dict, meta: dict, env_names: dict) -> dict:
                             ". This is not the same as 'no dependents'.")}
     if not total_seen and (truncated or harness_cut):
         return {**base, "state": "known", "reportStatus": report_status,
-                "total": len(rows), "shown": len(rows), "truncated": True, "users": rows,
+                "total": len(rows), "totalKnown": False,
+                "shown": len(rows), "truncated": True, "users": rows,
                 "summary": (f"At least {len(rows)} dependents ({report_status}); the "
                             f"total was not visible. The full list is in the ODC "
                             f"Portal's impact analysis view.")}
@@ -334,7 +338,8 @@ def classify_target(record: dict, meta: dict, env_names: dict) -> dict:
         summary = f"{total} dependent{'' if total == 1 else 's'} ({report_status})."
 
     return {**base, "state": "known", "reportStatus": report_status,
-            "total": total, "shown": len(rows), "truncated": truncated or harness_cut,
+            "total": total, "totalKnown": True,
+            "shown": len(rows), "truncated": truncated or harness_cut,
             "users": rows, "summary": summary}
 
 

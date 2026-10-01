@@ -424,7 +424,7 @@
       document.getElementById('s-unknown').textContent   = S.unknownCount;
       document.getElementById('s-unknown-detail').textContent =
         S.refusedCount ? `${S.refusedCount} not available for the type` : 'failed / unfinished';
-      document.getElementById('s-edges').textContent     = S.edgeCount;
+      document.getElementById('s-edges').textContent     = (S.edgeCountIsLowerBound ? '≥' : '') + S.edgeCount;
       document.getElementById('s-consumers').textContent = S.consumerCount;
 
       // Most-depended-on first; targets without a verdict sort last.
@@ -444,6 +444,7 @@
 
       function countLabel(t) {
         if (t.state !== 'known') return '?';
+        if (t.totalKnown === false) return `≥${t.shown}`;
         return t.shown < t.total ? `${t.shown}/${t.total}` : String(t.total);
       }
 
@@ -505,7 +506,7 @@
           ${t.state === 'known' && t.users.length ? `
           <div class="users-head">
             <div class="users-title">Assets that break if this is removed</div>
-            <div class="users-count">${t.shown < t.total ? `showing ${t.shown} of ${t.total}` : `${t.total} dependent${t.total === 1 ? '' : 's'}`}</div>
+            <div class="users-count">${t.totalKnown === false ? `at least ${t.shown} (total not visible)` : t.shown < t.total ? `showing ${t.shown} of ${t.total}` : `${t.total} dependent${t.total === 1 ? '' : 's'}`}</div>
           </div>
           <div class="users-table-wrap">
             <table class="users">

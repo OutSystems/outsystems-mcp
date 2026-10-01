@@ -159,7 +159,10 @@ def _is_error_result(raw) -> bool:
         return False
     if raw.get("isError") is True:
         return True
-    return "error" in raw and not any(k in raw for k in ("results", "data", "references"))
+    # The server's error shape also carries `data` ({category, code}): a
+    # payload key only counts when it holds the list a successful answer has.
+    return "error" in raw and not any(isinstance(raw.get(k), list)
+                                      for k in ("results", "data", "references"))
 
 
 def _read_optional(path, label: str):
@@ -652,6 +655,17 @@ def _build_deps(refs_path, app_key: str) -> list:
     return _refs_deps(raw)
 
 
+def _refs_coverage(refs_raw):
+    """{source, indexedKinds} of an app_refs answer, or None. indexedKinds is
+    None when a context-service answer does not report it (unknown coverage);
+    it does not apply to an oml-fallback answer."""
+    if not isinstance(refs_raw, dict) or not isinstance(refs_raw.get("source"), str):
+        return None
+    kinds = refs_raw.get("indexedKinds")
+    return {"source": refs_raw["source"],
+            "indexedKinds": [k for k in kinds if isinstance(k, str)] if isinstance(kinds, list) else None}
+
+
 REFS_CACHE_MAX_AGE = 24 * 3600
 
 
@@ -1027,6 +1041,10 @@ def _build_from_raw(args) -> dict:
         "roles":             roles,
         "deps":              deps,
         "depsSource":        deps_source,   # where the library refs came from; None = unavailable
+        # What the references cover: a context-service answer lists only the
+        # element kinds in indexedKinds (often just entities), and one without
+        # it comes from a server whose coverage is unknown.
+        "refsCoverage":      _refs_coverage(refs_raw if deps_source == "app_refs" else None),
         # Parts of Dependencies that could not be fetched, so an empty layer is
         # never read as "no dependencies".
         "depsUnavailable":   ([] if deps_source else ["libraries"]) +
@@ -1261,6 +1279,14 @@ def main(argv: list) -> int:
         print("  deployed: " + " · ".join(
             f"{e['n']} " + (f"r{e.get('rev')}" if e["status"] == "deployed" else e["status"])
             for e in dep["envs"]) + f" (as of {dep['fetchedAt']})")
+    if bundle.get("depsUnavailable"):
+        print("  dependencies not fetched: " + ", ".join(bundle["depsUnavailable"]))
+    cov = bundle.get("refsCoverage")
+    if cov and cov.get("source") == "context-service":
+        kinds = cov.get("indexedKinds")
+        print("  library coverage: references indexed for " + ", ".join(kinds)
+              + " only; libraries used through other kinds may be missing" if kinds else
+              "  library coverage: unknown (the server does not report indexedKinds)")
     return 0
 
 

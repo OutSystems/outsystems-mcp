@@ -553,11 +553,23 @@
       document.getElementById('ctx-date').textContent = app.date || '—';
       document.getElementById('ctx-inherited').textContent = (D.inheritedBuiltinCount ? `${D.inheritedCount || 0} (${D.inheritedBuiltinCount} platform, hidden)` : String(D.inheritedCount || 0));
 
-      // ----- Dependencies that could not be fetched (never shown as "none") -----
-      if ((D.depsUnavailable || []).length) {
-        const box = document.getElementById('deps-unavailable');
-        box.textContent = `Not fetched: ${D.depsUnavailable.join(' and ')}. The Dependencies counts below leave them out; they do not mean "none".`;
-        box.style.display = '';
+      // ----- Dependencies that could not be fetched or are only partly
+      // covered (never shown as "none") -----
+      {
+        const notes = [];
+        if ((D.depsUnavailable || []).length)
+          notes.push(`Not fetched: ${D.depsUnavailable.join(' and ')}. The Dependencies counts below leave them out; they do not mean "none".`);
+        const cov = D.refsCoverage;
+        if (cov && cov.source === 'context-service') {
+          notes.push(cov.indexedKinds && cov.indexedKinds.length
+            ? `Libraries come from the references the server indexes for: ${cov.indexedKinds.join(', ')}. A library used only through other element kinds (actions, structures, blocks, themes) may be missing.`
+            : 'Libraries come from the server\'s reference index, whose coverage this server does not report: the list may be incomplete.');
+        }
+        if (notes.length) {
+          const box = document.getElementById('deps-unavailable');
+          box.textContent = notes.join(' ');
+          box.style.display = '';
+        }
       }
 
       // ----- Header deployment summary (never a hardcoded "Live") -----

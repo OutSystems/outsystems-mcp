@@ -328,6 +328,8 @@ that wrote it).
   (owned and inherited), enums, structures, roles, entity references,
   AI model connections, libraries (the second line `build.py` prints)
 - Deployment line `build.py` prints, with its "as of" time
+- The `library coverage:` and `dependencies not fetched:` lines when
+  `build.py` prints them: never present the library list as complete
 - Cache state — "used (Xs old)" or "refreshed"; mention any
   `note:`/`warning:` lines `build.py` printed (for example about records)
 
@@ -355,6 +357,7 @@ APP_DATA = {
   deps: [{ k, n, kind, cat: "AIModel"|"Library", rev }],   // connections first, deduped with app_refs
   depsSource: "app_refs"|null,                            // where the libraries came from
   depsUnavailable: ["libraries"?, "AI model connections"?], // parts not fetched: the page says so
+  refsCoverage: { source, indexedKinds: [string] | null } | null,  // what app_refs covers: the page says so
   deployments: { fetchedAt, latestRevision,
                  envs: [{ k, n, purpose, status: "deployed"|"not-deployed"|"unknown"|"n/a",
                           rev?, at?, behind?, reason? }] } | null,
@@ -381,6 +384,11 @@ Attr = { n, t, pk?, req?, len?, d?,
 - `deployments.envs[].status` is `unknown` when the environment's
   `env_apps` response was not fetched, or was truncated without a row
   for this app key.
+- `refsCoverage`: a `context-service` answer lists only the element kinds
+  in `indexedKinds` (often just `entities`), so a library the app uses
+  only through actions, structures, blocks or themes can be missing; the
+  page and your report must say which kinds were covered (unknown when
+  `indexedKinds` is null). It does not apply to an `oml-fallback` answer.
 - Built-in OutSystems modules are filtered out of `deps`. `deps` is
   empty when neither connections nor refs were available; the template
   hides the Dependencies layer then.
