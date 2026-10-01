@@ -386,9 +386,10 @@ Attr = { n, t, pk?, req?, len?, d?,
   for this app key.
 - `refsCoverage`: a `context-service` answer lists only the element kinds
   in `indexedKinds` (often just `entities`), so a library the app uses
-  only through actions, structures, blocks or themes can be missing; the
-  page and your report must say which kinds were covered (unknown when
-  `indexedKinds` is null). It does not apply to an `oml-fallback` answer.
+  only through actions, structures, blocks or themes can be missing, and
+  even a listed kind is not proven complete; the page and your report
+  must say which kinds were covered (unknown when `indexedKinds` is null)
+  and never present the list as complete. It does not apply to an `oml-fallback` answer.
 - Built-in OutSystems modules are filtered out of `deps`. `deps` is
   empty when neither connections nor refs were available; the template
   hides the Dependencies layer then.

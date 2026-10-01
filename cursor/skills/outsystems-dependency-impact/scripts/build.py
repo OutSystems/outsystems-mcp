@@ -317,11 +317,14 @@ def classify_target(record: dict, meta: dict, env_names: dict) -> dict:
                             "and without rows" + (" (the harness cut the response)"
                                                   if harness_cut else "") +
                             ". This is not the same as 'no dependents'.")}
-    if not total_seen and (truncated or harness_cut):
+    if not total_seen:
+        # No total at all, with or without a truncation hint: the rows that
+        # arrived are a floor, never an exact count.
         return {**base, "state": "known", "reportStatus": report_status,
                 "total": len(rows), "totalKnown": False,
                 "shown": len(rows), "truncated": True, "users": rows,
-                "summary": (f"At least {len(rows)} dependents ({report_status}); the "
+                "summary": (f"At least {len(rows)} dependent{'' if len(rows) == 1 else 's'} "
+                            f"({report_status}); the "
                             f"total was not visible. The full list is in the ODC "
                             f"Portal's impact analysis view.")}
 

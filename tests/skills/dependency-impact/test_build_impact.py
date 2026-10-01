@@ -403,8 +403,21 @@ def test_cut_report_without_total_is_never_no_dependents():
     assert t["totalKnown"] is False and b["stats"]["edgeCountIsLowerBound"] is True
     html, b2 = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
                                      "result": status}})
-    assert "edgeCountIsLowerBound ? '≥'" in html and "t.totalKnown === false" in html
+    assert "S.edgeCountIsLowerBound !== false ? '≥'" in html and "t.totalKnown !== true" in html
     _, exact = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
                                      "result": fx("status-deletion-inventory-core.json")}})
     assert exact["byTarget"][LIB_CORE]["totalKnown"] is True
     assert exact["stats"]["edgeCountIsLowerBound"] is False
+
+
+def test_report_without_total_or_truncation_hint_is_still_a_lower_bound():
+    status = fx("status-deletion-inventory-core.json")
+    status["report"].pop("total", None)
+    status["report"].pop("truncated", None)
+    html, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                    "result": status}})
+    t = b["byTarget"][LIB_CORE]
+    assert t["totalKnown"] is False and t["summary"].startswith("At least 1 dependent ")
+    assert b["stats"]["edgeCountIsLowerBound"] is True
+    # An older bundle without the certainty fields reads as a floor, not exact.
+    assert "t.totalKnown !== true" in html and "S.edgeCountIsLowerBound !== false" in html

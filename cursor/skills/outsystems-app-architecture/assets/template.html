@@ -562,8 +562,11 @@
         const cov = D.refsCoverage;
         if (cov && cov.source === 'context-service') {
           notes.push(cov.indexedKinds && cov.indexedKinds.length
-            ? `Libraries come from the references the server indexes for: ${cov.indexedKinds.join(', ')}. A library used only through other element kinds (actions, structures, blocks, themes) may be missing.`
+            ? `Libraries come from the references the server indexes for: ${cov.indexedKinds.join(', ')}. The list may be incomplete: a library used only through other element kinds (actions, structures, blocks, themes) can be missing, and even the indexed kinds are not proven complete.`
             : 'Libraries come from the server\'s reference index, whose coverage this server does not report: the list may be incomplete.');
+        } else if (cov === undefined && D.depsSource) {
+          // A bundle written before coverage was recorded: assume the worst.
+          notes.push('Library coverage was not recorded for this data: the list may be incomplete. Refresh to see what the server covers.');
         }
         if (notes.length) {
           const box = document.getElementById('deps-unavailable');

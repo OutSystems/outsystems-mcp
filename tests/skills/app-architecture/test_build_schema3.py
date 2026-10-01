@@ -563,4 +563,16 @@ def test_refs_coverage_is_kept_and_shown():
     bundle = _fixture_bundle(refs=FX / "refs.json", connections=[FX / "connections.json"])
     assert bundle["refsCoverage"]["source"] == "context-service"
     html = (_SCRIPTS.parent / "assets" / "template.html").read_text(encoding="utf-8")
-    assert "D.refsCoverage" in html and "may be missing" in html
+    assert "D.refsCoverage" in html and "can be missing" in html
+
+
+def test_refs_cache_fallback_keeps_coverage_and_wording_never_claims_completeness(tmp_path):
+    raw = json.loads((FX / "refs.json").read_text(encoding="utf-8"))
+    raw["indexedKinds"] = ["entities"]
+    assert build._refs_coverage(raw)["indexedKinds"] == ["entities"]
+    html = (_SCRIPTS.parent / "assets" / "template.html").read_text(encoding="utf-8")
+    assert "even the indexed kinds are not proven complete" in html
+    # A bundle written before coverage was recorded is treated as unknown coverage.
+    assert "cov === undefined && D.depsSource" in html
+    src = (_SCRIPTS / "build.py").read_text(encoding="utf-8")
+    assert '"refsCoverage":      _refs_coverage(refs_raw),' in src

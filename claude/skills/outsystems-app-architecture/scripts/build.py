@@ -1044,7 +1044,7 @@ def _build_from_raw(args) -> dict:
         # What the references cover: a context-service answer lists only the
         # element kinds in indexedKinds (often just entities), and one without
         # it comes from a server whose coverage is unknown.
-        "refsCoverage":      _refs_coverage(refs_raw if deps_source == "app_refs" else None),
+        "refsCoverage":      _refs_coverage(refs_raw),
         # Parts of Dependencies that could not be fetched, so an empty layer is
         # never read as "no dependencies".
         "depsUnavailable":   ([] if deps_source else ["libraries"]) +
@@ -1285,7 +1285,7 @@ def main(argv: list) -> int:
     if cov and cov.get("source") == "context-service":
         kinds = cov.get("indexedKinds")
         print("  library coverage: references indexed for " + ", ".join(kinds)
-              + " only; libraries used through other kinds may be missing" if kinds else
+              + " only; the list may be incomplete, even for those kinds" if kinds else
               "  library coverage: unknown (the server does not report indexedKinds)")
     return 0
 
