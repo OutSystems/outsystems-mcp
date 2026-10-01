@@ -1,0 +1,25 @@
+{
+ "results": [
+  {
+   "key": "a00000b6-0000-4000-8000-0000000000b6",
+   "name": "acme-dev",
+   "purpose": "Development",
+   "builtinDomain": "acme-dev.outsystems.app",
+   "region": "us-east-1"
+  },
+  {
+   "key": "a000011f-0000-4000-8000-00000000011f",
+   "name": "acme-test",
+   "purpose": "NonProduction",
+   "builtinDomain": "acme-test.outsystems.app",
+   "region": "us-east-1"
+  },
+  {
+   "key": "a000003f-0000-4000-8000-00000000003f",
+   "name": "acme",
+   "purpose": "Production",
+   "builtinDomain": "acme.outsystems.app",
+   "region": "us-east-1"
+  }
+ ]
+}

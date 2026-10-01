@@ -1,0 +1,26 @@
+{
+ "_comment": "SYNTHETIC: no Production env_apps call was recorded. Shape from the env_apps outputSchema (DeployedApplication); the second row is a name-substring false positive (search is a server-side substring) with another applicationKey.",
+ "displayed": 2,
+ "total": 2,
+ "truncated": false,
+ "results": [
+  {
+   "applicationKey": "a0000077-0000-4000-8000-000000000077",
+   "buildKey": "00000000-0000-0000-0000-000000000009",
+   "deploymentDateTime": "2026-08-13T10:00:00.000Z",
+   "deploymentKey": "00000000-0000-0000-0000-000000000019",
+   "name": "IT Assets Portal",
+   "revision": 9,
+   "url": "https://acme.outsystems.app/ITAssetsPortal"
+  },
+  {
+   "applicationKey": "11111111-2222-3333-4444-555555555555",
+   "name": "IT Assets Portal Archive",
+   "revision": 4,
+   "deploymentDateTime": "2026-07-01T00:00:00.000Z",
+   "buildKey": null,
+   "deploymentKey": null,
+   "url": null
+  }
+ ]
+}

@@ -1,0 +1,41 @@
+{
+ "results": [
+  {
+   "builtinDomain": "acme-dev.outsystems.app",
+   "defaultDomain": "acme-dev.outsystems.app",
+   "hosting": "oscloud",
+   "key": "a00000b6-0000-4000-8000-0000000000b6",
+   "name": "acme-dev",
+   "order": 0,
+   "portfolioKey": "a00000a4-0000-4000-8000-0000000000a4",
+   "purpose": "Development",
+   "region": "us-east-1",
+   "status": "Ready"
+  },
+  {
+   "builtinDomain": "acme-test.outsystems.app",
+   "defaultDomain": "acme-test.outsystems.app",
+   "hosting": "oscloud",
+   "key": "a000011f-0000-4000-8000-00000000011f",
+   "name": "acme-test",
+   "order": 100,
+   "portfolioKey": "a00000a4-0000-4000-8000-0000000000a4",
+   "purpose": "NonProduction",
+   "region": "us-east-1",
+   "status": "Ready"
+  },
+  {
+   "builtinDomain": "acme.outsystems.app",
+   "defaultDomain": "acme.outsystems.app",
+   "hosting": "oscloud",
+   "key": "a000003f-0000-4000-8000-00000000003f",
+   "name": "acme",
+   "order": 1000,
+   "portfolioKey": "a00000a4-0000-4000-8000-0000000000a4",
+   "purpose": "Production",
+   "region": "us-east-1",
+   "status": "Ready"
+  }
+ ],
+ "_provenance": "env_list, dev tenant, recorded 2026-09-03; hostnames, names and keys anonymised"
+}

@@ -92,6 +92,17 @@ The mechanism prose in `## Authenticating` (whether a harness exposes an agent-c
 
 Separately, the "if sign-in itself errors" trigger condition is phrased identically in two of the five docs (`copilot/skill.md`, root `SKILL.md`); `claude/skills/outsystems/SKILL.md` carries the same opening clause plus a Desktop-specific exclusion for `npx` PATH resolution failures and stale OAuth grants, since only that doc's setup recipe covers those local causes; and the remaining two (`kiro/outsystems/skills/outsystems/SKILL.md`, `cursor/skills/outsystems/SKILL.md`) express the same rule as "if sign-in fails". Treat that phrase as a semantic alignment, not a 5/5 phrase-count case.
 
+### Exception: the bundled Beta skills
+
+Three more skills ship next to the main one: `outsystems-tenant-architecture`, `outsystems-app-architecture` and `outsystems-dependency-impact`. They are separate skills with their own triggers, not sections of the main skill doc, so the five-doc lockstep above does not apply to them. Their own rules:
+
+- **One source, two byte-identical copies.** `claude/skills/outsystems-<name>/` is the source; `cursor/skills/outsystems-<name>/` and `kiro/outsystems/skills/outsystems-<name>/` are exact copies, and `tests/skills/test_harness_copies.py` fails on any difference. Edit the Claude copy and re-copy (the test's docstring has the loop). Copilot and the root `SKILL.md` have no skill folders, so they do not get them.
+- **They need a shell and Python 3.7+.** Each one runs `scripts/build.py`, which reads the tool results the agent saved to disk and writes an HTML page. The scripts never call the MCP server and hold no sign-in. Claude Desktop's Chat tab has no shell and cannot run them; the README's "Beta skills" section says so.
+- **Tool names.** The SKILL.md bodies use the server's bare tool names. `allowed-tools` lists each tool twice, as `mcp__plugin_outsystems_outsystems__<tool>` and `mcp__outsystems__<tool>`, for the same reason as `claude/agents/status-watcher.md`. A tool a skill starts to read needs both entries.
+- **Cache location.** `build.py --cache-dir <id>` creates and prints the skill's cache folder under the shared `outsystems-skills` root, so the docs name no home-folder path (the directory validator rule above). `--skill <name>` prints a sibling skill's folder for reading its cache.
+- **Beta marking.** Each SKILL.md carries a `[Beta]` description prefix, `metadata.maturity: beta`, and the Beta Feature disclosure right after the frontmatter; each `agents/openai.yaml` carries `(Beta)` in `display_name` and a `[Beta]` prefix on `short_description`; the README's "Beta skills" section lists them. Promoting one out of Beta removes all of these in one commit.
+- **Tests.** `tests/skills/<name>/` holds each script's offline suite and its fixtures, kept outside the plugin folders so they do not ship to users. The fixtures are anonymised recordings: never commit real tenant data, hostnames or names. `python3 -m pytest tests/skills` runs everything, and `.github/workflows/skills-tests.yml` runs it on every pull request that touches these paths.
+
 ### The Claude plugin declares the MCP server
 
 Since 0.20.0 the plugin's `claude/.mcp.json` declares the `outsystems` HTTP server with `"url": "https://${user_config.tenant_hostname}/mcp"`, and `claude/.claude-plugin/plugin.json` declares the `tenant_hostname` option under `userConfig` (`required: true`). Facts that constrain edits here, all checked on Claude Code 2.1.236:

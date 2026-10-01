@@ -5,6 +5,7 @@ Work with your OutSystems Developer Cloud tenant from Claude Code: edit apps, pu
 ## What is inside
 
 - The `outsystems` skill, which teaches Claude how to use the OutSystems MCP tools.
+- Three Beta skills that draw your tenant and its apps as interactive HTML pages: `outsystems-tenant-architecture`, `outsystems-app-architecture` and `outsystems-dependency-impact`. They run a Python 3 script on your machine, so they need a shell (Claude Code has one; Claude Desktop's Chat tab does not). Beta Features can change or be discontinued; terms: https://www.outsystems.com/legal/beta-features-agreement
 - The `/outsystems-feedback` slash command, which sends feedback about the agent experience to OutSystems. It is tested in Claude Code; Anthropic's plugin docs say Cowork also runs plugin commands (typed as `/outsystems:outsystems-feedback`) and claude.ai chat loads them as skills, which this project has not tested yet.
 - The OutSystems MCP server entry. In Claude Code its URL is built from the tenant hostname you enter at install time (`tenant_hostname`, for example `mycompany.outsystems.dev`). In claude.ai chat and in Cowork, Claude skips a server entry whose URL depends on such an option and does not ask for the value, so there the plugin delivers the skill without the server.
 
@@ -14,6 +15,6 @@ Run `claude plugin marketplace add OutSystems/outsystems-mcp`, then `claude plug
 
 ## Data
 
-Requests go only to your own OutSystems tenant at `https://<my-tenant>/mcp`, where you sign in with your tenant account; OutSystems hosts that server. Feedback sent with `/outsystems-feedback` goes to OutSystems. Privacy: https://www.outsystems.com/legal/terms-of-use/privacy-statement
+Requests go only to your own OutSystems tenant at `https://<my-tenant>/mcp`, where you sign in with your tenant account; OutSystems hosts that server. The Beta skills write their HTML pages and a cache to your machine; a page embeds your tenant data and, when opened in a browser, loads a graph library and fonts from public CDNs. Feedback sent with `/outsystems-feedback` goes to OutSystems. Privacy: https://www.outsystems.com/legal/terms-of-use/privacy-statement
 
 On Claude Desktop's Chat tab, the skill's setup recipe (it runs only when you ask for that setup) installs the `mcp-remote` package (0.14.0 or later) from the npm registry and adds an `outsystems` entry to `claude_desktop_config.json` that starts it with `npx` as a local proxy to `https://<my-tenant>/mcp`. That proxy runs on your machine, opens the browser sign-in for your tenant, and talks only to your tenant; it is not one of the plugin's declared servers. In Claude Code the plugin's declared server connects to `https://<my-tenant>/mcp` directly and installs nothing.

@@ -1,0 +1,34 @@
+{
+ "analysisKey": "a0000039-0000-4000-8000-000000000039",
+ "assetKey": "a000007e-0000-4000-8000-00000000007e",
+ "impactKnown": true,
+ "processStatus": "Finished",
+ "report": {
+  "displayed": 1,
+  "impactedAssets": [
+   {
+    "applicationKey": "a0000072-0000-4000-8000-000000000072",
+    "assetKey": "a0000072-0000-4000-8000-000000000072",
+    "deployedRevisions": [
+     {
+      "consumerType": "LibraryDirect",
+      "environmentKey": "a00000b6-0000-4000-8000-0000000000b6",
+      "indirectDependencies": [],
+      "indirectLibraryHint": null,
+      "revision": 4,
+      "severity": "Warning"
+     }
+    ],
+    "name": "Inventory Inspections",
+    "portfolioKey": "a00000a4-0000-4000-8000-0000000000a4",
+    "portfolioName": "Portfolio",
+    "type": "MobileApplication"
+   }
+  ],
+  "status": "WarningsFound",
+  "total": 1,
+  "truncated": false
+ },
+ "startedAt": "2026-09-03T13:25:20.5006589Z",
+ "type": "Deletion"
+}

@@ -1,0 +1,384 @@
+#!/usr/bin/env python3
+"""End-to-end tests for build.py: deletion-impact records in, HTML out.
+
+Runnable two ways:
+    python3 test_build_impact.py      # standalone, no deps
+    pytest scripts/tests/             # discovered as test_* functions
+
+Every test runs build.py as a subprocess (fresh mode) and reads the data
+bundle back out of the rendered HTML, so what is asserted is what the page
+renders.
+
+Fixture provenance (tests/fixtures/). Recorded live on a dev tenant,
+2026-09-03, through the remote MCP server, then anonymised (hostnames, keys
+and names replaced):
+    launch-deletion-*.json          deploy_impact {key, delete: true} responses
+    status-deletion-*.json          deploy_impact_status {analysis_id, kind}
+                                    terminal responses (Inventory Core Library:
+                                    1 dependent, WarningsFound; OutSystems UI:
+                                    74 dependents, ErrorsFound; portfolio
+                                    fields dropped, nothing else changed)
+    launch-deletion-testlib.json    a launch whose poll was never made correctly
+                                    (the recorded poll used `analysisKey`)
+    tool-error-validation.json      that poll's real error envelope
+    tenant-assets.json, env-list.json  trimmed tenant asset list / env_list
+Derived (the shapes the server emits, but not recorded on that tenant): the
+capped 200-of-N report, the Failed / Unknown / Finished-without-verdict
+results and the `analysis_launch_rejected` launch. Each derivation is next to
+the test that uses it.
+"""
+import copy
+import json
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
+
+HERE = pathlib.Path(__file__).resolve().parent
+BUILD = HERE.parents[2] / "claude" / "skills" / "outsystems-dependency-impact" / "scripts" / "build.py"
+FIX = HERE / "fixtures"
+
+LIB_CORE = "a000007e-0000-4000-8000-00000000007e"   # Inventory Core Library
+OS_UI = "a00000ba-0000-4000-8000-0000000000ba"       # OutSystems UI
+TESTLIB = "a000005a-0000-4000-8000-00000000005a"     # TestLib
+AGENT = "a0000065-0000-4000-8000-000000000065"       # an Agent asset
+CONN = "a00000fd-0000-4000-8000-0000000000fd"        # an AIModelConnection asset
+
+FORBIDDEN_FOR_UNKNOWN = ("No dependents", "no issues", "NoIssuesFound", "safe")
+
+
+def fx(name):
+    return json.loads((FIX / name).read_text(encoding="utf-8"))
+
+
+def run_build(records: dict, env_list=True):
+    """Write one record per target, run build.py, return (html, bundle)."""
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        impact = td / "impact"
+        impact.mkdir()
+        for key, rec in records.items():
+            (impact / f"{key}.json").write_text(json.dumps({"targetKey": key, **rec}),
+                                                encoding="utf-8")
+        out = td / "out.html"
+        cmd = [sys.executable, str(BUILD), str(td / "cache"), str(out),
+               "--impact-dir", str(impact),
+               "--tenant-assets", str(FIX / "tenant-assets.json"),
+               "--tenant-id", "tenant-under-test"]
+        if env_list:
+            cmd += ["--env-list", str(FIX / "env-list.json")]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        html = out.read_text(encoding="utf-8")
+    m = re.search(r"const IMPACT_DATA = (\{.*?\});\n", html, re.S)
+    assert m, "IMPACT_DATA not injected"
+    return html, json.loads(m.group(1).replace("<\\/", "</"))
+
+
+def test_real_deletion_reports_list_the_dependents():
+    html, b = run_build({
+        LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                    "result": fx("status-deletion-inventory-core.json")},
+        OS_UI: {"launch": fx("launch-deletion-outsystems-ui.json"),
+                "result": fx("status-deletion-outsystems-ui.json")},
+    })
+    core = b["byTarget"][LIB_CORE]
+    assert core["state"] == "known"
+    assert core["n"] == "Inventory Core Library" and core["kind"] == "LowCodeLibrary"
+    assert core["total"] == 1 and core["shown"] == 1
+    user = core["users"][0]
+    assert user["n"] == "Inventory Inspections" and user["t"] == "MobileApplication"
+    assert user["sev"] == "Warning"
+    assert user["envs"][0]["en"] == "acme-dev"   # env name resolved
+    assert user["envs"][0]["r"] == 4 and user["envs"][0]["c"] == "LibraryDirect"
+    assert "Inventory Inspections" in html
+
+    ui = b["byTarget"][OS_UI]
+    assert ui["state"] == "known" and ui["reportStatus"] == "ErrorsFound"
+    assert ui["total"] == 74 and ui["shown"] == 74 and not ui["truncated"]
+    assert ui["summary"] == "74 dependents (ErrorsFound)."
+    # worst severity across environments wins, errors sort first
+    assert ui["users"][0]["sev"] == "Error"
+    assert "Banking Sync Services" in html
+    assert b["stats"]["edgeCount"] == 75
+    assert b["stats"]["knownCount"] == 2 and b["stats"]["unknownCount"] == 0
+    assert b["tenant"]["id"] == "tenant-under-test"
+
+
+def test_capped_report_says_showing_n_of_m():
+    # Derived: the server caps impactedAssets at 200 and reports the real
+    # total with truncated: true. Built from the recorded OutSystems UI rows.
+    status = fx("status-deletion-outsystems-ui.json")
+    rows = status["report"]["impactedAssets"]
+    capped = []
+    for i in range(200):
+        r = copy.deepcopy(rows[i % len(rows)])
+        r["assetKey"] = r["applicationKey"] = f"{i:08d}-0000-0000-0000-000000000000"
+        capped.append(r)
+    status["report"].update(impactedAssets=capped, displayed=200, total=312,
+                            truncated=True)
+    html, b = run_build({OS_UI: {"launch": fx("launch-deletion-outsystems-ui.json"),
+                                 "result": status}})
+    ui = b["byTarget"][OS_UI]
+    assert ui["total"] == 312 and ui["shown"] == 200 and ui["truncated"]
+    assert ui["summary"].startswith("Showing 200 of 312 dependents")
+    assert "Showing 200 of 312" in html
+    assert b["stats"]["edgeCount"] == 312      # the real blast radius, not 200
+    assert "showing ${t.shown} of ${t.total}" in html   # table header wording
+
+
+def test_harness_cut_response_is_partial_not_complete():
+    # Codex truncates large MCP results; the skill keeps status/total from the
+    # visible tail and flags the record. Rows kept: 3 of 74.
+    status = fx("status-deletion-outsystems-ui.json")
+    status["report"]["impactedAssets"] = status["report"]["impactedAssets"][:3]
+    _, b = run_build({OS_UI: {"launch": fx("launch-deletion-outsystems-ui.json"),
+                              "result": status, "harnessTruncated": True}})
+    ui = b["byTarget"][OS_UI]
+    assert ui["state"] == "known" and ui["truncated"]
+    assert ui["summary"].startswith("Showing 3 of 74 dependents")
+    assert "harness cut the response" in ui["summary"]
+
+
+def _assert_unknown(target, reason_fragment):
+    assert target["state"] == "unknown", target
+    assert target["users"] == [] and target["total"] == 0
+    assert target["summary"].startswith("Impact unknown"), target["summary"]
+    assert reason_fragment in target["summary"], target["summary"]
+    assert "not the same as 'no dependents'" in target["summary"]
+    for word in FORBIDDEN_FOR_UNKNOWN:
+        assert word not in target["summary"], (word, target["summary"])
+
+
+def test_finished_without_verdict_is_impact_unknown():
+    # Derived: Finished but impactKnown false (the server withholds the report
+    # when the verdict is unrecognised or self-contradictory).
+    status = fx("status-deletion-inventory-core.json")
+    status["impactKnown"] = False
+    status.pop("report")
+    html, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                     "result": status}})
+    _assert_unknown(b["byTarget"][LIB_CORE], "finished without a verdict")
+    assert b["stats"]["unknownCount"] == 1 and b["stats"]["edgeCount"] == 0
+    assert "Impact unknown" in html
+
+
+def test_impact_known_false_with_a_stray_report_is_still_unknown():
+    # Belt and braces: never trust a report the server did not vouch for.
+    status = fx("status-deletion-inventory-core.json")
+    status["impactKnown"] = False
+    _, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                  "result": status}})
+    _assert_unknown(b["byTarget"][LIB_CORE], "finished without a verdict")
+
+
+def test_failed_analysis_is_impact_unknown_with_reason():
+    status = {"analysisKey": fx("launch-deletion-inventory-core.json")["analysisKey"],
+              "assetKey": LIB_CORE, "impactKnown": False, "processStatus": "Failed",
+              "error": {"message": "Dependency graph unavailable"}, "type": "Deletion"}
+    _, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                  "result": status}})
+    _assert_unknown(b["byTarget"][LIB_CORE], "failed (Dependency graph unavailable)")
+
+
+def test_unknown_process_status_is_impact_unknown():
+    status = {"analysisKey": fx("launch-deletion-inventory-core.json")["analysisKey"],
+              "impactKnown": False, "processStatus": "Unknown", "type": "Deletion"}
+    _, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                  "result": status, "gaveUp": "unknown-status"}})
+    _assert_unknown(b["byTarget"][LIB_CORE], "processStatus: Unknown")
+
+
+def test_still_in_progress_is_impact_unknown():
+    status = {"analysisKey": fx("launch-deletion-inventory-core.json")["analysisKey"],
+              "impactKnown": False, "processStatus": "InProgress", "type": "Deletion"}
+    _, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                  "result": status, "gaveUp": "still-in-progress"}})
+    _assert_unknown(b["byTarget"][LIB_CORE], "still in progress")
+
+
+def test_launched_but_never_polled_is_impact_unknown():
+    # Real: the recorded TestLib analysis was launched, but the poll used the
+    # wrong parameter name and errored, so no result exists.
+    _, b = run_build({TESTLIB: {"launch": fx("launch-deletion-testlib.json")}})
+    _assert_unknown(b["byTarget"][TESTLIB], "never polled")
+
+
+def test_errored_poll_saved_as_result_is_impact_unknown():
+    # Real error envelope from that same session, saved in place of a result.
+    _, b = run_build({TESTLIB: {"launch": fx("launch-deletion-testlib.json"),
+                                "result": fx("tool-error-validation.json")}})
+    _assert_unknown(b["byTarget"][TESTLIB], "Impact unknown")
+
+
+def _rejected(message):
+    # Derived from the real tool-error envelope, with the code and wording
+    # deploy_impact uses for a refused launch (src/clients/dependency.rs).
+    err = fx("tool-error-validation.json")
+    err["category"] = err["data"]["category"] = "UpstreamError"
+    err["data"]["code"] = "analysis_launch_rejected"
+    err["data"]["upstream_status"] = 400
+    err["error"] = f"UpstreamError: deletion analysis rejected by the Dependency Management API (400 Bad Request): {message}"
+    return err
+
+
+def test_refused_launch_says_not_available_for_the_type():
+    html, b = run_build({
+        AGENT: {"launch": _rejected("OS-DEP-40000 asset type not supported")},
+        CONN: {"skipped": "type-unsupported",
+               "probeError": _rejected("OS-DEP-40000 asset type not supported")},
+    })
+    agent = b["byTarget"][AGENT]
+    assert agent["state"] == "refused" and agent["kind"] == "Agent"
+    assert agent["summary"].startswith("Deletion analysis not available for this asset (Agent)")
+    assert "analysis_launch_rejected" in agent["summary"]
+    assert "Dependents unknown, not 'no dependents'" in agent["summary"]
+    conn = b["byTarget"][CONN]
+    assert conn["state"] == "refused" and conn["kind"] == "AIModelConnection"
+    assert "not available for this asset type (AIModelConnection)" in conn["summary"]
+    for t in (agent, conn):
+        assert t["users"] == []
+        for word in FORBIDDEN_FOR_UNKNOWN:
+            assert word not in t["summary"]
+    assert b["stats"]["refusedCount"] == 2 and b["stats"]["unknownCount"] == 2
+    assert "Deletion analysis not available" in html
+
+
+def test_unavailable_launch_is_unknown_and_retryable():
+    err = _rejected("")
+    err["data"]["code"] = "analysis_launch_unavailable"
+    err["error"] = "UpstreamError: deletion analysis could not reach the Dependency Management API (503 Service Unavailable)"
+    _, b = run_build({LIB_CORE: {"launch": err}})
+    t = b["byTarget"][LIB_CORE]
+    _assert_unknown(t, "could not be started (analysis_launch_unavailable")
+    assert "Worth retrying later" in t["summary"]
+
+
+def test_zero_dependents_only_from_a_real_verdict():
+    status = fx("status-deletion-inventory-core.json")
+    status["report"].update(impactedAssets=[], displayed=0, total=0,
+                            status="NoIssuesFound")
+    _, b = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                  "result": status}})
+    t = b["byTarget"][LIB_CORE]
+    assert t["state"] == "known" and t["total"] == 0
+    assert t["summary"].startswith("No dependents: the platform's deletion analysis found none")
+
+
+def test_cached_rerender_and_script_escaping():
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        impact = td / "impact"
+        impact.mkdir()
+        status = fx("status-deletion-inventory-core.json")
+        status["report"]["impactedAssets"][0]["name"] = "Evil </script><b>x <!--<script> y"
+        (impact / f"{LIB_CORE}.json").write_text(json.dumps({
+            "targetKey": LIB_CORE,
+            "launch": fx("launch-deletion-inventory-core.json"),
+            "result": status}), encoding="utf-8")
+        cache = td / "cache"
+        first = subprocess.run([sys.executable, str(BUILD), str(cache), str(td / "a.html"),
+                                "--impact-dir", str(impact),
+                                "--tenant-assets", str(FIX / "tenant-assets.json")],
+                               capture_output=True, text=True)
+        assert first.returncode == 0, first.stderr
+        meta = json.loads((cache / "meta.json").read_text())
+        assert meta["target_count"] == 1 and meta["known_count"] == 1
+        second = subprocess.run([sys.executable, str(BUILD), str(cache), str(td / "b.html")],
+                                capture_output=True, text=True)
+        assert second.returncode == 0, second.stderr
+        html = (td / "b.html").read_text()
+    assert "Evil \\u003c/script>" in html and "Evil </script>" not in html
+    # "<!--<script" inside the inline script would put the HTML parser into
+    # its double-escaped state and blank the page; no literal "<" survives.
+    payload = re.search(r"const IMPACT_DATA = (\{.*?\});\n", html, re.S).group(1)
+    assert "<" not in payload
+    assert json.loads(payload)["byTarget"][LIB_CORE]["users"][0]["n"].endswith("<!--<script> y")
+
+
+def test_tenant_architecture_bundle_is_accepted_as_the_asset_list():
+    # Branch D reuses outsystems-tenant-architecture's tenant-data.json.
+    assets = fx("tenant-assets.json")
+    rows = assets if isinstance(assets, list) else [
+        {"k": a["assetKey"], "n": a.get("name") or "", "t": a.get("assetType") or "",
+         "r": a.get("revision"), "d": (a.get("revisionDateTime") or "")[:10],
+         "x": bool(a.get("isExternal", False))} for a in assets["results"]]
+    bundle = {"schema": 1, "tenant": {}, "envs": [], "assets": rows,
+              "deployments": None, "health": None, "ai": None}
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        impact = td / "impact"
+        impact.mkdir()
+        (impact / f"{LIB_CORE}.json").write_text(json.dumps({
+            "targetKey": LIB_CORE,
+            "launch": fx("launch-deletion-inventory-core.json"),
+            "result": fx("status-deletion-inventory-core.json")}), encoding="utf-8")
+        (td / "tenant-data.json").write_text(json.dumps(bundle), encoding="utf-8")
+        proc = subprocess.run([sys.executable, str(BUILD), str(td / "cache"), str(td / "o.html"),
+                               "--impact-dir", str(impact),
+                               "--tenant-assets", str(td / "tenant-data.json")],
+                              capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        data = json.loads((td / "cache" / "impact-data.json").read_text())
+    core = data["byTarget"][LIB_CORE]
+    assert core["n"] == "Inventory Core Library" and core["kind"] == "LowCodeLibrary"
+
+
+def test_result_file_and_paged_tenant_assets():
+    """A record may point at the harness's saved output instead of inlining
+    it, and the asset list may arrive as several raw app_list pages."""
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        impact = td / "impact"
+        (impact / "raw").mkdir(parents=True)
+        (impact / "raw" / "ui.status.json").write_text(
+            (FIX / "status-deletion-outsystems-ui.json").read_text(), encoding="utf-8")
+        (impact / f"{OS_UI}.json").write_text(json.dumps({
+            "targetKey": OS_UI, "launch": fx("launch-deletion-outsystems-ui.json"),
+            "resultFile": "raw/ui.status.json"}), encoding="utf-8")
+        (impact / f"{LIB_CORE}.json").write_text(json.dumps({
+            "targetKey": LIB_CORE, "launch": fx("launch-deletion-inventory-core.json"),
+            "resultFile": "raw/missing.json"}), encoding="utf-8")
+        compact = {a["k"]: a for a in fx("tenant-assets.json")}
+        page1 = {"results": [{"assetKey": OS_UI, "name": compact[OS_UI]["n"],
+                              "assetType": "LowCodeLibrary", "revision": 30}],
+                 "truncated": True, "next_offset": 1, "total": 2, "displayed": 1}
+        page2 = {"results": [{"assetKey": LIB_CORE, "name": "Inventory Core Library",
+                              "assetType": "LowCodeLibrary", "revision": 3}],
+                 "truncated": False, "total": 2, "displayed": 1}
+        (td / "p1.json").write_text(json.dumps(page1))
+        (td / "p2.json").write_text(json.dumps(page2))
+        out = td / "o.html"
+        proc = subprocess.run([sys.executable, str(BUILD), str(td / "c"), str(out),
+                               "--impact-dir", str(impact),
+                               "--tenant-assets", str(td / "p1.json"),
+                               "--tenant-assets", str(td / "p2.json")],
+                              capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        b = json.loads((td / "c" / "impact-data.json").read_text())
+    assert b["byTarget"][OS_UI]["state"] == "known"
+    assert b["byTarget"][OS_UI]["total"] == 74
+    assert b["byTarget"][OS_UI]["currentRev"] == 30
+    core = b["byTarget"][LIB_CORE]
+    assert core["n"] == "Inventory Core Library"          # name from page 2
+    _assert_unknown(core, "never polled")             # unreadable file => unknown
+
+
+def test_fresh_mode_needs_both_inputs():
+    with tempfile.TemporaryDirectory() as td:
+        proc = subprocess.run([sys.executable, str(BUILD), td, td + "/o.html",
+                               "--impact-dir", td], capture_output=True, text=True)
+    assert proc.returncode == 2
+
+
+def _run():
+    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
+    for fn in fns:
+        fn()
+        print(f"PASS {fn.__name__}")
+    print(f"\n{len(fns)} passed")
+
+
+if __name__ == "__main__":
+    _run()

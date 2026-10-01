@@ -1,0 +1,81 @@
+{
+ "_provenance": "env_apps {env_key: dev}, dev tenant, recorded 2026-09-03 and anonymised; rows trimmed from 100 to 8, envelope (total 165, truncated, no next_offset, hint) is the real old-server one",
+ "displayed": 8,
+ "pagination_hint": "Showing 100 of 165. env_apps does not accept an offset; re-run with a more specific search.",
+ "results": [
+  {
+   "applicationKey": "a0000001-0000-4000-8000-000000000001",
+   "buildKey": "a0000091-0000-4000-8000-000000000091",
+   "deploymentDateTime": "2026-08-25T14:02:08.383Z",
+   "deploymentKey": "a00000a2-0000-4000-8000-0000000000a2",
+   "name": "web_orders",
+   "revision": 1,
+   "url": "https://acme-dev.outsystems.app/web_orders"
+  },
+  {
+   "applicationKey": "a0000005-0000-4000-8000-000000000005",
+   "buildKey": "a0000046-0000-4000-8000-000000000046",
+   "deploymentDateTime": "2026-08-25T14:49:53.753Z",
+   "deploymentKey": "a0000045-0000-4000-8000-000000000045",
+   "name": "csv_test_data_conversion",
+   "revision": 10,
+   "url": "https://acme-dev.outsystems.app/csv_test_data_conversion"
+  },
+  {
+   "applicationKey": "a000000a-0000-4000-8000-00000000000a",
+   "buildKey": "a0000054-0000-4000-8000-000000000054",
+   "deploymentDateTime": "2026-08-21T10:59:50.422Z",
+   "deploymentKey": "a00000c8-0000-4000-8000-0000000000c8",
+   "name": "Lending Policy Agent",
+   "revision": 2,
+   "url": "https://acme-dev.outsystems.app/LendingPolicyAgent"
+  },
+  {
+   "applicationKey": "a0000010-0000-4000-8000-000000000010",
+   "buildKey": "a0000051-0000-4000-8000-000000000051",
+   "deploymentDateTime": "2026-08-31T16:40:30.597Z",
+   "deploymentKey": "a00000ec-0000-4000-8000-0000000000ec",
+   "name": "RequestFlowTestApp",
+   "revision": 1,
+   "url": "https://acme-dev.outsystems.app/RequestFlowTestApp"
+  },
+  {
+   "applicationKey": "a0000014-0000-4000-8000-000000000014",
+   "buildKey": "00000000-0000-0000-0000-000000000000",
+   "deploymentDateTime": "2026-07-14T09:42:45.283Z",
+   "deploymentKey": "a0000139-0000-4000-8000-000000000139",
+   "name": "QA Test 3",
+   "revision": 5,
+   "url": ""
+  },
+  {
+   "applicationKey": "a0000018-0000-4000-8000-000000000018",
+   "buildKey": "a0000099-0000-4000-8000-000000000099",
+   "deploymentDateTime": "2026-08-21T10:23:18.481Z",
+   "deploymentKey": "a0000110-0000-4000-8000-000000000110",
+   "name": "Banking Account Services",
+   "revision": 4,
+   "url": "https://acme-dev.outsystems.app/BankingAccountServices"
+  },
+  {
+   "applicationKey": "a0000019-0000-4000-8000-000000000019",
+   "buildKey": "a0000020-0000-4000-8000-000000000020",
+   "deploymentDateTime": "2026-08-27T12:36:31.807Z",
+   "deploymentKey": "a00000d5-0000-4000-8000-0000000000d5",
+   "name": "StaticEntities_1000",
+   "revision": 1,
+   "url": "https://acme-dev.outsystems.app/StaticEntities_1000"
+  },
+  {
+   "applicationKey": "a000001a-0000-4000-8000-00000000001a",
+   "buildKey": "a000002a-0000-4000-8000-00000000002a",
+   "deploymentDateTime": "2026-09-02T15:40:52.007Z",
+   "deploymentKey": "a000008c-0000-4000-8000-00000000008c",
+   "name": "TEstAcCMS",
+   "revision": 3,
+   "url": "https://acme-dev.outsystems.app/TEstAcCMS"
+  }
+ ],
+ "total": 165,
+ "truncated": true
+}

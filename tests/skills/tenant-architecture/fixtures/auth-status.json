@@ -1,0 +1,6 @@
+{
+ "_provenance": "auth_status over HTTP, anonymised dev tenant recording (2026-09-03); `claims` (raw JWT claims) and user_id removed, hostname and tenant id replaced",
+ "logged_in": true,
+ "tenant_hostname": "acme.outsystems.dev",
+ "tenant_id": "a0000093-0000-4000-8000-000000000093"
+}

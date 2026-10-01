@@ -1,0 +1,53 @@
+{
+ "_provenance": "env_apps {env_key: prod} CONSTRUCTED from the DeployedApplication outputSchema (live-tools-list.json); app keys and names match the other (anonymised) fixtures, revisions/dates/urls are invented to exercise drift",
+ "displayed": 5,
+ "results": [
+  {
+   "applicationKey": "a0000077-0000-4000-8000-000000000077",
+   "buildKey": "00000000-0000-4000-8000-000000000000",
+   "deploymentDateTime": "2026-08-28T10:00:00.000Z",
+   "deploymentKey": "00000000-0000-4000-9000-000000000000",
+   "name": "IT Assets Portal",
+   "revision": 12,
+   "url": "https://acme.outsystems.app/ITAssetsPortal"
+  },
+  {
+   "applicationKey": "a0000010-0000-4000-8000-000000000010",
+   "buildKey": "00000000-0000-4000-8000-000000000001",
+   "deploymentDateTime": "2026-08-20T09:00:00.000Z",
+   "deploymentKey": "00000000-0000-4000-9000-000000000001",
+   "name": "RequestFlowTestApp",
+   "revision": 1,
+   "url": "https://acme.outsystems.app/RequestFlowTestApp"
+  },
+  {
+   "applicationKey": "a0000082-0000-4000-8000-000000000082",
+   "buildKey": "00000000-0000-4000-8000-000000000002",
+   "deploymentDateTime": "2026-09-02T15:00:00.000Z",
+   "deploymentKey": "00000000-0000-4000-9000-000000000002",
+   "name": "ZooApp",
+   "revision": 7,
+   "url": "https://acme.outsystems.app/ZooApp"
+  },
+  {
+   "applicationKey": "a0000018-0000-4000-8000-000000000018",
+   "buildKey": "00000000-0000-4000-8000-000000000003",
+   "deploymentDateTime": "2026-08-22T08:00:00.000Z",
+   "deploymentKey": "00000000-0000-4000-9000-000000000003",
+   "name": "Banking Account Services",
+   "revision": 4,
+   "url": "https://acme.outsystems.app/BankingAccountServices"
+  },
+  {
+   "applicationKey": "a0000101-0000-4000-8000-000000000101",
+   "buildKey": "00000000-0000-4000-8000-000000000004",
+   "deploymentDateTime": "2026-08-30T12:00:00.000Z",
+   "deploymentKey": "00000000-0000-4000-9000-000000000004",
+   "name": "People Onboarding",
+   "revision": 5,
+   "url": "https://acme.outsystems.app/PeopleOnboarding"
+  }
+ ],
+ "total": 5,
+ "truncated": false
+}

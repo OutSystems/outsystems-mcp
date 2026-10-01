@@ -1,0 +1,16 @@
+{
+ "displayed": 1,
+ "results": [
+  {
+   "applicationKey": "a0000077-0000-4000-8000-000000000077",
+   "buildKey": "a000009c-0000-4000-8000-00000000009c",
+   "deploymentDateTime": "2026-09-01T03:07:37.008Z",
+   "deploymentKey": "a0000069-0000-4000-8000-000000000069",
+   "name": "IT Assets Portal",
+   "revision": 13,
+   "url": "https://acme-dev.outsystems.app/ITAssetsPortal"
+  }
+ ],
+ "total": 1,
+ "truncated": false
+}

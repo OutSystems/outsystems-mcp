@@ -1,0 +1,1085 @@
+{
+ "_comment": "Anonymised context_entities {app, owned_only: false, limit: 100} page from a dev tenant (2026-09-03), trimmed from 73 rows to 14 (owned, user-library and three platform rows); total/displayed/pagination adjusted to the kept rows.",
+ "data": [
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "description": "Type of Gradient.",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a0000015-0000-4000-8000-000000000015",
+      "length": "50",
+      "name": "Type"
+     }
+    ],
+    "identifierAttributeKey": "a0000015-0000-4000-8000-000000000015",
+    "records": "[]"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Contains type of gradients to be applied on the Porgress pastterns.",
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": true,
+   "key": "a0000135-0000-4000-8000-000000000135",
+   "name": "Gradient",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "producerAssetKey": "a00000ba-0000-4000-8000-0000000000ba",
+   "producerAssetName": "OutSystemsUI",
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a000009b-0000-4000-8000-00000000009b",
+      "length": "50",
+      "name": "Month"
+     },
+     {
+      "dataType": "Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000134-0000-4000-8000-000000000134",
+      "length": "",
+      "name": "Order"
+     }
+    ],
+    "identifierAttributeKey": "a000009b-0000-4000-8000-00000000009b",
+    "records": "[]"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Contains the list of available months.",
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": true,
+   "key": "a0000130-0000-4000-8000-000000000130",
+   "name": "Month",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "producerAssetKey": "a00000ba-0000-4000-8000-0000000000ba",
+   "producerAssetName": "OutSystemsUI",
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "description": "Url for the user photo.",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000005c-0000-4000-8000-00000000005c",
+      "length": "2048",
+      "name": "PhotoUrl"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "description": "Full name of the user.",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000063-0000-4000-8000-000000000063",
+      "length": "256",
+      "name": "Name"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "description": "Unique identifier of the user.",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a000006a-0000-4000-8000-00000000006a",
+      "length": "36",
+      "name": "Id"
+     },
+     {
+      "dataType": "Email",
+      "decimals": "",
+      "description": "Email address of the user.",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000f6-0000-4000-8000-0000000000f6",
+      "length": "256",
+      "name": "Email"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "description": "User identifier retrieved during authentication via an identity provider.",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000129-0000-4000-8000-000000000129",
+      "length": "256",
+      "name": "Username"
+     }
+    ],
+    "identifierAttributeKey": "a000006a-0000-4000-8000-00000000006a"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "The end users of the app.",
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": false,
+   "key": "a00000e4-0000-4000-8000-0000000000e4",
+   "name": "User",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": "osvue_user",
+   "producerAssetKey": "a0000061-0000-4000-8000-000000000061",
+   "producerAssetName": "(System)",
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000006-0000-4000-8000-000000000006",
+      "length": "200",
+      "name": "HolderName"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a000002f-0000-4000-8000-00000000002f",
+      "length": "",
+      "name": "Id"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000047-0000-4000-8000-000000000047",
+      "length": "",
+      "name": "CreatedOn"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a000009a-0000-4000-8000-00000000009a",
+      "length": "20",
+      "name": "BadgeSerial"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000009f-0000-4000-8000-00000000009f",
+      "length": "",
+      "name": "RevokedAt"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000ce-0000-4000-8000-0000000000ce",
+      "length": "",
+      "name": "UpdatedOn"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000d3-0000-4000-8000-0000000000d3",
+      "length": "50",
+      "name": "AccessLevel"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000e6-0000-4000-8000-0000000000e6",
+      "length": "2000",
+      "name": "Notes"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000f0-0000-4000-8000-0000000000f0",
+      "length": "",
+      "name": "IssuedAt"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000f3-0000-4000-8000-0000000000f3",
+      "length": "",
+      "name": "UpdatedBy"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a000010e-0000-4000-8000-00000000010e",
+      "length": "200",
+      "name": "HolderEmail"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000137-0000-4000-8000-000000000137",
+      "length": "",
+      "name": "CreatedBy"
+     }
+    ],
+    "identifierAttributeKey": "a000002f-0000-4000-8000-00000000002f"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000096-0000-4000-8000-000000000096",
+   "name": "AccessBadge",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": "acces_0k1m2n3p4qprms0xih6z8a50",
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000008-0000-4000-8000-000000000008",
+      "length": "",
+      "name": "RequestedAt"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a0000011-0000-4000-8000-000000000011",
+      "length": "",
+      "name": "Id"
+     },
+     {
+      "dataType": "Employee Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a0000028-0000-4000-8000-000000000028",
+       "entityKey": "a0000003-0000-4000-8000-000000000003"
+      },
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000016-0000-4000-8000-000000000016",
+      "length": "",
+      "name": "EmployeeId"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000030-0000-4000-8000-000000000030",
+      "length": "",
+      "name": "CreatedOn"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000003b-0000-4000-8000-00000000003b",
+      "length": "",
+      "name": "DecidedAt"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000053-0000-4000-8000-000000000053",
+      "length": "50",
+      "name": "Kind"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000060-0000-4000-8000-000000000060",
+      "length": "20",
+      "name": "RequestRef"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000006d-0000-4000-8000-00000000006d",
+      "length": "",
+      "name": "UpdatedOn"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000071-0000-4000-8000-000000000071",
+      "length": "",
+      "name": "CreatedBy"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000008b-0000-4000-8000-00000000008b",
+      "length": "2000",
+      "name": "Justification"
+     },
+     {
+      "dataType": "Employee Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a0000028-0000-4000-8000-000000000028",
+       "entityKey": "a0000003-0000-4000-8000-000000000003"
+      },
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000b4-0000-4000-8000-0000000000b4",
+      "length": "",
+      "name": "ApproverId"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000fb-0000-4000-8000-0000000000fb",
+      "length": "",
+      "name": "UpdatedBy"
+     },
+     {
+      "dataType": "RequestStatus Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a00000e3-0000-4000-8000-0000000000e3",
+       "entityKey": "a000001d-0000-4000-8000-00000000001d"
+      },
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000124-0000-4000-8000-000000000124",
+      "length": "",
+      "name": "RequestStatusId"
+     },
+     {
+      "dataType": "Asset Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a00000ae-0000-4000-8000-0000000000ae",
+       "entityKey": "a0000013-0000-4000-8000-000000000013"
+      },
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000012a-0000-4000-8000-00000000012a",
+      "length": "",
+      "name": "AssetId"
+     }
+    ],
+    "identifierAttributeKey": "a0000011-0000-4000-8000-000000000011"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000107-0000-4000-8000-000000000107",
+   "name": "EquipmentRequest",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": "equip_0k1m2n3p4qpswle7elfu5ua3",
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a0000131-0000-4000-8000-000000000131.#HiddenReferenceEntity_Id",
+      "length": "",
+      "name": "Id"
+     }
+    ],
+    "identifierAttributeKey": "a0000131-0000-4000-8000-000000000131.#HiddenReferenceEntity_Id"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": false,
+   "key": "a0000131-0000-4000-8000-000000000131",
+   "name": "Office",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "producerAssetKey": "a0000101-0000-4000-8000-000000000101",
+   "producerAssetName": "PeopleOnboarding",
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Employee Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a0000028-0000-4000-8000-000000000028",
+       "entityKey": "a0000003-0000-4000-8000-000000000003"
+      },
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000004-0000-4000-8000-000000000004",
+      "length": "",
+      "name": "ManagerId"
+     },
+     {
+      "dataType": "EmployeeStatus Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a00000bf-0000-4000-8000-0000000000bf",
+       "entityKey": "a0000050-0000-4000-8000-000000000050"
+      },
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a000001c-0000-4000-8000-00000000001c",
+      "length": "",
+      "name": "EmployeeStatusId"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a0000028-0000-4000-8000-000000000028",
+      "length": "",
+      "name": "Id"
+     },
+     {
+      "dataType": "Date",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000008d-0000-4000-8000-00000000008d",
+      "length": "",
+      "name": "StartDate"
+     },
+     {
+      "dataType": "Office Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a0000131-0000-4000-8000-000000000131.#HiddenReferenceEntity_Id",
+       "entityKey": "a0000131-0000-4000-8000-000000000131"
+      },
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a00000b1-0000-4000-8000-0000000000b1",
+      "length": "",
+      "name": "OfficeId"
+     },
+     {
+      "dataType": "Department Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a000002c-0000-4000-8000-00000000002c.#HiddenReferenceEntity_Id",
+       "entityKey": "a000002c-0000-4000-8000-00000000002c"
+      },
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a00000bc-0000-4000-8000-0000000000bc",
+      "length": "",
+      "name": "DepartmentId"
+     },
+     {
+      "dataType": "EmploymentType Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a00000c9-0000-4000-8000-0000000000c9",
+       "entityKey": "a000009d-0000-4000-8000-00000000009d"
+      },
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a00000c2-0000-4000-8000-0000000000c2",
+      "length": "",
+      "name": "EmploymentTypeId"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000de-0000-4000-8000-0000000000de",
+      "length": "2000",
+      "name": "Notes"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a00000f4-0000-4000-8000-0000000000f4",
+      "length": "200",
+      "name": "WorkEmail"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000109-0000-4000-8000-000000000109",
+      "length": "200",
+      "name": "FullName"
+     }
+    ],
+    "footer": {},
+    "header": {},
+    "identifierAttributeKey": "a0000028-0000-4000-8000-000000000028",
+    "layout": {},
+    "menu": {}
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": false,
+   "key": "a0000003-0000-4000-8000-000000000003",
+   "name": "Employee",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "producerAssetKey": "a0000101-0000-4000-8000-000000000101",
+   "producerAssetName": "PeopleOnboarding",
+   "providerName": null,
+   "timestamp": "2026-07-30T17:10:58.426000+00:00"
+  },
+  {
+   "additionalData": {
+    "action": {},
+    "attributes": [
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000000e-0000-4000-8000-00000000000e",
+      "length": "50",
+      "name": "Label"
+     },
+     {
+      "dataType": "Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a00000ac-0000-4000-8000-0000000000ac",
+      "length": "",
+      "name": "Id"
+     }
+    ],
+    "footer": {},
+    "header": {},
+    "identifierAttributeKey": "a00000ac-0000-4000-8000-0000000000ac",
+    "layout": {},
+    "menu": {},
+    "records": "[\"InStock\",\"Assigned\",\"Retired\",\"InRepair\"]",
+    "screen": {},
+    "triggerEvent": {},
+    "waitEvent": {}
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": true,
+   "key": "a000000f-0000-4000-8000-00000000000f",
+   "name": "AssetStatus",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": "asset_0k1m2n3p4qpxak5xdhxqnl_3",
+   "providerName": null,
+   "timestamp": "2026-09-01T03:08:21.935000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000022-0000-4000-8000-000000000022",
+      "length": "10485760",
+      "name": "vendor"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000003d-0000-4000-8000-00000000003d",
+      "length": "10485760",
+      "name": "terms"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000044-0000-4000-8000-000000000044",
+      "length": "10485760",
+      "name": "asset_tag"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000008e-0000-4000-8000-00000000008e",
+      "length": "10485760",
+      "name": "coverage"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a0000095-0000-4000-8000-000000000095",
+      "length": "10485760",
+      "name": "contract_no"
+     },
+     {
+      "dataType": "Date",
+      "decimals": "",
+      "defaultValue": "#1900-01-01# [DefaultValue[ServiceStudio.Expressions.AbstractExpression]]",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000138-0000-4000-8000-000000000138",
+      "length": "",
+      "name": "expires_on"
+     }
+    ],
+    "identifierAttributeKey": "a0000095-0000-4000-8000-000000000095"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": false,
+   "key": "a0000009-0000-4000-8000-000000000009",
+   "name": "maintenance_contract",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "producerAssetKey": "a000004a-0000-4000-8000-00000000004a",
+   "producerAssetName": "contracts_test",
+   "providerName": null,
+   "timestamp": "2026-08-11T13:08:49.600000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Boolean",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000052-0000-4000-8000-000000000052",
+      "length": "",
+      "name": "Is_Active"
+     },
+     {
+      "dataType": "Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a00000bf-0000-4000-8000-0000000000bf",
+      "length": "",
+      "name": "Id"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000113-0000-4000-8000-000000000113",
+      "length": "50",
+      "name": "Label"
+     },
+     {
+      "dataType": "Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a000012b-0000-4000-8000-00000000012b",
+      "length": "",
+      "name": "Order"
+     }
+    ],
+    "footer": {},
+    "header": {},
+    "identifierAttributeKey": "a00000bf-0000-4000-8000-0000000000bf",
+    "layout": {},
+    "menu": {},
+    "records": "[]"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": true,
+   "key": "a0000050-0000-4000-8000-000000000050",
+   "name": "EmployeeStatus",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "producerAssetKey": "a0000101-0000-4000-8000-000000000101",
+   "producerAssetName": "PeopleOnboarding",
+   "providerName": null,
+   "timestamp": "2026-07-30T17:10:58.426000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a000002c-0000-4000-8000-00000000002c.#HiddenReferenceEntity_Id",
+      "length": "",
+      "name": "Id"
+     }
+    ],
+    "identifierAttributeKey": "a000002c-0000-4000-8000-00000000002c.#HiddenReferenceEntity_Id"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": false,
+   "key": "a000002c-0000-4000-8000-00000000002c",
+   "name": "Department",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "producerAssetKey": "a0000101-0000-4000-8000-000000000101",
+   "producerAssetName": "PeopleOnboarding",
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000007-0000-4000-8000-000000000007",
+      "length": "100",
+      "name": "Model"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a000000c-0000-4000-8000-00000000000c",
+      "length": "50",
+      "name": "Kind"
+     },
+     {
+      "dataType": "AssetStatus Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a00000ac-0000-4000-8000-0000000000ac",
+       "entityKey": "a000000f-0000-4000-8000-00000000000f"
+      },
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a000006e-0000-4000-8000-00000000006e",
+      "length": "",
+      "name": "AssetStatusId"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a0000097-0000-4000-8000-000000000097",
+      "length": "",
+      "name": "UpdatedOn"
+     },
+     {
+      "dataType": "Date Time",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000a7-0000-4000-8000-0000000000a7",
+      "length": "",
+      "name": "CreatedOn"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a00000ae-0000-4000-8000-0000000000ae",
+      "length": "",
+      "name": "Id"
+     },
+     {
+      "dataType": "Employee Identifier",
+      "decimals": "",
+      "foreignKey": {
+       "attributeKey": "a0000028-0000-4000-8000-000000000028",
+       "entityKey": "a0000003-0000-4000-8000-000000000003"
+      },
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000be-0000-4000-8000-0000000000be",
+      "length": "",
+      "name": "AssignedEmployeeId"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000c1-0000-4000-8000-0000000000c1",
+      "length": "",
+      "name": "CreatedBy"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000e5-0000-4000-8000-0000000000e5",
+      "length": "50",
+      "name": "Serial"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000ef-0000-4000-8000-0000000000ef",
+      "length": "",
+      "name": "UpdatedBy"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a00000ff-0000-4000-8000-0000000000ff",
+      "length": "20",
+      "name": "AssetTag"
+     }
+    ],
+    "identifierAttributeKey": "a00000ae-0000-4000-8000-0000000000ae"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000013-0000-4000-8000-000000000013",
+   "name": "Asset",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": "asset_0k1m2n3p4qpt1xr8es5fibu6",
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "action": {},
+    "attributes": [
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "isPrimaryKey": false,
+      "key": "a00000d1-0000-4000-8000-0000000000d1",
+      "length": "50",
+      "name": "Label"
+     },
+     {
+      "dataType": "Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a00000e3-0000-4000-8000-0000000000e3",
+      "length": "",
+      "name": "Id"
+     }
+    ],
+    "footer": {},
+    "header": {},
+    "identifierAttributeKey": "a00000e3-0000-4000-8000-0000000000e3",
+    "layout": {},
+    "menu": {},
+    "records": "[\"Rejected\",\"PendingApproval\",\"Fulfilled\",\"Approved\"]",
+    "screen": {},
+    "triggerEvent": {},
+    "waitEvent": {}
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": true,
+   "key": "a000001d-0000-4000-8000-00000000001d",
+   "name": "RequestStatus",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": "reque_0k1m2n3p4qpx4pdocyedxty1",
+   "providerName": null,
+   "timestamp": "2026-09-01T03:08:21.935000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a0000059-0000-4000-8000-000000000059",
+      "length": "",
+      "name": "Order"
+     },
+     {
+      "dataType": "Integer",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": true,
+      "key": "a00000c9-0000-4000-8000-0000000000c9",
+      "length": "",
+      "name": "Id"
+     },
+     {
+      "dataType": "Boolean",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a00000d2-0000-4000-8000-0000000000d2",
+      "length": "",
+      "name": "Is_Active"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": true,
+      "isPrimaryKey": false,
+      "key": "a000011d-0000-4000-8000-00000000011d",
+      "length": "50",
+      "name": "Label"
+     }
+    ],
+    "footer": {},
+    "header": {},
+    "identifierAttributeKey": "a00000c9-0000-4000-8000-0000000000c9",
+    "layout": {},
+    "menu": {},
+    "records": "[]"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": true,
+   "isReferenced": true,
+   "isStatic": true,
+   "key": "a000009d-0000-4000-8000-00000000009d",
+   "name": "EmploymentType",
+   "objectType": "entities",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "producerAssetKey": "a0000101-0000-4000-8000-000000000101",
+   "producerAssetName": "PeopleOnboarding",
+   "providerName": null,
+   "timestamp": "2026-07-30T17:10:58.426000+00:00"
+  }
+ ],
+ "displayed": 14,
+ "pagination": {
+  "limit": 14,
+  "nextPageOffset": null,
+  "offset": 0
+ },
+ "total": 14,
+ "truncated": false
+}

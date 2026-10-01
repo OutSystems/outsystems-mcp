@@ -1,0 +1,75 @@
+{
+ "metrics": [
+  "appScore",
+  "requests",
+  "errors",
+  "errorPercent",
+  "responseTimeP95",
+  "responseTimeP99",
+  "uniqueUsers",
+  "lastErrorOccurred"
+ ],
+ "nextPageOffset": 0,
+ "resolvedApps": [],
+ "results": [
+  {
+   "appScore": 5,
+   "applicationKey": "a0000077-0000-4000-8000-000000000077",
+   "applicationName": "IT Assets Portal",
+   "errorPercent": 94.62,
+   "errors": 123,
+   "lastErrorOccurred": "2026-09-16T02:12:01",
+   "requests": 130,
+   "responseTimeP95": 825,
+   "responseTimeP99": 965
+  },
+  {
+   "appScore": 100,
+   "applicationKey": "a0000010-0000-4000-8000-000000000010",
+   "applicationName": "RequestFlowTestApp",
+   "errorPercent": 0,
+   "errors": 0,
+   "requests": 3,
+   "responseTimeP95": 95,
+   "responseTimeP99": 99,
+   "uniqueUsers": 1
+  },
+  {
+   "appScore": 100,
+   "applicationKey": "a0000082-0000-4000-8000-000000000082",
+   "applicationName": "ZooApp",
+   "errorPercent": 0,
+   "errors": 0,
+   "requests": 6,
+   "responseTimeP95": 4400,
+   "responseTimeP99": 4880,
+   "uniqueUsers": 6
+  },
+  {
+   "appScore": 100,
+   "applicationKey": "a0000127-0000-4000-8000-000000000127",
+   "applicationName": "Ops Test timers",
+   "errorPercent": 82.11,
+   "errors": 1404,
+   "lastErrorOccurred": "2026-09-16T03:25:28",
+   "requests": 1710,
+   "responseTimeP95": 4546.34,
+   "responseTimeP99": 6764
+  },
+  {
+   "applicationKey": "a0000101-0000-4000-8000-000000000101",
+   "applicationName": "People Onboarding",
+   "appScore": 100
+  }
+ ],
+ "since": "2026-09-09T08:24:53Z",
+ "stageKey": "a000003f-0000-4000-8000-00000000003f",
+ "to": "2026-09-16T08:24:53Z",
+ "total": 5,
+ "unresolved": [],
+ "_provenance": "health-prod.json with a noData {status: undetermined} built from the NoData outputSchema; reason text copied from src/commands/health.rs",
+ "noData": {
+  "status": "undetermined",
+  "reason": "These rows were not established to be the whole result set: the response carried no result count, so the rows in hand cannot be checked against the size of the result set. Do not read any app's absence from them as no traffic in the window."
+ }
+}

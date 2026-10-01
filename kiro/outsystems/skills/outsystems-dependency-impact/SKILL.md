@@ -1,0 +1,418 @@
+---
+name: outsystems-dependency-impact
+description: "[Beta] Build an interactive HTML REVERSE-dependency explorer — answers 'who depends on this library/agent/connection?' from the platform's deletion-impact analysis (read-only; nothing is deleted). One named target is one analysis: seconds, a few K tokens. A whole-tenant map is one analysis per library/agent/connection in parallel batches (estimate: ~0.5K tokens per target plus ~0.1–0.15K per dependent found). Use ONLY for reverse questions like 'who depends on [library/agent]', 'if I publish [library] who breaks', 'blast radius of [library/agent]', 'reverse dependency map', 'library impact audit', 'agent impact audit'. For forward questions about a specific app ('what does App X depend on', 'deps of App X'), use outsystems-app-architecture or the app's references directly."
+license: MIT
+compatibility: Needs an agent that can run shell commands and Python 3.7+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it.
+allowed-tools: Bash Write Edit mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__deploy_impact mcp__plugin_outsystems_outsystems__deploy_impact_status mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__app_refs mcp__outsystems__env_list mcp__outsystems__deploy_impact mcp__outsystems__deploy_impact_status
+metadata:
+  version: "1.5.0"
+  maturity: beta
+  author: OutSystems
+---
+
+**Beta Feature.** This skill is a Beta Feature: a non-final OutSystems capability provided to collect customer feedback. It can change significantly, including through breaking changes, or be discontinued. The first time you use this skill in a conversation, tell the user it's a Beta Feature and share https://www.outsystems.com/legal/beta-features-agreement.
+
+# OutSystems Dependency Impact
+
+Produces a self-contained HTML reverse-dependency explorer. Pick a
+library, agent or connection — the page shows every asset that would
+break if it were removed, in which environments, at which deployed
+revision, and with what severity (`Error` / `Warning`).
+
+The data comes from the platform's **deletion-impact analysis**:
+`deploy_impact {key, delete: true}`, polled with `deploy_impact_status`.
+It is an analysis only — nothing is deleted, and the MCP server calls no
+delete endpoint for it. For "if I publish library X, who breaks?" it
+lists everyone who depends on X; that is the most a pre-publish check can
+give for a library (the deployment variant of the analysis does not work
+for library types).
+
+## Cost and time (estimates)
+
+| Question | Calls | Wall time | Tokens |
+|---|---|---|---|
+| One named target | 1 launch + 1–3 polls | seconds | ~3–5K, plus ~0.1–0.15K per dependent |
+| Whole-tenant map, N targets | N launches + N+ polls, 10 per message | ~0.5–1 min per 10 targets | ~0.5K × N, plus ~0.1–0.15K per dependent |
+
+These are estimates, not end-to-end measurements. Measured live: a
+launch returns in about a second, and finished reports came back for
+every analysis polled; a heavily used UI library had 74 dependents in a
+report of about 37 KB (roughly 9K tokens). The whole-tenant map is still
+one analysis per target, so for a large tenant it is not cheap — prefer
+the one-target path whenever the user names a target.
+
+## Prerequisites
+
+- The OutSystems MCP server is connected and signed in. This skill reads
+  the tools named below; tool names here are the server's own, and your
+  harness may show them with a prefix (in Claude Code,
+  `mcp__plugin_outsystems_outsystems__deploy_impact` for `deploy_impact`).
+- A shell with `python3` (3.7 or later, standard library only). The
+  script reads the saved analysis results from disk and writes the HTML;
+  it never calls the server and holds no sign-in of its own.
+- `SKILL` below is this skill's own folder (the one holding this file),
+  so `"$SKILL/scripts/build.py"` is the script next to it.
+
+## The reality checks
+
+- **One analysis answers one target.** There is no tenant-wide reverse
+  index on the server; a map is N analyses.
+- **Which asset types the deletion analysis accepts is the platform's
+  call.** The MCP server passes any asset key through. Verified live:
+  `LowCodeLibrary`. Agents and connections are not verified. A launch the
+  platform refuses (`analysis_launch_rejected`) renders as "Deletion
+  analysis not available for this asset", never as "no dependents".
+- **Only `impactKnown: true` is a verdict.** `impactKnown: false`,
+  `processStatus` `Failed` / `Unknown` / still `InProgress`, or a missing
+  `report` means the impact is unknown, and the page says so.
+- **`report.impactedAssets` is capped at 200.** The count is
+  `report.total`; when the list is shorter the page says "Showing N of M".
+
+## Procedure
+
+### Step 0 — Scope detection
+
+Read the user's request and pick the matching branch:
+
+**Branch A — Forward-deps for ONE specific app** ("what does App X use",
+"show me the deps of App X", "what's in App X")
+→ **Stop. Tell the user this skill is the wrong tool** and route to
+`outsystems-app-architecture` (which shows the same forward-dep info
+plus screens/entities/actions for ~10K tokens). Do NOT continue the
+procedure.
+
+**Branch B — Forward-deps for 2-3 specific apps** ("what do App X and
+App Y depend on")
+→ **Stop. Skip this skill entirely.** Call `app_refs` on each named
+app, all in one message (~3-5K tokens total). Report the deps inline.
+
+**Branch C — Reverse-deps for named targets** ("who depends on lib X",
+"if I publish X who breaks", "blast radius of agent Y") — up to about
+five named targets
+→ Steps 1, 3, 4.5, 5, 6, 8. No tenant-wide asset list, no index.
+
+**Branch D — Whole-tenant map** ("reverse dependency map", "library
+impact audit", "audit all my deps")
+→ Steps 1–8, with the confirmation gate in Step 4.5.
+
+### Step 1 — Tenant id + environments
+
+In one message:
+
+- `auth_status` — used here only for the tenant id: read the top-level
+  `tenant_id` (not `claims.*`). Over HTTP it always says
+  `logged_in: true`; an expired sign-in fails this call (or any other)
+  with an authentication error, in which case ask the user to sign in to
+  the OutSystems MCP server again and retry once.
+- `env_list` — environment names for the page. Save it to
+  `$CACHE/env-list.json` (`results[].(key, name, purpose)`) once you have
+  the cache folder below.
+
+```
+TENANT_ID = <auth_status.tenant_id>
+```
+
+Get this skill's cache folder for the tenant (the script creates it),
+plus the folder for the per-target records:
+
+```bash
+CACHE=$(python3 "$SKILL/scripts/build.py" --cache-dir <TENANT_ID>)
+mkdir -p "$CACHE/impact/raw"
+```
+
+### Step 2 — Cache freshness (Branch D only)
+
+Records in `$CACHE/impact/` less than 24h old are reused (Step 5 skips
+those targets), so an interrupted map resumes where it stopped. If the
+user said "refresh" / "rescan" / "fresh data", delete `$CACHE/impact/`
+first. Branch C always runs fresh — one analysis takes seconds.
+
+### Step 3 — Targets and the asset list
+
+**Branch C:** resolve each named target with `app_list`
+`{search: "<name>"}` (1 match → use it; several → ask the user to pick;
+0 → ask for a more specific name). Save the matching page(s) as
+`$CACHE/tenant-assets.json`.
+
+**Branch D:** the full tenant asset list.
+
+**Preferred (fast):** reuse the `outsystems-tenant-architecture` bundle
+when that skill ran within the last 24 hours. Its folder is:
+
+```bash
+TA_CACHE=$(python3 "$SKILL/scripts/build.py" --cache-dir <TENANT_ID> --skill outsystems-tenant-architecture)
+```
+
+If `$TA_CACHE/tenant-data.json` exists and `$TA_CACHE/meta.json`'s
+`fetched_at` is under 24 hours old, pass `$TA_CACHE/tenant-data.json`
+as the asset list (`--tenant-assets`). Check the age with a one-line
+`python3 -c` over `meta.json`; don't read the bundle itself.
+
+**Fallback:** `app_list` with `limit: 500` (larger values are clamped to
+500), then `offset: <next_offset>` while `truncated` is true; save each
+page as `$CACHE/assets-page-<n>.json` and pass every page to `build.py`.
+On Claude Code a large page is saved to disk by the harness ("Output has
+been saved to <path>") — `cp` it. On a harness that truncates large tool
+results a 500-row page arrives cut, so page with `limit: 100` there.
+
+### Step 4 — Filter to targets (Branch D)
+
+Keep assets whose `assetType` is a producer:
+
+- libraries: `LowCodeLibrary`, `MobileLibrary`, `ExtensionLibrary`,
+  `WidgetLibrary`, `ExternalLibrary`
+- agents: `Agent`
+- connections: `AIModelConnection`, `AINativeConnection`,
+  `ExternalConnection`, `MCPConnection`, `SearchServiceConnection`,
+  `A2AConnection`
+
+Save the list (key, name, type) to `$CACHE/targets.json`, with a short
+`python3` one-liner over the asset list file rather than by reading it.
+
+### Step 4.5 — Pre-flight confirmation
+
+Branch C: before launching, name the target(s) and say what runs — "a
+deletion-impact analysis on <X>: read-only, nothing is deleted; it lists
+who would break if X were removed" — and wait for the user's OK. The
+analysis mutates nothing, but it is deletion-adjacent, so it is confirmed
+like the destructive calls.
+
+Branch D: compute the estimate from the actual counts and ask the user
+before Step 5:
+
+```
+count      = len(targets)
+rounds     = ceil(count / 10)
+wall_min   = rounds * 0.5 .. rounds * 1.0     # estimate: 1-2 model turns per round
+tokens_k   = count * 0.5                      # estimate, before dependents
+```
+
+Ask: *"Run {count} deletion-impact analyses ({libs} libraries, {agents}
+agents, {conns} connections) to map who depends on what? Read-only:
+nothing is deleted. Estimate: ~{wall_min} min, ~{tokens_k}K tokens plus
+~0.1–0.15K per dependent found. Results are cached for 24h."* Offer
+three choices: **Yes — all {count}**, **Libraries only ({libs})**, and
+**No — cancel**.
+
+On "No" → stop; the asset list stays cached (cheap and useful for other
+skills).
+
+### Step 5 — Analyse
+
+For each target:
+
+1. `deploy_impact` with `key: <target>`, `delete: true` (no `env_key`).
+   It returns immediately: `{analysisKey, kind: "deletion", impactKnown: false}`.
+2. `deploy_impact_status` with `analysis_id: <analysisKey>` (the
+   parameter is `analysis_id`, not `analysisKey`) and `kind: "deletion"`.
+   Poll right away — small analyses are often finished by then. While
+   `processStatus` is `InProgress`, pause 5–15 seconds between rounds
+   (the response has no poll-interval hint), using your harness's
+   background wait as the main OutSystems skill's "Pacing polls"
+   describes, never a bare foreground `sleep`. Stop at `Finished` or
+   `Failed`. On `Unknown`, poll at most 3 more times while it stays
+   `Unknown` (restart the count on any other status), then stop with
+   `gaveUp: "unknown-status"`. Still `InProgress` after about 2 minutes:
+   stop with `gaveUp: "still-in-progress"` (it continues server-side).
+
+The host may prompt before each `deploy_impact`: the tool's annotation is
+destructive because of this deletion variant, even though the analysis
+changes nothing.
+
+**Batching (Branch D).** Launch 10 targets per message, and in the same
+message poll the previous batch's open analyses. Ten is a courtesy to
+the shared dependency service and a batch the model can track, not a
+server limit: the MCP server gates neither tool on concurrency.
+
+**Probe per type (Branch D).** Put one asset of each type in the first
+batch. If the platform refuses it with `analysis_launch_rejected` for a
+reason other than an authentication or permission error (401/403) or an
+unknown key, record every other asset of that type as skipped instead of
+launching it (see the record shape below) — the page then says the
+analysis is not available for that type.
+
+**Launch failures.** `analysis_launch_rejected`: record it, do not retry
+unchanged. `analysis_launch_unavailable`: retry that target once in a
+later batch (the launch has no idempotency key, so a retry after an
+ambiguous failure may start a second, harmless analysis). After 5
+consecutive `unavailable` launches, stop: report the partial map (it
+resumes on re-run) rather than pushing on.
+
+**Progress.** After each round, one line to the user:
+`Progress: 40/143 targets · 31 impact known · 9 unknown · est. 6 min left`
+(recompute from actual throughput).
+
+**Record per target** → `$CACHE/impact/<targetKey>.json`:
+
+```js
+{
+  "targetKey": "<assetKey>",
+  "launch":  <deploy_impact response, or its tool-error payload {error, data: {code}}>,
+  "result":  <last deploy_impact_status response>,     // omit if the launch failed
+  "resultFile": "raw/<targetKey>.status.json",          // instead of "result", see below
+  "gaveUp":  "unknown-status" | "still-in-progress",    // only if polling stopped early
+  "harnessTruncated": true,                             // only if the harness cut the result
+  "skipped": "type-unsupported", "probeError": <error>  // only for a skipped target
+}
+```
+
+Keep from `result` only: `analysisKey, processStatus, impactKnown,
+error` and `report.(status, total, truncated,
+impactedAssets[].(assetKey, name, type,
+deployedRevisions[].(environmentKey, revision, severity, consumerType)))`.
+When the harness saved the result to disk (Claude Code, large reports),
+`cp` that file to `$CACHE/impact/raw/<targetKey>.status.json` and write a
+record with `resultFile` instead of re-typing the rows. When a harness
+cut the result, keep `processStatus`, `impactKnown`, `report.status`,
+`report.total` and `report.truncated` from the visible tail, the rows
+that arrived intact, and set `harnessTruncated: true`.
+
+**Resume.** Before launching, skip targets whose record exists and is
+under 24h old. "rescan failures" re-runs the targets whose record has no
+verdict.
+
+### Step 6 — Build
+
+Write the HTML to the user's working folder unless they asked for
+another path:
+
+```bash
+OUT="$(pwd)/dependency-impact.html"
+python3 "$SKILL/scripts/build.py" "$CACHE" "$OUT" \
+  --impact-dir    "$CACHE/impact"            \
+  --tenant-assets "$CACHE/tenant-assets.json" \
+  --env-list      "$CACHE/env-list.json"     \
+  --tenant-id     "<TENANT_ID>"
+# Paged asset list: repeat --tenant-assets once per page.
+# Reused tenant-architecture bundle: --tenant-assets "$TA_CACHE/tenant-data.json"
+```
+
+`build.py` produces:
+- `$CACHE/impact-data.json` — the unified data bundle
+- `$CACHE/meta.json` — timestamp + stats
+- `$OUT` — the final HTML
+
+It never renders a target without a verdict as "no dependents".
+
+### Step 7 — Cached re-render
+
+```bash
+python3 "$SKILL/scripts/build.py" "$CACHE" "$OUT"
+```
+
+### Step 8 — Report (3–5 lines)
+
+- Output file path
+- Branch C: per target, "N dependents (`report.status`)", "showing 200
+  of N" when capped, or "impact unknown: <reason>" / "analysis not
+  available for this asset"
+- Branch D: targets analysed, impact known / unknown / not available,
+  the top targets by dependents
+- Cache state — "analysed now" / "reused records (Xh old)"
+
+## Data shape contract
+
+`build.py` writes `$CACHE/impact-data.json`:
+
+```js
+{
+  tenant: { id, scannedAt },
+  stats: {
+    targetCount, knownCount,
+    unknownCount,      // includes refusedCount
+    refusedCount,      // launch refused / type skipped
+    edgeCount,         // sum of report.total over known targets
+    consumerCount,     // distinct consumer assets in the listed rows
+  },
+  byTarget: {
+    "<assetKey>": {
+      n, kind, currentRev,                 // from the tenant asset list
+      state: "known" | "unknown" | "refused",
+      summary,                             // the sentence the page shows
+      analysisKey, processStatus, reportStatus,
+      total, shown, truncated,
+      users: [{ k, n, t, sev, rank, indirect,
+                envs: [{ e, en, r, s, c }] }]   // env key/name, revision, severity, consumerType
+    }
+  }
+}
+```
+
+## Cache rules
+
+- Location: the folder `build.py --cache-dir <TENANT_ID>` prints (one per
+  tenant, under the shared `outsystems-skills` cache root).
+- Per-target records: 24h (Branch D resume); Branch C always fresh.
+- Force refresh: "refresh" / "rescan" / "fresh data".
+- Cross-skill reuse: reads the `outsystems-tenant-architecture` bundle
+  (`tenant-data.json`) as the asset list when it is under 24h old; never
+  writes into that skill's folder.
+
+## Token budget (estimate)
+
+| Scenario | Mechanism | Total |
+|---|---|---|
+| One target | auth_status + env_list + app_list search + launch + 1–3 polls + build | ~3–5K + ~0.1–0.15K per dependent |
+| Whole-tenant map, N targets | N × (launch + poll + record) + build | ~0.5K × N + ~0.1–0.15K per dependent |
+| Cached re-render | build.py | ~1K |
+
+Per-dependent cost is estimated from a recorded report (74 dependents in
+about 37 KB). A report at the 200-row cap is roughly 25K tokens by the
+same ratio.
+
+## Harness notes
+
+- **Claude Code**: large results (a big `app_list` page, a report with
+  many dependents) are saved to disk by the harness ("Output has been
+  saved to <path>"), so they never enter model context — `cp` them into
+  the cache and point the record at the copy (`resultFile`).
+- **Harnesses without auto-save** (Cursor, Kiro and others): results
+  arrive inline; write each record as described in Step 5.
+- **Harnesses that truncate large tool results** (for example Codex,
+  which keeps the head and the tail with a "truncated output" marker and
+  saves nothing): page `app_list` with `limit: 100`; for a cut impact
+  report keep the tail fields and intact rows and set
+  `harnessTruncated: true` (Step 5). Never write a cut-off JSON body to
+  the cache.
+
+## Troubleshooting
+
+- **An MCP call fails with an authentication error** → the sign-in
+  expired: ask the user to sign in to the OutSystems MCP server again,
+  then retry once.
+- **The OutSystems tools are missing** → the MCP server is not connected;
+  ask the user to connect it (see the main OutSystems skill's setup).
+- **`python3: command not found`** → ask the user to install Python 3.7
+  or later; nothing else is needed.
+- **`--tenant-assets must be a list, ...`** → the file passed is not an
+  `app_list` page, a compact asset list or a tenant-architecture bundle;
+  pass the saved `app_list` page(s) instead.
+
+## Anti-patterns — do NOT do these
+
+- **Don't read `impactKnown: false`, a `Failed` / `Unknown` status, a
+  refused launch, or an absent `report` as "no dependents".**
+- **Don't read the length of `report.impactedAssets` as the blast
+  radius.** It is capped; `report.total` is the number.
+- **Don't sweep `app_refs` over every consumer to answer a reverse
+  question.** The deletion analysis answers it server-side, per target.
+- **Don't run a whole-tenant map for a question about named targets.**
+- **Never call a delete tool** (`extlib_delete` or any other). The
+  deletion analysis deletes nothing; nothing in this skill should.
+- **Don't chase dependencies of dependencies yourself.** The report's
+  `consumerType` says how each consumer depends on the target.
+- **Don't read a harness-saved report or asset page into context.**
+  `cp` it into the cache and pass the path; check content with
+  `head -c 1000 <path>` in a shell if you must.
+
+## When NOT to use
+
+- User wants the architecture of one app → use
+  `outsystems-app-architecture` (it shows that app's deps via its own
+  data, more focused).
+- User wants to check ONE specific app's deps (forward) → call
+  `app_refs` directly.
+- User asks whether promoting an app to an environment is safe → run a
+  deployment-impact analysis (`delete: false` with the target `env_key`),
+  as the main OutSystems skill's "Run a deployment-impact analysis"
+  workflow describes.

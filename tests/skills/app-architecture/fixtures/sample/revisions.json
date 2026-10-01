@@ -1,0 +1,35 @@
+{
+ "assetKey": "a0000077-0000-4000-8000-000000000077",
+ "displayed": 5,
+ "next_offset": 5,
+ "pagination_hint": "Showing 5 of 13. Pass offset=5 to fetch the next page, or narrow the query.",
+ "results": [
+  {
+   "modelDigest": "a0000070-0000-4000-8000-000000000070",
+   "revision": 13,
+   "revisionDateTime": "2026-09-01T03:07:35.990488Z"
+  },
+  {
+   "modelDigest": "a0000081-0000-4000-8000-000000000081",
+   "revision": 12,
+   "revisionDateTime": "2026-08-26T14:50:51.533946Z"
+  },
+  {
+   "modelDigest": "a00000b2-0000-4000-8000-0000000000b2",
+   "revision": 11,
+   "revisionDateTime": "2026-08-24T08:38:09.452311Z"
+  },
+  {
+   "modelDigest": "a0000068-0000-4000-8000-000000000068",
+   "revision": 10,
+   "revisionDateTime": "2026-08-14T02:50:26.41323Z"
+  },
+  {
+   "modelDigest": "a0000089-0000-4000-8000-000000000089",
+   "revision": 9,
+   "revisionDateTime": "2026-08-12T01:35:06.813937Z"
+  }
+ ],
+ "total": 13,
+ "truncated": true
+}
