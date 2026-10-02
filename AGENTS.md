@@ -94,7 +94,7 @@ Separately, the "if sign-in itself errors" trigger condition is phrased identica
 
 ### Exception: the bundled Beta skills
 
-Three more skills ship next to the main one: `outsystems-tenant-architecture`, `outsystems-app-architecture` and `outsystems-dependency-impact`. They are separate skills with their own triggers, not sections of the main skill doc, so the five-doc lockstep above does not apply to them. Their own rules:
+Among the Beta skills that ship next to the main one, the three architecture skills, `outsystems-tenant-architecture`, `outsystems-app-architecture` and `outsystems-dependency-impact`, follow the rules below (the other Beta skills keep their own layout). They are separate skills with their own triggers, not sections of the main skill doc, so the five-doc lockstep above does not apply to them. Their own rules:
 
 - **One source, two byte-identical copies.** `claude/skills/outsystems-<name>/` is the source; `cursor/skills/outsystems-<name>/` and `kiro/outsystems/skills/outsystems-<name>/` are exact copies, and `tests/skills/test_harness_copies.py` fails on any difference. Edit the Claude copy and re-copy (the test's docstring has the loop). Copilot and the root `SKILL.md` have no skill folders, so they do not get them.
 - **They need a shell and Python 3.7+.** Each one runs `scripts/build.py`, which reads the tool results the agent saved to disk and writes an HTML page. The scripts never call the MCP server and hold no sign-in. Claude Desktop's Chat tab has no shell and cannot run them; the README's "Beta skills" section says so.
