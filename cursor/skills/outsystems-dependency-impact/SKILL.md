@@ -3,7 +3,7 @@ name: outsystems-dependency-impact
 description: "[Beta] Build an interactive HTML REVERSE-dependency explorer — answers 'who depends on this library/agent/connection?' from the platform's deletion-impact analysis (read-only; nothing is deleted). One named target is one analysis: seconds, a few K tokens. A whole-tenant map is one analysis per library/agent/connection in parallel batches (estimate: ~0.5K tokens per target plus ~0.1–0.15K per dependent found). Use ONLY for reverse questions like 'who depends on [library/agent]', 'if I publish [library] who breaks', 'blast radius of [library/agent]', 'reverse dependency map', 'library impact audit', 'agent impact audit'. For forward questions about a specific app ('what does App X depend on', 'deps of App X'), use outsystems-app-architecture or the app's references directly."
 license: MIT
 compatibility: Needs an agent that can run shell commands and Python 3.8+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it.
-allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__deploy_impact mcp__plugin_outsystems_outsystems__deploy_impact_status mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__app_refs mcp__outsystems__env_list mcp__outsystems__deploy_impact mcp__outsystems__deploy_impact_status
+allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/outsystems-dependency-impact/scripts/build.py *) Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/outsystems-dependency-impact/scripts/build.py" *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__deploy_impact mcp__plugin_outsystems_outsystems__deploy_impact_status mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__app_refs mcp__outsystems__env_list mcp__outsystems__deploy_impact mcp__outsystems__deploy_impact_status
 metadata:
   version: "1.5.0"
   maturity: beta
@@ -56,6 +56,10 @@ the one-target path whenever the user names a target.
   `<skill-folder>/scripts/build.py` is the script next to it. Values in
   angle brackets are placeholders you substitute; quote every path, since
   a home folder can contain spaces.
+- Run every `build.py` command on its own and exactly as this file writes
+  it: the skill's permissions match `python3 "<skill-folder>/scripts/build.py" ...`
+  and nothing else, so an added redirect (`2>&1`), pipe or chained command
+  (`;`, `&&`) makes the harness stop and ask the user.
 - No shell available? Stop and tell the user this skill needs one (for
   example Claude Code, not Claude Desktop's Chat tab); don't try to build
   the page by hand.
@@ -119,13 +123,12 @@ In one message:
 TENANT_ID = <auth_status.tenant_id>
 ```
 
-Create this skill's cache folder for the tenant. The script prints the
-folder's path; the steps below call it `<cache-folder>`. Then create the
-folder for the per-target records:
+Create this skill's cache folder for the tenant, with its `impact/raw/`
+folder for the per-target records. The script prints the folder's path;
+the steps below call it `<cache-folder>`:
 
 ```bash
 python3 "<skill-folder>/scripts/build.py" --cache-dir <TENANT_ID>
-mkdir -p "<cache-folder>/impact/raw"
 ```
 
 ### Step 2 — Cache freshness (Branch D only)
@@ -174,14 +177,15 @@ It prints that folder's path (it does not create it); call it
 
 If `<tenant-cache-folder>/tenant-data.json` exists and `<tenant-cache-folder>/meta.json`'s
 `fetched_at` is under 24 hours old, pass `<tenant-cache-folder>/tenant-data.json`
-as the asset list (`--tenant-assets`). Check the age with a one-line
-`python3 -c` over `meta.json`; don't read the bundle itself.
+as the asset list (`--tenant-assets`). Check the age with
+`python3 "<skill-folder>/scripts/build.py" --cache-age "<tenant-cache-folder>"`
+(it prints `meta.json` and `age_s`); don't read the bundle itself.
 
 **Fallback:** `app_list` with `limit: 500` (larger values are clamped to
 500), then `offset: <next_offset>` while `truncated` is true; save each
 page as `<cache-folder>/assets-page-<n>.json` and pass every page to `build.py`.
 On Claude Code a large page is saved to disk by the harness ("Output has
-been saved to <path>") — `cp` it. On a harness that truncates large tool
+been saved to <path>") — copy it with `python3 "<skill-folder>/scripts/build.py" --copy "<path>" "<destination in the cache>"`. On a harness that truncates large tool
 results a 500-row page arrives cut, so page with `limit: 100` there.
 
 ### Step 4 — Filter to targets (Branch D)
@@ -197,10 +201,17 @@ Keep assets whose type is a producer — the `assetType` field of an
   `ExternalConnection`, `MCPConnection`, `SearchServiceConnection`,
   `A2AConnection`
 
-Save the list (key, name, type) to `<cache-folder>/targets.json`, with a short
-`python3` one-liner over the asset list file rather than by reading it.
-`targets.json` is your work list only: keep passing the asset list itself
-as `--tenant-assets`.
+Write the list (key, name, type) to `<cache-folder>/targets.json` with the
+script, passing every asset list file in the order Step 3 saved them:
+
+```bash
+python3 "<skill-folder>/scripts/build.py" --select-targets "<cache-folder>/targets.json" "<asset list file>" ...
+```
+
+It applies the type list above, checks the asset pages like a build
+does, and prints the count per group and every name, which Step 4.5
+needs. `targets.json` is your work list only: keep passing the asset
+list itself as `--tenant-assets`.
 
 ### Step 4.5 — Pre-flight confirmation
 
@@ -231,8 +242,9 @@ out. Offer three choices: **Yes — all {count}**, **Libraries only ({libs})**, 
 **No — cancel**.
 
 On "No" → stop; the asset list stays cached (cheap and useful for other
-skills). On "Libraries only", rewrite `<cache-folder>/targets.json` to the
-libraries before Step 5, so the build shows only them.
+skills). On "Libraries only", run the same `--select-targets` command with
+`--only libraries` right after the output file, before Step 5, so the build
+shows only them.
 
 ### Step 5 — Analyse
 
@@ -304,7 +316,7 @@ error` and `report.(status, total, truncated,
 impactedAssets[].(assetKey, name, type,
 deployedRevisions[].(environmentKey, revision, severity, consumerType)))`.
 When the harness saved the result to disk (Claude Code, large reports),
-`cp` that file to `<cache-folder>/impact/raw/<targetKey>.status.json` and write a
+copy that file with `python3 "<skill-folder>/scripts/build.py" --copy "<path>" "<cache-folder>/impact/raw/<targetKey>.status.json"` and write a
 record with `resultFile` instead of re-typing the rows. When a large
 result arrived inline instead (a report with many dependents can stay
 under the auto-save threshold), write the response verbatim with your
@@ -420,8 +432,9 @@ same ratio.
 
 - **Claude Code**: large results (a big `app_list` page, a report with
   many dependents) are saved to disk by the harness ("Output has been
-  saved to <path>"), so they never enter model context — `cp` them into
-  the cache and point the record at the copy (`resultFile`).
+  saved to <path>"), so they never enter model context — copy them into
+  the cache with `build.py --copy` and point the record at the copy
+  (`resultFile`).
 - **Harnesses without auto-save** (Cursor, Kiro and others): results
   arrive inline; write each record as described in Step 5.
 - **Harnesses that truncate large tool results** (for example Codex,
@@ -481,8 +494,9 @@ same ratio.
   interface: use the saved-to path it printed, or write the response you
   received.
 - **Don't read a harness-saved report or asset page into context.**
-  `cp` it into the cache and pass the path; check its start with
-  `python3 -c "print(open('<path>').read(1000))"` if you must.
+  copy it into the cache with `build.py --copy` and pass the path; check
+  its start with `python3 "<skill-folder>/scripts/build.py" --peek "<path>"`
+  if you must.
 
 ## When NOT to use
 

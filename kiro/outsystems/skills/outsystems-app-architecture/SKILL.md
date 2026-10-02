@@ -3,7 +3,7 @@ name: outsystems-app-architecture
 description: "[Beta] Generate an interactive HTML graph of a single OutSystems app's architecture — UI flows + screens, server/client/service actions with signatures, entities with attributes and relationships, static enums, structures, roles, AI model connections, library dependencies and where the app is deployed — with OutSystems-themed dark mode styling. ONE app per invocation — do NOT iterate over multiple apps in a single call (run the skill explicitly per-app; for more than 3 named apps, ask the user and wait for an explicit answer first). For 'every app' / 'all apps' requests and tenant-wide views, use outsystems-tenant-architecture instead: its scope guard asks before any per-app run, without listing the apps first. Use when the user asks for the architecture of a specific app, 'show me the architecture of [app]', 'explore [app]', 'what's inside [app]', 'give me an overview of [app]', or similar."
 license: MIT
 compatibility: Needs an agent that can run shell commands and Python 3.8+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The generated HTML loads its graph library from a CDN; offline it shows a plain listing instead.
-allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_info mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__app_revisions mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__context_screens mcp__plugin_outsystems_outsystems__context_actions mcp__plugin_outsystems_outsystems__context_entities mcp__plugin_outsystems_outsystems__context_structures mcp__plugin_outsystems_outsystems__context_roles mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__app_list mcp__outsystems__app_info mcp__outsystems__app_refs mcp__outsystems__app_revisions mcp__outsystems__env_list mcp__outsystems__env_apps mcp__outsystems__context_screens mcp__outsystems__context_actions mcp__outsystems__context_entities mcp__outsystems__context_structures mcp__outsystems__context_roles mcp__outsystems__context_connections
+allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/outsystems-app-architecture/scripts/build.py *) Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/outsystems-app-architecture/scripts/build.py" *) Write mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_info mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__app_revisions mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__context_screens mcp__plugin_outsystems_outsystems__context_actions mcp__plugin_outsystems_outsystems__context_entities mcp__plugin_outsystems_outsystems__context_structures mcp__plugin_outsystems_outsystems__context_roles mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__app_list mcp__outsystems__app_info mcp__outsystems__app_refs mcp__outsystems__app_revisions mcp__outsystems__env_list mcp__outsystems__env_apps mcp__outsystems__context_screens mcp__outsystems__context_actions mcp__outsystems__context_entities mcp__outsystems__context_structures mcp__outsystems__context_roles mcp__outsystems__context_connections
 metadata:
   version: "1.7.0"
   maturity: beta
@@ -43,6 +43,10 @@ instead of the graph.
   `<skill-folder>/scripts/build.py` is the script next to it. Values in
   angle brackets are placeholders you substitute; quote every path, since
   a home folder can contain spaces.
+- Run every `build.py` command on its own and exactly as this file writes
+  it: the skill's permissions match `python3 "<skill-folder>/scripts/build.py" ...`
+  and nothing else, so an added redirect (`2>&1`), pipe or chained command
+  (`;`, `&&`) makes the harness stop and ask the user.
 - No shell available? Stop and tell the user this skill needs one (for
   example Claude Code, not Claude Desktop's Chat tab); don't try to build
   the page by hand.
@@ -118,8 +122,8 @@ If `<cache-folder>/meta.json` is present:
 1. Call `app_info` with `key: <APP_KEY>` (cheap, ~500 tokens; skip if
    Step 1 already called it).
 2. Compute `AGE = now - meta.fetched_at`:
-   `python3 -c "import json,time; m=json.load(open('<cache-folder>/meta.json')); print(m, 'age', int(time.time()) - m['fetched_at'])"`
-   prints both in one call, within this skill's allowed tools (no `cat`, no `date`).
+   `python3 "<skill-folder>/scripts/build.py" --cache-age "<cache-folder>"`
+   prints `meta.json` and its `age_s` in one call (no `cat`, no `date`).
 3. If `AGE < 3600` AND `app_info.revision == meta.revision` AND
    `meta.schema == 3` → **cache valid, jump to Step 4** (cached re-render).
    A `meta.json` with `schema` 2 or none was written by an older version
@@ -182,7 +186,9 @@ For **each** response, follow this rule:
 
 - **If the response is the "Output has been saved to <path>" notice**
   (Claude Code's harness auto-save kicked in, typical for large apps):
-  extract the path and `cp` it into the cache via Bash, so its content
+  extract the path and copy it into the cache with
+  `python3 "<skill-folder>/scripts/build.py" --copy "<path>" "<cache-folder>/<file>"`
+  (it writes only inside this skill's cache), so its content
   never enters the conversation. **This is the cheapest path.**
 - **If the response is inline JSON** (under Claude Code's auto-save
   line, measured between 45 and 65 KB, and every response on harnesses without
@@ -190,9 +196,9 @@ For **each** response, follow this rule:
   `context_*` responses in the **compact form** below to
   `<cache-folder>/<file>`, keeping the top-level envelope keys. Write the small
   responses (#1, #8, #9, #10+) as returned. Use the Write tool, one call
-  per file: this skill's allowed tools grant Write, `cp`, `mkdir` and
-  `python3`, not a shell redirect (`cat > file`), which makes the harness
-  ask the user.
+  per file: this skill's allowed tools grant Write and its own `build.py`,
+  nothing else, so a shell redirect (`cat > file`) makes the harness ask
+  the user.
 - **If a call errors**: for `app_refs`, save
   `{"assetKey": "<APP_KEY>", "failed": true}` as `refs-raw.json` and
   continue (the graph then renders without libraries; connections still
@@ -494,13 +500,14 @@ writes are the main cost (see the whitelist's token trade-off).
 ## Anti-patterns — do NOT do these
 
 - 🔴 **Do NOT read any `context_*` harness-saved file (Claude Code).**
-  When a context call returns *"Output has been saved to <path>"*, `cp`
-  that file into the cache via Bash and pass the path to `build.py`.
+  When a context call returns *"Output has been saved to <path>"*, copy
+  that file into the cache with `build.py --copy` (Step 3) and pass the
+  path to `build.py`.
   **Never** read it into context. A large app's `context_screens`
   payload alone can be 20-40 KB ≈ 5-10K tokens; across all context calls
   a large app pulls 50-150 KB = 12-35K tokens into context, and every
   later turn pays for it again. If you need to check content for
-  debugging, run `python3 -c "print(open('<path>').read(1000))"`.
+  debugging, run `python3 "<skill-folder>/scripts/build.py" --peek "<path>"`.
 - 🔴 **Don't dump an inline `context_*` payload back into the
   conversation or re-read the compact cache file (harnesses without
   auto-save).** Each response arrives inline (see Step 3) and is

@@ -298,9 +298,60 @@ def _cache_dir_command(argv) -> int:
     return 0
 
 
+
+# Small read-only helpers, so the skill's steps run as this script (the one
+# command its allowed-tools grant) instead of model-written `python3 -c`.
+PEEK_MAX = 5000
+
+
+def _cache_age_command(argv) -> int:
+    """`--cache-age <folder>`: print that folder's meta.json and its age in
+    seconds (from `fetched_at`, or `scanned_at` for dependency-impact)."""
+    if len(argv) != 1:
+        print("usage: build.py --cache-age <cache-folder>", file=sys.stderr)
+        return 2
+    meta_path = pathlib.Path(argv[0]) / "meta.json"
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"no cache: {meta_path} does not exist")
+        return 0
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"unreadable cache: {meta_path}: {exc}")
+        return 0
+    stamp = meta.get("fetched_at", meta.get("scanned_at")) if isinstance(meta, dict) else None
+    age = int(time.time()) - stamp if isinstance(stamp, int) and not isinstance(stamp, bool) else None
+    print(json.dumps(meta, separators=(",", ":")))
+    print(f"age_s={age if age is not None else 'unknown'}")
+    return 0
+
+
+def _peek_command(argv) -> int:
+    """`--peek <path> [chars]`: print the start of a saved file, for a look
+    at its shape without reading it into the conversation."""
+    try:
+        n = int(argv[1]) if len(argv) == 2 else 1000 if len(argv) == 1 else None
+    except ValueError:
+        n = None
+    if n is None or not 1 <= n <= PEEK_MAX:
+        print(f"usage: build.py --peek <path> [chars, 1-{PEEK_MAX}]", file=sys.stderr)
+        return 2
+    try:
+        with open(argv[0], encoding="utf-8", errors="replace") as fh:
+            print(fh.read(n))
+    except OSError as exc:
+        print(f"could not read {argv[0]}: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if len(argv) > 1 and argv[1] == "--cache-dir":
         return _cache_dir_command(argv[2:])
+    if len(argv) > 1 and argv[1] == "--cache-age":
+        return _cache_age_command(argv[2:])
+    if len(argv) > 1 and argv[1] == "--peek":
+        return _peek_command(argv[2:])
     try:
         args = _parse_args(argv[1:])
     except UsageError as exc:

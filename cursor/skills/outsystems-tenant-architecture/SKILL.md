@@ -3,7 +3,7 @@ name: outsystems-tenant-architecture
 description: "[Beta] Generate an interactive HTML graph of an OutSystems Developer Cloud tenant's assets (web/mobile apps, agents and agent definitions, AI model connections, knowledge bases, libraries, integrations) with filter-by-type controls, where each asset is deployed (revision drift per environment), a 7-day Production traffic/error overlay and an AI governance view (model providers, Trial vs Customer entitlement, test/demo-named and stale agents). ONE tenant-level pass per invocation, no per-app deep dives (use outsystems-app-architecture for one app); also the entry point for 'architecture of every app' requests, which it confirms before any per-app run. First run 2-5 min; cached re-runs ~5s. Use when the user asks for a tenant overview, architecture diagram, asset inventory, 'what's in my tenant', 'show me my apps', 'what is deployed where', an AI inventory, 'audit my AI', 'which models are we using', 'show me my agents', AI governance, or similar."
 license: MIT
 compatibility: Needs an agent that can run shell commands and Python 3.8+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The output HTML embeds the tenant data but loads its graph library and fonts from public CDNs; offline it falls back to a plain asset table.
-allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__app_health mcp__plugin_outsystems_outsystems__context_agents mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__auth_status mcp__outsystems__env_list mcp__outsystems__app_list mcp__outsystems__env_apps mcp__outsystems__app_health mcp__outsystems__context_agents mcp__outsystems__context_connections
+allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/outsystems-tenant-architecture/scripts/build.py *) Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/outsystems-tenant-architecture/scripts/build.py" *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__app_health mcp__plugin_outsystems_outsystems__context_agents mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__auth_status mcp__outsystems__env_list mcp__outsystems__app_list mcp__outsystems__env_apps mcp__outsystems__app_health mcp__outsystems__context_agents mcp__outsystems__context_connections
 metadata:
   version: "1.9.0"
   maturity: beta
@@ -43,6 +43,10 @@ to system fonts.
   `<skill-folder>/scripts/build.py` is the script next to it. Values in
   angle brackets are placeholders you substitute; quote every path, since
   a home folder can contain spaces.
+- Run every `build.py` command on its own and exactly as this file writes
+  it: the skill's permissions match `python3 "<skill-folder>/scripts/build.py" ...`
+  and nothing else, so an added redirect (`2>&1`), pipe or chained command
+  (`;`, `&&`) makes the harness stop and ask the user.
 - No shell available? Stop and tell the user this skill needs one (for
   example Claude Code, not Claude Desktop's Chat tab); don't try to build
   the page by hand.
@@ -120,8 +124,8 @@ If `<cache-folder>/meta.json` is present:
 
 1. Call `app_list` with `limit: 1` (tiny — ~300 tokens).
 2. Compute `AGE = now - meta.fetched_at`:
-   `python3 -c "import json,time; m=json.load(open('<cache-folder>/meta.json')); print(m, 'age', int(time.time()) - m['fetched_at'])"`
-   prints both in one call, within this skill's allowed tools (no `cat`, no `date`).
+   `python3 "<skill-folder>/scripts/build.py" --cache-age "<cache-folder>"`
+   prints `meta.json` and its `age_s` in one call (no `cat`, no `date`).
 3. If `AGE < 3600` **and** `probe.total == meta.total` **and**
    `meta.overlays_fetched_at` is a number **and** `meta.schema` is `1`
    → **cache valid, jump to Step 5** (cached re-render). `meta.total` is the server-reported
@@ -194,8 +198,8 @@ context_connections) — inspect only the result text, never the payload:
   Write the two AI governance pages in the compact form below to
   `<cache-folder>/ai-agents-<N>.json` and `<cache-folder>/ai-connections-<N>.json`.
   That is the page file. Write it with the Write tool, one call per file:
-  this skill's allowed tools grant Write, `cp`, `mkdir` and `python3`, not
-  a shell redirect (`cat > file`), which makes the harness ask the user.
+  this skill's allowed tools grant Write and its own `build.py`, nothing
+  else, so a shell redirect (`cat > file`) makes the harness ask the user.
 - **If a call failed** (for example `app_health` on a tenant whose
   analytics are not enabled, or an `env_apps` error for one environment):
   a server error or timeout (5xx, 504) is retried once, every failed call
@@ -573,8 +577,8 @@ error. A metric in the `metrics` echo but absent from a row is shown as
 - **`build.py` exits 1 (`cache build failed: KeyError(...)`)** → a raw
   response is missing a field the script expects (see Data shape
   contract). Check the saved file's start with
-  `python3 -c "print(open('<path>').read(600))"`, not by reading it into
-  context.
+  `python3 "<skill-folder>/scripts/build.py" --peek "<path>" 600`, not by
+  reading it into context.
 - **An environment shows PARTIAL** → an older server returned 100 of
   its deployments and takes no offset. Expected; report it.
 - **`app_health` fails** (e.g. analytics not available) → pass
@@ -595,7 +599,7 @@ error. A metric in the `metrics` echo but absent from a row is shown as
   ~50 KB ≈ 12-15K tokens; on a 1000-asset tenant it's ~150 KB ≈ 35-50K
   tokens. Once that's in context, every subsequent turn processes it —
   turning a 3-min skill into a 15-25 min skill. If you need to check
-  content for debugging, run `python3 -c "print(open('<path>').read(1000))"`. The
+  content for debugging, run `python3 "<skill-folder>/scripts/build.py" --peek "<path>"`. The
   contract is: data goes through disk → build.py → output HTML, never
   re-entering the model's context.
 - 🔴 **Don't dump an inline payload back into the conversation or re-read

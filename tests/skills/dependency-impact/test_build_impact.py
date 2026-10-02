@@ -553,6 +553,33 @@ def test_an_unwritable_cache_is_one_clean_line():
     assert "Traceback" not in proc.stderr
 
 
+def test_select_targets_writes_the_work_list_and_names_every_target():
+    rows = [{"assetKey": a["k"], "name": a["n"], "assetType": a["t"]} for a in fx("tenant-assets.json")]
+    rows.append({"assetKey": "a0000300-0000-4000-8000-000000000300", "name": "Shop", "assetType": "WebApplication"})
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        page = td / "assets.json"
+        page.write_text(json.dumps({"results": rows, "total": len(rows), "displayed": len(rows), "truncated": False}))
+        out = td / "targets.json"
+        proc = subprocess.run([sys.executable, str(BUILD), "--select-targets", str(out), str(page)],
+                              capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        targets = json.loads(out.read_text())["targets"]
+        assert "Shop" not in {t["name"] for t in targets}            # an app is not a producer
+        assert all(set(t) == {"key", "name", "type"} for t in targets) and targets
+        assert "libraries:" in proc.stdout and "targets (" in proc.stdout
+        libs = subprocess.run([sys.executable, str(BUILD), "--select-targets", str(out), "--only", "libraries",
+                               str(page)], capture_output=True, text=True)
+        assert libs.returncode == 0, libs.stderr
+        assert {t["type"] for t in json.loads(out.read_text())["targets"]} <= set(
+            ("LowCodeLibrary", "MobileLibrary", "ExtensionLibrary", "WidgetLibrary", "ExternalLibrary"))
+        cut = td / "cut.json"
+        cut.write_text(json.dumps({"results": rows[:1], "total": len(rows), "truncated": True, "next_offset": 1}))
+        proc = subprocess.run([sys.executable, str(BUILD), "--select-targets", str(out), str(cut)],
+                              capture_output=True, text=True)
+        assert proc.returncode == 3 and "INCOMPLETE" in proc.stderr
+
+
 if __name__ == "__main__":
     _run()
 

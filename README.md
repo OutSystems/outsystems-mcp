@@ -301,7 +301,7 @@ The three architecture skills (`outsystems-tenant-architecture`, `outsystems-app
 - a shell it can run commands in, with Python 3.8 or later (standard library only); Claude Desktop's Chat tab has no shell, so it cannot run them;
 - the OutSystems MCP server connected and signed in. The scripts never call the server themselves: the agent fetches the data with its own MCP connection and the scripts only read the saved results.
 
-They are validated on Claude Code, which also keeps the largest tool results out of the conversation by saving them to disk. A harness without that passes every result through the conversation, so the same run costs more tokens. The pages are written to your working folder; they embed your tenant data and, when opened, load fonts from Google Fonts and, for the two graph pages, a graph library from unpkg or jsDelivr. They keep a cache in an `outsystems-skills` folder under your user cache directory and reuse it for up to an hour (a day for dependency-impact analyses); delete that folder to clear it.
+They are validated on Claude Code, which also keeps the largest tool results out of the conversation by saving them to disk. A harness without that passes every result through the conversation, so the same run costs more tokens. The pages are written to your working folder; they embed your tenant data and, when opened, load fonts from Google Fonts and, for the two graph pages, a graph library from unpkg or jsDelivr. They keep a cache in `~/.cache/outsystems-skills`, a hidden `.cache` folder in your home folder on every operating system (macOS and Windows included), and reuse it for up to an hour (a day for dependency-impact analyses); delete that folder to clear it.
 
 ## Troubleshooting
 

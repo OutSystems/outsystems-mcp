@@ -129,6 +129,7 @@ def _cache_dir_command(argv) -> int:
     path = CACHE_ROOT / skill / rest[0]
     if skill == SKILL_NAME:
         path.mkdir(parents=True, exist_ok=True)
+        (path / "impact" / "raw").mkdir(parents=True, exist_ok=True)   # Step 1's record folder
     if clear:
         path = path / clear
         shutil.rmtree(path, ignore_errors=True)
@@ -152,9 +153,143 @@ def _wait_command(argv) -> int:
     return 0
 
 
+
+# Small read-only helpers, so the skill's steps run as this script (the one
+# command its allowed-tools grant) instead of model-written `python3 -c`.
+PEEK_MAX = 5000
+
+
+def _cache_age_command(argv) -> int:
+    """`--cache-age <folder>`: print that folder's meta.json and its age in
+    seconds (from `fetched_at`, or `scanned_at` for dependency-impact)."""
+    if len(argv) != 1:
+        print("usage: build.py --cache-age <cache-folder>", file=sys.stderr)
+        return 2
+    meta_path = pathlib.Path(argv[0]) / "meta.json"
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"no cache: {meta_path} does not exist")
+        return 0
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"unreadable cache: {meta_path}: {exc}")
+        return 0
+    stamp = meta.get("fetched_at", meta.get("scanned_at")) if isinstance(meta, dict) else None
+    age = int(time.time()) - stamp if isinstance(stamp, int) and not isinstance(stamp, bool) else None
+    print(json.dumps(meta, separators=(",", ":")))
+    print(f"age_s={age if age is not None else 'unknown'}")
+    return 0
+
+
+def _peek_command(argv) -> int:
+    """`--peek <path> [chars]`: print the start of a saved file, for a look
+    at its shape without reading it into the conversation."""
+    try:
+        n = int(argv[1]) if len(argv) == 2 else 1000 if len(argv) == 1 else None
+    except ValueError:
+        n = None
+    if n is None or not 1 <= n <= PEEK_MAX:
+        print(f"usage: build.py --peek <path> [chars, 1-{PEEK_MAX}]", file=sys.stderr)
+        return 2
+    try:
+        with open(argv[0], encoding="utf-8", errors="replace") as fh:
+            print(fh.read(n))
+    except OSError as exc:
+        print(f"could not read {argv[0]}: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _copy_command(argv) -> int:
+    """`--copy <src> <dst>`: copy a harness-saved tool result into this
+    skill's cache. The destination must be inside the skill's own cache
+    folder, so this is never a general-purpose copy."""
+    if len(argv) != 2:
+        print("usage: build.py --copy <saved-file> <path inside this skill's cache>", file=sys.stderr)
+        return 2
+    src, dst = pathlib.Path(argv[0]), pathlib.Path(argv[1]).resolve()
+    root = (CACHE_ROOT / SKILL_NAME).resolve()
+    if root not in dst.parents:
+        print(f"--copy only writes inside {root}", file=sys.stderr)
+        return 2
+    if not src.is_file():
+        print(f"--copy: {src} is not a file", file=sys.stderr)
+        return 1
+    try:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dst)
+    except OSError as exc:
+        print(f"could not copy {src} to {dst}: {exc}", file=sys.stderr)
+        return 1
+    print(dst)
+    return 0
+
+
+
+# Producer types: the assets something else can depend on (Step 4).
+PRODUCER_GROUPS = {
+    "libraries":   ("LowCodeLibrary", "MobileLibrary", "ExtensionLibrary", "WidgetLibrary",
+                    "ExternalLibrary"),
+    "agents":      ("Agent",),
+    "connections": ("AIModelConnection", "AINativeConnection", "ExternalConnection",
+                    "MCPConnection", "SearchServiceConnection", "A2AConnection"),
+}
+
+
+def _select_targets_command(argv) -> int:
+    """`--select-targets <targets.json> [--only libraries|agents|connections]
+    <asset list file>...`: write the Branch D work list (key, name, type) of
+    every producer in the asset list, and print the counts and names the
+    pre-flight confirmation needs. The asset files are checked like a build's."""
+    rest = list(argv)
+    only = None
+    if len(rest) >= 3 and rest[1] == "--only" and rest[2] in PRODUCER_GROUPS:
+        only = rest.pop(2)
+        rest.pop(1)
+    if len(rest) < 2:
+        print("usage: build.py --select-targets <targets.json> [--only libraries|agents|connections] "
+              "<asset list file>...", file=sys.stderr)
+        return 2
+    out, sources = pathlib.Path(rest[0]), rest[1:]
+    try:
+        by_key = load_assets(sources)
+    except IncompleteAssets as exc:
+        print(f"INCOMPLETE: {exc}. Nothing was written.", file=sys.stderr)
+        return 3
+    except (OSError, KeyError, ValueError, json.JSONDecodeError) as exc:
+        print(f"could not read the asset list: {exc}", file=sys.stderr)
+        return 1
+    groups = {g: types for g, types in PRODUCER_GROUPS.items() if only in (None, g)}
+    picked = {g: sorted((a for a in by_key.values() if a.get("t") in types),
+                        key=lambda a: (a.get("n") or "").lower())
+              for g, types in groups.items()}
+    rows = [{"key": a["k"], "name": a.get("n") or "", "type": a.get("t") or ""}
+            for g in picked for a in picked[g]]
+    try:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps({"targets": rows}, indent=1), encoding="utf-8")
+    except OSError as exc:
+        print(f"could not write {out}: {exc}", file=sys.stderr)
+        return 1
+    print(f"wrote {out}: {len(rows)} targets ("
+          + ", ".join(f"{len(v)} {g}" for g, v in picked.items()) + ")")
+    for g, v in picked.items():
+        if v:
+            print(f"  {g}: " + ", ".join(a.get("n") or a["k"] for a in v))
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if len(argv) > 1 and argv[1] == "--cache-dir":
         return _cache_dir_command(argv[2:])
+    if len(argv) > 1 and argv[1] == "--select-targets":
+        return _select_targets_command(argv[2:])
+    if len(argv) > 1 and argv[1] == "--cache-age":
+        return _cache_age_command(argv[2:])
+    if len(argv) > 1 and argv[1] == "--peek":
+        return _peek_command(argv[2:])
+    if len(argv) > 1 and argv[1] == "--copy":
+        return _copy_command(argv[2:])
     if len(argv) > 1 and argv[1] == "--wait":
         return _wait_command(argv[2:])
     args = parse_args(argv)
@@ -287,6 +422,18 @@ def _cut_listing(chain: dict) -> str:
 def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
                  env_list_path: pathlib.Path | None, tenant_id: str,
                  target_keys=None) -> dict:
+    by_key = load_assets(tenant_assets_paths)
+    env_names = load_env_names(env_list_path)
+
+    impact_dir = impact_dir.resolve()
+    if not impact_dir.is_dir():
+        raise FileNotFoundError(f"--impact-dir is not a directory: {impact_dir}")
+    return _build_from_records(impact_dir, by_key, env_names, tenant_id, target_keys)
+
+
+def load_assets(tenant_assets_paths) -> dict:
+    """The asset list by key, from every --tenant-assets file, with each
+    app_list listing checked as a whole page chain (IncompleteAssets)."""
     if isinstance(tenant_assets_paths, (str, pathlib.Path)):
         tenant_assets_paths = [tenant_assets_paths]
     by_key: dict[str, dict] = {}
@@ -332,12 +479,10 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
             chain = None
     if chain is not None:
         raise IncompleteAssets(_cut_listing(chain))
-    env_names = load_env_names(env_list_path)
+    return by_key
 
-    impact_dir = impact_dir.resolve()
-    if not impact_dir.is_dir():
-        raise FileNotFoundError(f"--impact-dir is not a directory: {impact_dir}")
 
+def _build_from_records(impact_dir, by_key, env_names, tenant_id, target_keys) -> dict:
     by_target: dict[str, dict] = {}
     used: list[pathlib.Path] = []   # the record (and result) files this report reads
     for path in sorted(impact_dir.glob("*.json")):
