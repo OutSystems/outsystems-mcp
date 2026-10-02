@@ -468,6 +468,17 @@ def test_a_truncated_asset_page_without_its_next_page_is_incomplete():
         assert not (td / "cache" / "impact-data.json").exists()
         whole = _dep_build(td, rec, [td / "p1.json", td / "p2.json"])
         assert whole.returncode == 0, whole.stderr
+        # Copilot's case: a truncated search plus a DIFFERENT complete search
+        # that happens to report the same total is still incomplete.
+        a, b, c = rows[0], rows[1], rows[2]
+        cut_search = {"results": [a], "total": 2, "displayed": 1, "truncated": True, "next_offset": 1}
+        other = {"results": [b, c], "total": 2, "displayed": 2, "truncated": False}
+        (td / "s1.json").write_text(json.dumps(cut_search)); (td / "s2.json").write_text(json.dumps(other))
+        mixed = _dep_build(td, rec, [td / "s1.json", td / "s2.json"])
+        assert mixed.returncode == 3 and "starting at s1.json" in mixed.stderr, mixed.stderr
+        # Two complete searches, any totals, pass.
+        (td / "s3.json").write_text(json.dumps(dict(other, results=[a])))
+        assert _dep_build(td, rec, [td / "s3.json", td / "s2.json"]).returncode == 0
 
 
 def test_a_status_saved_for_another_analysis_is_unknown():

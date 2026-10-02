@@ -265,34 +265,55 @@ class IncompleteAssets(Exception):
     """The app_list pages passed stop before the listing's end (exit 3)."""
 
 
+def _cut_listing(chain: dict) -> str:
+    nxt = chain["next"] if isinstance(chain["next"], int) else chain["rows"]
+    return (f"the asset list pages starting at {pathlib.Path(chain['path']).name} cover "
+            f"{len(chain['keys'])} of {chain['total']} assets; call app_list with the same "
+            f"arguments plus offset: {nxt}, save the response, and re-run passing each "
+            f"listing's pages one after another, in offset order, to --tenant-assets")
+
+
 def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
                  env_list_path: pathlib.Path | None, tenant_id: str,
                  target_keys=None) -> dict:
     if isinstance(tenant_assets_paths, (str, pathlib.Path)):
         tenant_assets_paths = [tenant_assets_paths]
     by_key: dict[str, dict] = {}
-    listings: dict[int, dict] = {}   # raw app_list pages, grouped by the listing's total
+    # A truncated app_list page needs its later pages: without them targets
+    # would be missing from the map without a word. Pages carry no offset or
+    # query echo, so each listing's pages must be passed one after another:
+    # a truncated page opens a chain that only its continuation (same total)
+    # may extend, and the chain must reach that total on a page that is not
+    # truncated. Two searches with equal totals never count as one listing.
+    chain = None   # {"path", "total", "keys", "next"} while a listing is open
     for path in tenant_assets_paths:
         tenant = _unwrap_tool_result(json.loads(pathlib.Path(path).read_text(encoding="utf-8")))
         rows = normalize_tenant_assets(tenant)
         for a in rows:
             by_key[a["k"]] = a
-        if isinstance(tenant, dict) and isinstance(tenant.get("results"), list) \
-                and isinstance(tenant.get("total"), int):
-            g = listings.setdefault(tenant["total"], {"keys": set(), "truncated": None})
-            g["keys"].update(a["k"] for a in rows)
-            if tenant.get("truncated") is True:
-                g["truncated"] = tenant.get("next_offset")
-    # A truncated app_list page needs its later pages: without them targets
-    # would be missing from the map without a word. Pages of one listing
-    # share its total; a group short of it with a truncated page is cut.
-    for total, g in listings.items():
-        if g["truncated"] is not None and len(g["keys"]) < total:
-            nxt = g["truncated"] if isinstance(g["truncated"], int) else len(g["keys"])
-            raise IncompleteAssets(
-                f"the asset list pages passed cover {len(g['keys'])} of {total} assets and the "
-                f"last one is truncated; call app_list with the same arguments plus offset: "
-                f"{nxt}, save the response, and re-run with every page passed to --tenant-assets")
+        paged = (isinstance(tenant, dict) and isinstance(tenant.get("results"), list)
+                 and isinstance(tenant.get("total"), int))
+        if chain is not None and (not paged or tenant["total"] != chain["total"]):
+            raise IncompleteAssets(_cut_listing(chain))
+        if not paged:
+            continue
+        if chain is None and tenant.get("truncated") is True:
+            chain = {"path": path, "total": tenant["total"], "keys": set(), "rows": 0, "next": None}
+        if chain is None:
+            continue                       # a whole listing in one page
+        chain["keys"].update(a["k"] for a in rows)
+        chain["rows"] += len(rows)
+        chain["next"] = tenant.get("next_offset")
+        # One listing's pages add up to its total exactly; more rows than
+        # that means another listing's page was taken as the continuation.
+        if chain["rows"] > chain["total"]:
+            raise IncompleteAssets(_cut_listing(chain))
+        if tenant.get("truncated") is not True:
+            if chain["rows"] < chain["total"] or len(chain["keys"]) < chain["rows"]:
+                raise IncompleteAssets(_cut_listing(chain))
+            chain = None
+    if chain is not None:
+        raise IncompleteAssets(_cut_listing(chain))
     env_names = load_env_names(env_list_path)
 
     impact_dir = impact_dir.resolve()

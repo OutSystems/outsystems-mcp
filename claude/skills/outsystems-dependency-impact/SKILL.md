@@ -334,7 +334,8 @@ python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>" \
 # Branch D: --targets limits the page to this run's targets (older records stay cached).
 # Branch C: --impact-dir "<cache-folder>/impact-named" and no --targets (that folder
 #           holds only this question's records)
-# Several searches (Branch C) or a paged asset list: repeat --tenant-assets once per file.
+# Several searches (Branch C) or a paged asset list: repeat --tenant-assets once per file,
+# each listing's pages one after another, in offset order.
 # Reused tenant-architecture bundle: --tenant-assets "<tenant-cache-folder>/tenant-data.json"
 ```
 
@@ -439,10 +440,11 @@ same ratio.
   ask the user to connect it (see the main OutSystems skill's setup).
 - **`python3: command not found`** → ask the user to install Python 3.8
   or later; nothing else is needed.
-- **`build.py` exits 3 with `INCOMPLETE: the asset list pages passed
-  cover N of T`** → an `app_list` page was truncated and its later pages
-  were not passed. Fetch the page at the printed `offset`, save it, and
-  re-run with every page as its own `--tenant-assets`.
+- **`build.py` exits 3 with `INCOMPLETE: the asset list pages starting
+  at <file> cover N of T`** → an `app_list` page was truncated and its
+  later pages were not passed right after it. Fetch the page at the
+  printed `offset` (same arguments), save it, and re-run passing each
+  listing's pages one after another, in offset order.
 - **A target reads "the saved status is for analysis …"** → its saved
   `deploy_impact_status` response belongs to another analysis or asset
   (polls paired with the wrong record). Poll that target's own
