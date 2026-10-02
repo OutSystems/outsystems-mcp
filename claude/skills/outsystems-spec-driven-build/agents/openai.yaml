@@ -1,3 +1,0 @@
-display_name: OutSystems Spec Driven Build (Beta)
-short_description: '[Beta] Bootstrap an app from a text-only structured spec, no design needed.'
-default_prompt: Use $outsystems-spec-driven-build to turn my written spec or requirements into a draft OutSystems app via Mentor.
