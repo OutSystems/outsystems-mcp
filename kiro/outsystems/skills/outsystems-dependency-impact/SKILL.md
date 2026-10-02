@@ -361,7 +361,7 @@ python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>"
   the top targets by dependents; when the `targets:` line counts targets
   "with no saved record", say they were not analysed and offer to re-run
 - Cache state — "analysed now" / "reused records (Xh old)"; the page is
-  dated by the oldest record it shows, so say that age"
+  dated by the oldest record it shows, so say that age
 
 ## Data shape contract
 
@@ -439,6 +439,14 @@ same ratio.
   ask the user to connect it (see the main OutSystems skill's setup).
 - **`python3: command not found`** → ask the user to install Python 3.8
   or later; nothing else is needed.
+- **`build.py` exits 3 with `INCOMPLETE: the asset list pages passed
+  cover N of T`** → an `app_list` page was truncated and its later pages
+  were not passed. Fetch the page at the printed `offset`, save it, and
+  re-run with every page as its own `--tenant-assets`.
+- **A target reads "the saved status is for analysis …"** → its saved
+  `deploy_impact_status` response belongs to another analysis or asset
+  (polls paired with the wrong record). Poll that target's own
+  `analysisKey` again and save the response in its record.
 - **`build.py` exits 1 with `could not write the output file`** → the
   output path is not writable (no space left, no permission, or a folder
   of that name). Only the HTML failed: ask the user for another output

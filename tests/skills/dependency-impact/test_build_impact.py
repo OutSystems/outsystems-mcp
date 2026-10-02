@@ -442,6 +442,45 @@ def test_the_report_is_dated_by_its_oldest_record_not_the_build():
     assert bundle["tenant"]["scannedAt"] == old
 
 
+def _dep_build(td, records, assets_paths):
+    impact = td / "impact"
+    impact.mkdir(exist_ok=True)
+    for key, rec in records.items():
+        (impact / f"{key}.json").write_text(json.dumps({"targetKey": key, **rec}), encoding="utf-8")
+    cmd = [sys.executable, str(BUILD), str(td / "cache"), str(td / "o.html"), "--impact-dir", str(impact)]
+    for p in assets_paths:
+        cmd += ["--tenant-assets", str(p)]
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def test_a_truncated_asset_page_without_its_next_page_is_incomplete():
+    rows = [{"assetKey": a["k"], "name": a["n"], "assetType": a["t"], "revision": a["r"]}
+            for a in fx("tenant-assets.json")]      # as app_list returns them
+    first = {"results": rows[:2], "total": len(rows), "displayed": 2, "truncated": True, "next_offset": 2}
+    rest = {"results": rows[2:], "total": len(rows), "displayed": len(rows) - 2, "truncated": False}
+    rec = {LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                      "result": fx("status-deletion-inventory-core.json")}}
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        (td / "p1.json").write_text(json.dumps(first)); (td / "p2.json").write_text(json.dumps(rest))
+        cut = _dep_build(td, rec, [td / "p1.json"])
+        assert cut.returncode == 3 and "INCOMPLETE" in cut.stderr and "offset: 2" in cut.stderr, cut.stderr
+        assert not (td / "cache" / "impact-data.json").exists()
+        whole = _dep_build(td, rec, [td / "p1.json", td / "p2.json"])
+        assert whole.returncode == 0, whole.stderr
+
+
+def test_a_status_saved_for_another_analysis_is_unknown():
+    status = fx("status-deletion-inventory-core.json")
+    other = dict(status, analysisKey="a0000777-0000-4000-8000-000000000777")
+    wrong_asset = dict(status, assetKey=OS_UI)
+    for result, word in ((other, "analysis a0000777"), (wrong_asset, f"asset {OS_UI}")):
+        html, bundle = run_build({LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                             "result": result}})
+        t = bundle["byTarget"][LIB_CORE]
+        assert t["state"] == "unknown" and word in t["summary"] and t["users"] == []
+
+
 if __name__ == "__main__":
     _run()
 

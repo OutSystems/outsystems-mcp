@@ -175,6 +175,9 @@ def main(argv: list[str]) -> int:
             bundle = build_bundle(args.impact_dir, args.tenant_assets,
                                   args.env_list, args.tenant_id,
                                   load_target_keys(args.targets))
+        except IncompleteAssets as exc:
+            print(f"INCOMPLETE: {exc}. Nothing was written to the cache.", file=sys.stderr)
+            return 3
         except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError) as exc:
             print(f"build failed: {exc}", file=sys.stderr)
             return 1
@@ -258,16 +261,38 @@ def load_target_keys(path):
     return keys
 
 
+class IncompleteAssets(Exception):
+    """The app_list pages passed stop before the listing's end (exit 3)."""
+
+
 def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
                  env_list_path: pathlib.Path | None, tenant_id: str,
                  target_keys=None) -> dict:
     if isinstance(tenant_assets_paths, (str, pathlib.Path)):
         tenant_assets_paths = [tenant_assets_paths]
     by_key: dict[str, dict] = {}
+    listings: dict[int, dict] = {}   # raw app_list pages, grouped by the listing's total
     for path in tenant_assets_paths:
-        tenant = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
-        for a in normalize_tenant_assets(tenant):
+        tenant = _unwrap_tool_result(json.loads(pathlib.Path(path).read_text(encoding="utf-8")))
+        rows = normalize_tenant_assets(tenant)
+        for a in rows:
             by_key[a["k"]] = a
+        if isinstance(tenant, dict) and isinstance(tenant.get("results"), list) \
+                and isinstance(tenant.get("total"), int):
+            g = listings.setdefault(tenant["total"], {"keys": set(), "truncated": None})
+            g["keys"].update(a["k"] for a in rows)
+            if tenant.get("truncated") is True:
+                g["truncated"] = tenant.get("next_offset")
+    # A truncated app_list page needs its later pages: without them targets
+    # would be missing from the map without a word. Pages of one listing
+    # share its total; a group short of it with a truncated page is cut.
+    for total, g in listings.items():
+        if g["truncated"] is not None and len(g["keys"]) < total:
+            nxt = g["truncated"] if isinstance(g["truncated"], int) else len(g["keys"])
+            raise IncompleteAssets(
+                f"the asset list pages passed cover {len(g['keys'])} of {total} assets and the "
+                f"last one is truncated; call app_list with the same arguments plus offset: "
+                f"{nxt}, save the response, and re-run with every page passed to --tenant-assets")
     env_names = load_env_names(env_list_path)
 
     impact_dir = impact_dir.resolve()
@@ -376,6 +401,21 @@ def classify_target(record: dict, meta: dict, env_names: dict) -> dict:
 
     base["analysisKey"] = launch.get("analysisKey")
     result = record.get("result")
+    # A status saved for another analysis or asset (batched polls paired with
+    # the wrong record) must not publish someone else's dependents here.
+    if isinstance(result, dict):
+        target = record.get("targetKey")
+        if base["analysisKey"] and result.get("analysisKey") != base["analysisKey"]:
+            return {**base, "state": "unknown",
+                    "summary": f"Impact unknown: the saved status is for analysis "
+                               f"{result.get('analysisKey') or '(none named)'}, not this "
+                               f"target's {base['analysisKey']}. Re-poll this target. This is "
+                               f"not the same as 'no dependents'."}
+        if target and result.get("assetKey") and result["assetKey"] != target:
+            return {**base, "state": "unknown",
+                    "summary": f"Impact unknown: the saved status is for asset "
+                               f"{result['assetKey']}, not this target. Re-poll this target. "
+                               f"This is not the same as 'no dependents'."}
     if not isinstance(result, dict):
         return {**base, "state": "unknown",
                 "summary": "Impact unknown: the analysis was started but never "
