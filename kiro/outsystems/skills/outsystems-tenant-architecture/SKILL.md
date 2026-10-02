@@ -1,6 +1,6 @@
 ---
 name: outsystems-tenant-architecture
-description: "[Beta] Generate an interactive HTML graph of an OutSystems Developer Cloud tenant's assets (web/mobile apps, agents and agent definitions, AI model connections, knowledge bases, libraries, integrations) with filter-by-type controls, where each asset is deployed (revision drift per environment), a 7-day Production traffic/error overlay and an AI governance view (model providers, Trial vs Customer entitlement, test/demo-named and stale agents). ONE tenant-level pass per invocation, no per-app deep dives (use outsystems-app-architecture for one app). First run 2-5 min; cached re-runs ~5s. Use when the user asks for a tenant overview, architecture diagram, asset inventory, 'what's in my tenant', 'show me my apps', 'what is deployed where', an AI inventory, 'audit my AI', 'which models are we using', 'show me my agents', AI governance, or similar."
+description: "[Beta] Generate an interactive HTML graph of an OutSystems Developer Cloud tenant's assets (web/mobile apps, agents and agent definitions, AI model connections, knowledge bases, libraries, integrations) with filter-by-type controls, where each asset is deployed (revision drift per environment), a 7-day Production traffic/error overlay and an AI governance view (model providers, Trial vs Customer entitlement, test/demo-named and stale agents). ONE tenant-level pass per invocation, no per-app deep dives (use outsystems-app-architecture for one app); also the entry point for 'architecture of every app' requests, which it confirms before any per-app run. First run 2-5 min; cached re-runs ~5s. Use when the user asks for a tenant overview, architecture diagram, asset inventory, 'what's in my tenant', 'show me my apps', 'what is deployed where', an AI inventory, 'audit my AI', 'which models are we using', 'show me my agents', AI governance, or similar."
 license: MIT
 compatibility: Needs an agent that can run shell commands and Python 3.7+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The output HTML embeds the tenant data but loads its graph library and fonts from public CDNs; offline it falls back to a plain asset table.
 allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__app_health mcp__plugin_outsystems_outsystems__context_agents mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__auth_status mcp__outsystems__env_list mcp__outsystems__app_list mcp__outsystems__env_apps mcp__outsystems__app_health mcp__outsystems__context_agents mcp__outsystems__context_connections
@@ -65,17 +65,22 @@ tenant", "tenant architecture", "show me my apps")
 
 **Branch B — Tenant + per-app deep dives** ("show me everything in
 detail", "architecture of every app", "deep dive on each app")
-→ **Stop and ask the user for confirmation.** Chaining
-`outsystems-app-architecture` over every app costs ~10K tokens per app —
-100 apps = ~1M tokens and 30-60 min wall time. Offer three choices:
+→ **Stop and ask the user for confirmation, before any MCP call.** Don't
+list the apps to count them first: the question needs no count. Chaining
+`outsystems-app-architecture` over every app costs ~10K tokens and
+~0.5-1 min per app (100 apps = ~1M tokens and 30-60 min). Offer three
+choices:
 
 - **Tenant only (recommended):** produces the tenant graph in 2-5 min.
   Run `outsystems-app-architecture` afterwards only for the apps the user
   wants to drill into.
 - **Tenant + per-app for ALL apps:** runs `outsystems-app-architecture`
-  for each app. N apps × ~10K tokens = ~{N*10}K tokens, ~{N*0.5}-{N*1}
-  min wall time.
+  for each app, at the per-app cost above.
 - **Cancel.**
+
+If the user picks the per-app option, the tenant graph (Branch A) gives
+the app count; don't fetch `app_list` just to put a number in the
+question.
 
 Default to Branch A on ambiguity. A request for "everything" usually
 means the tenant view, and chaining every app by accident is what turns a
@@ -145,7 +150,12 @@ you each environment's `key`, `name` and `purpose` (`Development`,
 
 - `env_apps` with `env_key: <key>` for **every** environment (no `offset`
   on this first call: older servers reject unknown arguments). Deployed
-  apps and agents per environment, at most 100 rows per response.
+  apps and agents per environment, 100 rows per response by default.
+  **If the tool's input schema lists a `limit` argument**, also pass
+  `limit: 500` (`limit: 50` on a harness that truncates large tool
+  results): on Claude Code one 500-row page is auto-saved to disk, so a
+  large environment costs no writing at all. If the schema has no
+  `limit`, don't pass one; the call would be rejected.
 - `app_health` for **every `Production`-purpose environment** with
   `env_key: <key>`, `apps: ""` (every app in the stage), `hours: 168`, and
   `limit: 1000` (`limit: 50` on a truncating harness). Don't pass
@@ -172,17 +182,48 @@ context_connections) — inspect only the result text, never the payload:
 - **If it contains** `"Output has been saved to <path>"` (Claude Code's
   harness auto-save for large results, such as a 500-row app_list page of
   ~90 KB; a 100-row env_apps page, ~31 KB, usually stays inline): that path is the page file.
+  The same notice tells you to read the file in chunks before summarizing
+  it: that is Claude Code's generic instruction, and this skill's contract
+  overrides it. Pass the path to `build.py`; never read the file.
 - **If it returned an inline JSON object** (small responses on Claude
   Code; every response on a harness without auto-save): write it
   verbatim — envelope included — to `<cache-folder>/apps-page-<N>.json`,
-  `<cache-folder>/env-apps-<ENV_KEY>-<N>.json`, `<cache-folder>/health-<ENV_KEY>-<N>.json`,
-  `<cache-folder>/ai-agents-<N>.json` or `<cache-folder>/ai-connections-<N>.json`. That
-  is the page file.
+  `<cache-folder>/env-apps-<ENV_KEY>-<N>.json` or `<cache-folder>/health-<ENV_KEY>-<N>.json`.
+  Write the two AI governance pages in the compact form below to
+  `<cache-folder>/ai-agents-<N>.json` and `<cache-folder>/ai-connections-<N>.json`.
+  That is the page file.
 - **If a call failed** (for example `app_health` on a tenant whose
   analytics are not enabled, or an `env_apps` error for one environment):
-  keep its one-line error message for Step 4's `--health-skipped` /
-  `--deployments-skipped` / `--ai-skipped`. A failed overlay never blocks
-  the graph.
+  a server error or timeout (5xx, 504) is retried once, every failed call
+  in one parallel message; an authentication error is never retried (see
+  Step 1). A call that fails again keeps its one-line error message for
+  Step 4's `--health-skipped` / `--deployments-skipped` / `--ai-skipped`.
+  A failed overlay never blocks the graph.
+- **On a refresh** (the cache already holds a build), a failed call would
+  turn a section the cache has whole into "skipped". Before building, tell
+  the user which sections would be lost and ask: rebuild now with them
+  skipped, or keep the current page and refresh later. `build.py` always
+  writes `<cache-folder>`, whatever the output file, so a build to a
+  second file replaces the cache too; never offer that as a way to keep it.
+
+**Write every response of this run.** On a refresh too, every page file
+passed to `build.py` holds a response fetched in this run, written in
+full, even when it looks identical to the page saved last time. Never
+reuse a page file from an earlier run, never patch, splice or re-shape a
+saved page (beyond the compact form below), and never `touch` one:
+`build.py` dates each part of the page from its page files' save times,
+and warns when they span more than one fetch.
+
+**Compact form of the AI governance pages.** The `context_agents` and
+`context_connections` rows carry descriptions and empty layout objects
+that `build.py` never reads, about 70% of each page. When a page arrives
+inline, write only these fields of each `data[]` row, in compact JSON:
+`key`, `name`, `isPublic`, `timestamp`, `providerName`,
+`additionalData.{revisionDateTime, providerId, entitlement}` (leave out
+any that a row does not carry). Copy the envelope keys `total`,
+`truncated`, `next_offset` and `pagination` unchanged: `build.py` checks
+the page chain from them. A page Claude Code auto-saved is passed as its
+path, as is.
 
 More pages may be needed (tenants above one app_list page, environments
 above 100 deployments on a server that pages `env_apps`, Production
@@ -222,7 +263,7 @@ prints one `INCOMPLETE:` line per page set that has a next page, e.g.:
 
 ```
 INCOMPLETE: app_list returned 500 of 515 assets (the last page is truncated). Call app_list with limit: 500, offset: 500, ...
-INCOMPLETE: env_apps for environment acme-dev (8843...) returned 100 of 165 deployments and has a next page. Call env_apps with env_key: 8843..., offset: 100, ...
+INCOMPLETE: env_apps for environment acme-dev (8843...) returned 100 of 280 deployments and has 2 more pages. Call env_apps with env_key: 8843..., offset: 100, and again with env_key: 8843..., offset: 200 (all in one parallel message), ...
 INCOMPLETE: app_health for environment acme (2ce1...) has a further page. Call app_health with the same arguments (...) plus offset: 1000, ...
 INCOMPLETE: context_agents: 100 rows received, more exist; fetch context_agents with the same arguments plus offset: 100
 ```
@@ -236,8 +277,10 @@ when `build.py` prints the same `offset` twice.
 
 `env_apps` has two server generations and `build.py` handles both:
 
-- **Newer servers** accept `offset` and set a numeric `next_offset`
-  while more rows exist → an `INCOMPLETE` line, fetch the next page.
+- **Newer servers** accept `offset` (and, newer still, `limit`) and set a
+  numeric `next_offset` while more rows exist → an `INCOMPLETE` line that
+  names every remaining offset: fetch them all in one parallel message,
+  with the same `limit` as the first page.
 - **Older servers** take no offset: a truncated response has no (or a
   null) `next_offset` and cannot be continued. `build.py` keeps those
   100 rows, marks that environment **PARTIAL** in the HTML and in its
@@ -286,16 +329,21 @@ deployment status, the health summary); relay them, don't recompute:
   types it lists under "Other")
 - Deployments: each environment complete / **PARTIAL** (N of T listed,
   the rest could not be fetched) / skipped with the reason, plus the
-  revision-drift count
+  revision-drift count, and the deployed assets with no `app_list`
+  record when the line names them (deployed, but with no source-control
+  record and no node; typically orphaned agent definitions)
 - Health: the window, the per-class counts ("had errors", "no traffic",
   "no reading"), and **say it is a 7-day inventory view, not an incident
   view**. If it was skipped, say why (no Production environment, or the
   call's error). Never call any app "healthy": `appScore` is a latency
   score (a zero-traffic app scores 100) and is not shown at all
 - AI governance: the `ai governance:` line (agents, model connections,
-  Trial / Customer / not reported, providers, rows not in the asset list),
-  and say that agent definitions and non-model connections are not
-  covered by that source
+  Trial / Customer / not reported, providers, rows not in the asset list,
+  and the flagged names it lists), and say that agent definitions and
+  non-model connections are not covered by that source. Name the flags as
+  what they are: a name heuristic, and dates
+- Every `warning:` line `build.py` printed, in particular one saying the
+  page files span more than one fetch
 - Cache state — "used (Xs old)" or "refreshed"
 - Opens in any browser; the graph needs unpkg or jsDelivr reachable,
   otherwise the page falls back to the asset table
@@ -312,10 +360,13 @@ under that line, so each environment adds a few thousand tokens. On a
 harness without auto-save every page passes through the model once and
 is written out once — see Harness notes.
 
-Measured live on Claude Code (485 assets, 3 environments, one of them
-with 100+ deployments): about 6 minutes and ~75 KB of responses written
-out inline (the three `env_apps` pages and the AI governance pages); the
-asset list itself was auto-saved.
+Measured live on Claude Code (499 assets, 3 environments, one of them
+with 280 deployments on a server that pages `env_apps` in 100-row
+windows only): about 5 minutes, most of it writing the 100-row
+`env_apps` pages out inline (~30 KB each); the asset list was
+auto-saved and the AI governance pages written in compact form. Every
+further 100-row window of a large environment adds about 2.5 minutes,
+which is why `limit: 500` is used whenever the server offers it.
 
 | Tenant size | Mechanism | Tokens (first run) | Wall time |
 |---|---|---|---|
@@ -353,7 +404,7 @@ ENVIRONMENTS = [
   ...
 ]
 TENANT = { id: "uuid", realm: "string", hostname: "string", region: "string",
-           hosting: "string", fetched_at: epochSeconds }
+           hosting: "string", fetched_at: epochSeconds }   // the oldest app_list page's save time
 // realm = first label of auth_status.tenant_hostname (else derived from env domains)
 
 DEPLOYMENTS = null | {                       // env_apps overlay
@@ -361,8 +412,11 @@ DEPLOYMENTS = null | {                       // env_apps overlay
   envs:   { "<env key>": { status: "complete" | "partial" | "skipped",
                            shown, total, unmatched, reason? } },
   listedTypes: ["Agent", "AgentDefinition", "MobileApplication", "WebApplication", ...],
-  assets: { "<assetKey>": [ { env: "<env key>", rev: number, date: "YYYY-MM-DD", url: "..." } ] },
-  drift:  { "<assetKey>": { env: "<env key>", deployed: number, latest: number } }
+  assets: { "<assetKey>": [ { env: "<env key>", rev: number, date: "YYYY-MM-DD", url: "...",
+                               as?: "<deployed name>" } ] },   // when it differs from app_list's
+  drift:  { "<assetKey>": { env: "<env key>", deployed: number, latest: number } },
+  unlisted: [ { k: "<applicationKey>", n: "<env_apps name>", t?: "<assetType>",  // no app_list record
+                deps: [ { env, rev, date, url } ] } ]
 }
 HEALTH = null | {                            // app_health overlay
   fetched_at, since: "ISO", to: "ISO", hours: 168,
@@ -385,9 +439,14 @@ AI = null | { status: "skipped", reason }    // context_agents + context_connect
 ```
 
 **AI governance semantics.** Rows join assets by key (the row `key` is the
-asset key). Some agents can be indexed for context search but absent from
-`app_list`; they are kept and flagged `listed: false`. `testDemo` is a
-name heuristic, `stale` means no update in 180+ days. Agent definitions,
+asset key). An agent's `n` is its `app_list` name when it is listed (the
+index carries a compact form: "TestAgent1_0" for "Test Agent 1.0"). Some
+agents can be indexed for context search but absent from `app_list`; they
+are kept and flagged `listed: false`. `testDemo` is a name heuristic: one
+of test, tmp, temp, demo, untitled, xxx, 123, sample, scratch or wip as a
+whole word of either name, where a change of case or a digit also breaks
+words ("AgenticRegressionTest" counts, "Latest" does not). `stale` means
+no update in 180+ days. Agent definitions,
 knowledge bases and non-model connections are shown as "not reported by
 the governance source", never hidden.
 
@@ -413,7 +472,15 @@ the asset is deployed in (Production > NonProduction > Development, then
 `env_apps` actually lists: libraries never get a deployment record (they
 ship inside the apps that consume them) and the server drops `Workflow`
 rows from `env_apps`. While any environment is partial or not fetched the
-filter reads "Not in any deployment list" and says why.
+filter reads "Not in any deployment list" and says why. `env_apps` reads
+the deployed inventory and `app_list` reads source control, so the two
+can disagree. A deployment whose asset has no source-control record
+(typically an orphaned agent definition) is kept in `unlisted` under its
+`env_apps` key, name and `assetType` (on servers that send it): it has no
+node, the Table view lists it in a section of its own, and the report
+line counts it per environment and per type. A row's `name` is the name
+at the deployed revision, so a renamed asset can run under its old name;
+the detail panel shows it as "deployed as".
 
 **Health semantics** (from `app_health`'s own contract). Classes:
 `errors` = `errors > 0`, `errorPercent > 0` or a `lastErrorOccurred` in
@@ -432,6 +499,8 @@ error. A metric in the `metrics` echo but absent from a row is shown as
 - Freshness check: compare `total` from `app_list` with `limit: 1`
   against the cached `meta.total` (the server-reported total from the
   last fetch), and require `meta.overlays_fetched_at`. Cheap (~300 tokens).
+  `meta.fetched_at` is the save time of the oldest page file the build
+  read, so the hour runs from the fetch, not from the build.
 - The overlays are not probed: a deployment or a traffic change inside
   the hour is not detected. The HTML shows each data set's fetch time,
   and a "refresh" request always refetches.
@@ -452,7 +521,8 @@ error. A metric in the `metrics` echo but absent from a row is shown as
   below exists — don't undo the saving by reading the file back in.
 - **Harnesses without auto-save** (Cursor, Kiro and others): every
   response arrives inline. Write each one verbatim, envelope included, to
-  its page file; never hand-edit or re-shape one. Expect roughly the
+  its page file (the AI governance pages in their compact form, Step 3);
+  never hand-edit or re-shape one otherwise. Expect roughly the
   Mid-band token cost or more even for large tenants.
 - **Harnesses that truncate large tool results** (for example Codex,
   which keeps the head and the tail, adds a
@@ -525,7 +595,12 @@ error. A metric in the `metrics` echo but absent from a row is shown as
   `build.py` — never re-print or re-load the raw payload into context on
   a later turn. The cost is the same as above.
 - **Don't parse the payloads yourself** (no `jq`, no hand-written
-  scripts over the saved files): `build.py` does the transform.
+  scripts over the saved files or the bundle): `build.py` does the
+  transform, and its report lines name what the user asks about (flagged
+  agents, Trial connections, deployed assets missing from the asset list).
+- **Don't reuse, patch or `touch` a saved page on a refresh.** Comparing a
+  new response with an old file by eye is how a changed revision slips
+  through; write the new response (Step 3).
 - **Don't state a health verdict.** No "healthy", no "all good", no
   score. Report errors, traffic and missing readings as `build.py`
   prints them; "no reading" is not "fine".

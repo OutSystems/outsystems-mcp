@@ -350,6 +350,8 @@
     /* Asset table (always available; the only view when the graph library cannot load) */
     .table-view { position: absolute; inset: 0; overflow: auto; padding: 60px 16px 16px; }
     .table-view.with-banner { padding-top: 120px; }
+    /* The detail panel floats top-right: keep the table's last columns clear of it. */
+    .graph-wrap.has-detail .table-view { padding-right: 360px; }
     .asset-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .asset-table th {
       position: sticky; top: 0; background: var(--os-bg-2); text-align: left;
@@ -636,6 +638,10 @@
       const listedTypes = new Set((DEPLOYMENTS && DEPLOYMENTS.listedTypes) || []);
       const depIncomplete = DEPLOYMENTS
         ? ENVIRONMENTS.filter(e => (depStatus(e.key) || {}).status !== 'complete') : [];
+      // Deployed assets that app_list does not list: no node, no table row of
+      // their own kind, so they get a section of the table instead.
+      const depUnlisted = (DEPLOYMENTS && DEPLOYMENTS.unlisted) || [];
+      const unlistedIn = key => depUnlisted.filter(u => u.deps.some(d => d.env === key));
       const healthOf = k => (HEALTH && HEALTH.assets && HEALTH.assets[k]) || null;
       const healthEnvs = (HEALTH && HEALTH.envs) || {};
       const winLabel = HEALTH && HEALTH.hours
@@ -791,7 +797,8 @@
             count: ASSETS.filter(a => depOf(a.k).some(d => d.env === e.key)).length,
             badge: st.status === 'partial' ? 'partial' : st.status === 'skipped' ? 'not fetched' : '',
             badgeOff: st.status === 'skipped',
-            title: st.reason || `${e.purpose}: complete listing (${st.shown} deployments)`
+            title: (st.reason || `${e.purpose}: complete listing (${st.shown} deployments)`)
+              + (unlistedIn(e.key).length ? `; ${unlistedIn(e.key).length} more deployed asset(s) are not in the asset list (see the Table view)` : '')
           });
         });
         rows.push({
@@ -812,6 +819,11 @@
           (depIncomplete.length
             ? ` <b>${depIncomplete.length} environment list${depIncomplete.length === 1 ? ' is' : 's are'} partial or not fetched</b> ` +
               `(${esc(depIncomplete.map(e => e.name).join(', '))}), so an asset shown as not deployed may still be deployed there.`
+            : '') +
+          (depUnlisted.length
+            ? ` <b>${depUnlisted.length} deployed asset${depUnlisted.length === 1 ? ' is' : 's are'} not in the asset list</b> ` +
+              `(${esc(ENVIRONMENTS.filter(e => unlistedIn(e.key).length).map(e => `${e.name} ${unlistedIn(e.key).length}`).join(', '))}): ` +
+              `env_apps lists them but they have no source-control record, so app_list does not return them (typically orphaned agent definitions) and they have no node; the Table view lists them in a section of their own.`
             : '');
       }
 
@@ -910,7 +922,7 @@
               const dr = driftOf(a.k);
               const h = healthOf(a.k);
               return `<tr data-key="${esc(a.k)}">
-                <td>${esc(a.n)}</td>
+                <td>${a.n ? esc(a.n) : '<span class="dim">—</span>'}</td>
                 <td><span class="swatch" style="background:${m.color}"></span>${esc(m.label)}</td>
                 <td>r${esc(a.r)}</td>
                 <td class="dim">${esc(a.d)}</td>
@@ -921,9 +933,32 @@
               </tr>`;
             }).join('')}</tbody>
           </table>
-          <div class="panel-note" style="margin:10px 0 0">${rows.length} of ${ASSETS.length} assets shown.</div>`;
+          <div class="panel-note" style="margin:10px 0 0">${rows.length} of ${ASSETS.length} assets shown.</div>
+          ${unlistedTable()}`;
         tableView.querySelectorAll('tbody tr').forEach(tr =>
-          tr.addEventListener('click', () => showAsset(tr.dataset.key)));
+          tr.addEventListener('click', () => tr.dataset.unlisted ? showUnlisted(tr.dataset.key) : showAsset(tr.dataset.key)));
+      }
+
+      // Deployed but not in the asset list: follows the search box and the
+      // environment filter, not the type / health / AI filters (no type known).
+      function unlistedTable() {
+        if (!depUnlisted.length) return '';
+        const q = (searchInput.value || '').trim().toLowerCase();
+        const rows = depUnlisted.filter(u =>
+          (!q || u.n.toLowerCase().includes(q))
+          && (envFilter === 'all' || u.deps.some(d => d.env === envFilter)));
+        if (!rows.length) return '';
+        return `
+          <h3 style="font-size:13px;margin:22px 0 4px">Deployed, not in the asset list (${rows.length})</h3>
+          <div class="panel-note" style="margin:0 0 8px">env_apps lists these deployments but the asset has no source-control record, so app_list does not return it (typically an orphaned agent definition). They have no node in the graph.</div>
+          <table class="asset-table">
+            <thead><tr><th>Name (from env_apps)</th><th>Type</th><th>Deployed in</th><th>Key</th></tr></thead>
+            <tbody>${rows.map(u => `<tr data-key="${esc(u.k)}" data-unlisted="1">
+                <td>${esc(u.n)}</td>
+                <td>${u.t ? `<span class="swatch" style="background:${typeMeta(u.t).color}"></span>${esc(typeMeta(u.t).label)}` : '<span class="dim">not reported</span>'}</td>
+                <td>${u.deps.map(d => `${esc(envName(d.env))} r${esc(d.rev)}`).join(' · ')}</td>
+                <td class="dim" style="font-size:10px">${esc(u.k)}</td></tr>`).join('')}</tbody>
+          </table>`;
       }
 
       function aiCell(a) {
@@ -988,7 +1023,10 @@
       // ----- Detail panel -----
       const overlay = document.getElementById('overlay');
       const ovBody = document.getElementById('ov-body');
-      document.getElementById('ov-close').addEventListener('click', () => overlay.classList.remove('is-visible'));
+      const graphWrap = overlay.parentElement;
+      const showOverlay = () => { overlay.classList.add('is-visible'); graphWrap.classList.add('has-detail'); };
+      const hideOverlay = () => { overlay.classList.remove('is-visible'); graphWrap.classList.remove('has-detail'); };
+      document.getElementById('ov-close').addEventListener('click', hideOverlay);
       const row = (k, v, cls) => `<div class="overlay-row"><span class="k">${esc(k)}</span><span class="v${cls ? ' ' + cls : ''}">${v}</span></div>`;
       const METRIC_LABELS = [
         ['requests', 'Requests'], ['errors', 'Errors'], ['errorPercent', 'Error %'],
@@ -1001,7 +1039,19 @@
           <div class="overlay-type">${r.kind === 'agent' ? 'Agent' : 'AI model connection'} · not in the asset list</div>
           ${aiRows(r)}
           <div class="overlay-note">Indexed by the Context Service but absent from app_list (for example a deleted asset), so it has no node in the graph.</div>`;
-        overlay.classList.add('is-visible');
+        showOverlay();
+      }
+      function showUnlisted(k) {
+        const u = depUnlisted.find(x => x.k === k);
+        if (!u) return;
+        ovBody.innerHTML = `
+          <div class="overlay-title">${esc(u.n)}</div>
+          <div class="overlay-type">${u.t ? esc(typeMeta(u.t).label) + ' · ' : ''}Deployed · not in the asset list</div>
+          ${row('Key', `<span style="font-size:9px;user-select:all">${esc(u.k)}</span>`)}
+          <div class="overlay-section">Deployments</div>
+          ${u.deps.map(d => row(envName(d.env), `r${esc(d.rev)} · ${esc(d.date || '—')}${d.url ? ` · <a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">open</a>` : ''}`)).join('')}
+          <div class="overlay-note">env_apps lists this deployment but the asset has no source-control record, so app_list does not return it (typically an orphaned agent definition). Its latest revision and drift are unknown.</div>`;
+        showOverlay();
       }
       function aiRows(r) {
         if (r.kind === 'connection') return row('Provider', esc(r.provider)) + row('Entitlement', esc(r.entitlement)) + row('Updated', esc(r.date || '—'));
@@ -1014,7 +1064,7 @@
         if (!a) { const r = aiOf(k); if (r) showAiOnly(r); return; }
         const m = typeMeta(a.t);
         let html = `
-          <div class="overlay-title"><span style="width:8px;height:8px;border-radius:50%;background:${m.color};display:inline-block;"></span>${esc(a.n || a.k)}</div>
+          <div class="overlay-title"><span style="width:8px;height:8px;border-radius:50%;background:${m.color};display:inline-block;"></span>${esc(a.n || '—')}</div>
           <div class="overlay-type">${esc(m.label)}${TYPES[a.t] ? '' : ' (unrecognised type)'}</div>
           ${row('Latest revision', `r${esc(a.r)}`)}
           ${row('Updated', esc(a.d || '—'))}
@@ -1035,6 +1085,7 @@
             if (d) {
               const link = d.url ? ` · <a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">open</a>` : '';
               html += row(e.name, `r${esc(d.rev)} · ${esc(d.date || '—')}${link}`);
+              if (d.as) html += `<div class="overlay-note">Deployed in ${esc(e.name)} as <b>${esc(d.as)}</b> (the name at the deployed revision).</div>`;
             } else {
               html += row(e.name, st === 'complete' ? 'not deployed' : st === 'partial' ? 'not in the partial list' : 'not fetched', 'na');
             }
@@ -1084,7 +1135,7 @@
           else html += `<div class="overlay-note">Not reported by the governance source (context_agents / context_connections cover Agent apps and AI model connections only).</div>`;
         }
         ovBody.innerHTML = html;
-        overlay.classList.add('is-visible');
+        showOverlay();
       }
 
       function showNode(node) {
@@ -1102,7 +1153,7 @@
           }
         }
         ovBody.innerHTML = html;
-        overlay.classList.add('is-visible');
+        showOverlay();
       }
 
       // ----- Graph (only once vis-network has loaded) -----
@@ -1275,7 +1326,7 @@
         });
 
         network.on('click', params => {
-          if (!params.nodes.length) { overlay.classList.remove('is-visible'); return; }
+          if (!params.nodes.length) { hideOverlay(); return; }
           const node = nodes.get(params.nodes[0]);
           if (node.meta && node.meta.type === 'Asset') showAsset(node.meta.key);
           else showNode(node);

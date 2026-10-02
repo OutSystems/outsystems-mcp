@@ -271,7 +271,7 @@ def test_deployments_json_shape():
     code, cache, _ = _run(ALL_DEPLOYMENTS)
     assert code == 0
     dep = _json(cache, "deployments.json")
-    assert set(dep) == {"fetched_at", "envs", "listedTypes", "assets", "drift"}
+    assert set(dep) == {"fetched_at", "envs", "listedTypes", "assets", "drift", "unlisted"}
     assert isinstance(dep["fetched_at"], int)
     assert set(dep["listedTypes"]) >= {"WebApplication", "MobileApplication", "Agent", "AgentDefinition"}
     asset_keys = {r["assetKey"] for r in _load("apps-page.json")["results"]}
@@ -517,7 +517,8 @@ def test_meta_records_overlay_fetch_time_and_cached_mode_keeps_overlays():
     code, cache, tmp = _run(ALL_DEPLOYMENTS + ["--health", f"{PROD}={_fx('health-prod.json')}"])
     assert code == 0
     meta = _json(cache, "meta.json")
-    assert isinstance(meta["overlays_fetched_at"], int) and meta["overlays_fetched_at"] <= meta["fetched_at"]
+    # meta.fetched_at is the oldest page's save time, so it never postdates an overlay
+    assert isinstance(meta["overlays_fetched_at"], int) and meta["fetched_at"] <= meta["overlays_fetched_at"]
     assert build.main(["build.py", str(cache), str(tmp / "cached.html")]) == 0
     assert KEY["IT Assets Portal"] in (tmp / "cached.html").read_text()
 

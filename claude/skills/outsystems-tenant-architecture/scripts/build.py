@@ -39,7 +39,8 @@ Inputs (read):
 Outputs (write):
     <cache-dir>/tenant-data.json       (THE BUNDLE — the only input the render
                                         step reads; shape below)
-    <cache-dir>/meta.json              ({schema, total, count, fetched_at, overlays_fetched_at})
+    <cache-dir>/meta.json              ({schema, total, count, fetched_at, overlays_fetched_at};
+                                        fetched_at = the oldest page file's save time)
     <output-path>                      (final HTML; data embedded, libraries from CDN)
 
 The bundle (tenant-data.json, schema 1) is the interface between fetching and
@@ -52,7 +53,9 @@ changing the meaning of one does.
      tenant:      {id, realm, hostname, region, hosting, fetched_at},
      envs:        [{key, name, purpose, host}],
      assets:      [{k, n, t, r, d, x}],             key, name, type, latest revision, date, external
-     deployments: null | {fetched_at, envs, listedTypes, assets, drift},
+     deployments: null | {fetched_at, envs, listedTypes, assets, drift, unlisted},
+                   assets entries {env, rev, date, url[, as]}: `as` = the deployed name when it
+                   differs from app_list's; unlisted entries {k, n[, t], deps}
      health:      null | {fetched_at, since, to, hours, envs, assets} | {skipped},
      ai:          null | {status: "complete", fetched_at, agents: [...],
                           connections: [...], stats, unlisted}
@@ -146,8 +149,13 @@ AI_NOT_REPORTED = "not reported"
 AI_COVERED_TYPES = {"Agent", "AIModelConnection"}
 AI_STALE_DAYS = 180
 AI_TEST_DEMO = re.compile(
-    r"(?:^|[\s_-])(test|tmp|temp|demo|untitled|xxx|123|sample|scratch|wip)(?:$|[\s_-])",
+    r"(?<![A-Za-z0-9])(test|tmp|temp|demo|untitled|xxx|123|sample|scratch|wip)(?![A-Za-z0-9])",
     re.IGNORECASE)
+# How many names a report line lists before it says "+N more".
+SUMMARY_NAMES = 10
+# Page files saved further apart than this cannot come from one fetch: a page
+# from an earlier run was passed again.
+PAGE_SPAN_WARN_S = 30 * 60
 AI_PROVIDER_LABELS = {
     "amazonbedrock": "Amazon Bedrock", "azureopenai": "Azure OpenAI", "openai": "OpenAI",
     "anthropic": "Anthropic", "gemini": "Gemini", "googlevertex": "Google Vertex AI",
@@ -617,11 +625,18 @@ def _merge_deployments(env: dict, pages: list[dict]) -> tuple[list[dict], dict]:
     if len(rows) >= total and not (last.get("truncated") is True and _is_int(last.get("next_offset"))):
         return rows, {"status": "complete", "shown": len(rows), "total": total}
     if last.get("truncated") is True:
+        # Every remaining window at once (the server pages in windows of the
+        # first page's size and `total` counts the rows it walked), so the
+        # agent fetches them in one parallel round instead of one per build.
+        step = len(pages[0]["results"]) or 100
+        offsets = list(range(last["next_offset"], total, step)) or [last["next_offset"]]
+        calls = ", and again with ".join(f"env_key: {env['key']}, offset: {o}" for o in offsets)
         raise IncompleteOverlay(
             f"env_apps for environment {label} returned {len(rows)} of {total} deployments "
-            f"and has a next page. Call env_apps with env_key: {env['key']}, offset: "
-            f"{last['next_offset']}, save the response, and re-run build.py adding "
-            f"--deployments {env['key']}=<that file> after this environment's earlier pages.")
+            f"and has {'a next page' if len(offsets) == 1 else f'{len(offsets)} more pages'}. "
+            f"Call env_apps with {calls} (all in one parallel message), save each response, "
+            f"and re-run build.py adding --deployments {env['key']}=<file> for each page, in "
+            f"offset order, after this environment's earlier pages.")
     raise IncompleteOverlay(
         f"the env_apps pages passed for environment {label} cover {len(rows)} of {total} "
         f"deployments but the last page is not truncated: a page is missing or out of "
@@ -647,6 +662,9 @@ def _deployments(envs_raw: list[dict], assets: list[dict], args) -> tuple[dict, 
     listed_types = set(DEPLOYMENT_LISTED_TYPES)
     env_status: dict[str, dict] = {}
     per_asset: dict[str, dict[str, dict]] = {}
+    # Deployed assets that app_list does not list (seen on agents): kept by
+    # their env_apps key and name, so the page and the report can show them.
+    unlisted: dict[str, dict] = {}
     incomplete: list[str] = []
     all_paths: list[pathlib.Path] = []
 
@@ -666,16 +684,32 @@ def _deployments(envs_raw: list[dict], assets: list[dict], args) -> tuple[dict, 
             continue
         unmatched = 0
         for r in rows:
-            asset = by_key.get(str(r["applicationKey"]).lower())
-            if asset is None:
-                unmatched += 1  # deployed, but not in the app_list pages passed
-                continue
             entry = {
                 "env": key,
                 "rev": r.get("revision"),
                 "date": (r.get("deploymentDateTime") or "")[:10],
                 "url": r.get("url") or "",
             }
+            app_key = str(r["applicationKey"])
+            deployed_name = _ai_str(r.get("name"))
+            asset = by_key.get(app_key.lower())
+            if asset is None:
+                unmatched += 1  # deployed, but not in the app_list pages passed
+                u = unlisted.setdefault(app_key.lower(), {
+                    "k": app_key, "n": deployed_name or "—", "t": "", "by_env": {}})
+                # `assetType` on env_apps rows (newer servers): an orphaned
+                # deployment is typically an AgentDefinition.
+                u["t"] = u["t"] or _ai_str(r.get("assetType"))
+                if u["t"]:
+                    listed_types.add(u["t"])
+                prev = u["by_env"].get(key)
+                if prev is None or entry["date"] > prev["date"]:
+                    u["by_env"][key] = entry
+                continue
+            # A row's name is the deployed revision's name, so a renamed
+            # asset runs under its old name: keep it when it differs.
+            if deployed_name and deployed_name != asset["n"]:
+                entry["as"] = deployed_name
             prev = per_asset.setdefault(asset["k"], {}).get(key)
             if prev is None or entry["date"] > prev["date"]:
                 per_asset[asset["k"]][key] = entry
@@ -694,12 +728,19 @@ def _deployments(envs_raw: list[dict], assets: list[dict], args) -> tuple[dict, 
         if _is_int(top["rev"]) and _is_int(latest.get(k)) and latest[k] > top["rev"]:
             drift[k] = {"env": top["env"], "deployed": top["rev"], "latest": latest[k]}
 
+    unlisted_out = [
+        dict({"k": u["k"], "n": u["n"],
+              "deps": sorted(u["by_env"].values(), key=lambda d: rank.get(d["env"], (0, 0)))},
+             **({"t": u["t"]} if u["t"] else {}))
+        for u in sorted(unlisted.values(), key=lambda u: (u["n"].lower(), u["k"]))
+    ]
     data = {
         "fetched_at": _oldest_mtime(all_paths),
         "envs": env_status,
         "listedTypes": sorted(listed_types),
         "assets": assets_out,
         "drift": drift,
+        "unlisted": unlisted_out,
     }
     return data, incomplete, all_paths
 
@@ -915,10 +956,24 @@ def _window_hours(since: str | None, to: str | None) -> int | None:
 
 
 def _oldest_mtime(paths: list[pathlib.Path]) -> int | None:
-    """When the overlay data was fetched: the oldest page's save time."""
+    """When the data was fetched: the oldest page's save time."""
     if not paths:
         return None
     return int(min(p.stat().st_mtime for p in paths))
+
+
+def _warn_page_span(paths: list[pathlib.Path]) -> None:
+    """Warn when the page files cannot come from one fetch (a page saved by
+    an earlier run was passed again, or a saved page was touched)."""
+    stamped = sorted((p.stat().st_mtime, p) for p in paths if p.exists())
+    if len(stamped) < 2:
+        return
+    (old_t, old_p), (new_t, _) = stamped[0], stamped[-1]
+    if new_t - old_t > PAGE_SPAN_WARN_S:
+        print(f"warning: the page files were saved {int((new_t - old_t) // 60)} min apart "
+              f"(oldest: {old_p.name}, {_fmt_ts(int(old_t))}); the build is dated by the "
+              f"oldest one. A page from an earlier run was reused: refetch that call and "
+              f"write its response, then rebuild", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
@@ -994,8 +1049,14 @@ def _build_cache(cache_dir: pathlib.Path, args) -> None:
     if incomplete:
         raise Incomplete(incomplete)
 
-    # ----- tenant.json (realm from auth_status.tenant_hostname, else envs) -----
+    # ----- when the data was fetched: the page files' save times -----
+    # A page from an earlier run would date the whole build by its own save
+    # time, so a spread wider than one fetch is reported.
     now = int(time.time())
+    assets_at = _oldest_mtime(page_paths) or now
+    _warn_page_span(page_paths + [envs_raw_path] + overlay_paths)
+
+    # ----- tenant.json (realm from auth_status.tenant_hostname, else envs) -----
     region = "us-east-1"
     realm  = args.tenant_id[:8]
     hosting = "oscloud"
@@ -1014,7 +1075,7 @@ def _build_cache(cache_dir: pathlib.Path, args) -> None:
         "hostname": args.tenant_hostname or "",
         "region": region,
         "hosting": hosting,
-        "fetched_at": now,
+        "fetched_at": assets_at,
     }
 
     # ----- meta.json (cache fingerprint) -----
@@ -1029,7 +1090,9 @@ def _build_cache(cache_dir: pathlib.Path, args) -> None:
         overlays_at = _oldest_mtime(overlay_paths) or now
     if ai and ai.get("status") == "complete":
         ai["fetched_at"] = overlays_at
-    meta = {"schema": BUNDLE_SCHEMA, "total": total, "count": len(assets), "fetched_at": now,
+    # Step 2's one-hour TTL runs from the oldest data in the bundle.
+    meta = {"schema": BUNDLE_SCHEMA, "total": total, "count": len(assets),
+            "fetched_at": min(assets_at, overlays_at or assets_at),
             "overlays_fetched_at": overlays_at}
     bundle = {"schema": BUNDLE_SCHEMA, "tenant": tenant, "envs": envs, "assets": assets,
               "deployments": deployments, "health": health, "ai": ai}
@@ -1205,6 +1268,21 @@ def _ai_str(v) -> str:
     return v if isinstance(v, str) else ""
 
 
+def _name_words(name: str) -> str:
+    """Split a compact name at case and digit boundaries ("TestAgent1_0" ->
+    "Test Agent 1_0", "XMLTest" -> "XML Test") so the heuristic sees words."""
+    s = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", name)
+    s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", s)
+    return re.sub(r"([A-Za-z])([0-9])|([0-9])([A-Za-z])",
+                  lambda m: f"{m.group(1) or m.group(3)} {m.group(2) or m.group(4)}", s)
+
+
+def _looks_test_demo(*names: str) -> bool:
+    """The test/demo name heuristic: a whole word, never a substring
+    ("Latest" and "Contest" stay unflagged)."""
+    return any(AI_TEST_DEMO.search(_name_words(n)) for n in names if n)
+
+
 def _ai(assets: list[dict], args) -> tuple[dict, list[str], list[pathlib.Path]]:
     """The AI governance part of the bundle, joined to assets by key."""
     incomplete: list[str] = []
@@ -1218,6 +1296,7 @@ def _ai(assets: list[dict], args) -> tuple[dict, list[str], list[pathlib.Path]]:
             incomplete.append(inc)
         sections[tool] = rows
     asset_keys = {a["k"] for a in assets}
+    asset_names = {a["k"]: a["n"] for a in assets}
     now = datetime.datetime.now(datetime.timezone.utc)
 
     connections = []
@@ -1236,7 +1315,11 @@ def _ai(assets: list[dict], args) -> tuple[dict, list[str], list[pathlib.Path]]:
 
     agents = []
     for a in sections["context_agents"]:
-        name = _ai_str(a.get("name")) or "—"
+        key = _ai_str(a.get("key"))
+        indexed_name = _ai_str(a.get("name"))
+        # The asset list carries the display name ("Test Agent 1.0"), the
+        # index a compact one ("TestAgent1_0"): show the first, test both.
+        name = asset_names.get(key) or indexed_name or "—"
         date = _ai_date(a)
         stale = False
         if date:
@@ -1246,12 +1329,12 @@ def _ai(assets: list[dict], args) -> tuple[dict, list[str], list[pathlib.Path]]:
             except ValueError:
                 pass
         agents.append({
-            "k": _ai_str(a.get("key")), "n": name,
+            "k": key, "n": name,
             "pub": a.get("isPublic") is True,
             "date": date[:10],
-            "testDemo": bool(AI_TEST_DEMO.search(name)),
+            "testDemo": _looks_test_demo(name, indexed_name),
             "stale": stale,
-            "listed": _ai_str(a.get("key")) in asset_keys,
+            "listed": key in asset_keys,
         })
     agents.sort(key=lambda a: a["n"].lower())
 
@@ -1312,8 +1395,28 @@ def _summary(bundle: dict) -> list[str]:
                              f"could not be fetched)")
             else:
                 parts.append(f"{name} SKIPPED ({s.get('reason')})")
-        out.append(f"deployments (as of {_fmt_ts(dep.get('fetched_at'))}): " + " · ".join(parts)
-                   + f"; {len(dep.get('drift') or {})} asset(s) with revision drift")
+        text = (f"deployments (as of {_fmt_ts(dep.get('fetched_at'))}): " + " · ".join(parts)
+                + f"; {len(dep.get('drift') or {})} asset(s) with revision drift")
+        unlisted = dep.get("unlisted") or []
+        if unlisted:
+            per_env = []
+            for e in envs:
+                here = [u["n"] for u in unlisted if any(d["env"] == e["key"] for d in u["deps"])]
+                if not here:
+                    continue
+                item = f"{e['name']} {len(here)}"
+                if e.get("purpose") == "Production":
+                    item += ": " + _names(here)
+                per_env.append(item)
+            types: dict[str, int] = {}
+            for u in unlisted:
+                if u.get("t"):
+                    types[u["t"]] = types.get(u["t"], 0) + 1
+            typed = (", " + ", ".join(f"{t} {n}" for t, n in sorted(types.items(), key=lambda x: -x[1]))
+                     if types else "")
+            text += (f"; {len(unlisted)} deployed asset(s) with no app_list record{typed}, shown "
+                     f"apart on the page (" + " · ".join(per_env) + ")")
+        out.append(text)
 
     health = bundle.get("health")
     if health is None:
@@ -1364,8 +1467,19 @@ def _summary(bundle: dict) -> list[str]:
                 f"reported; providers: {prov})")
         if ai.get("unlisted"):
             text += f"; {len(ai['unlisted'])} not in the asset list"
+        flagged = [("test/demo-named agents", [a["n"] for a in ai["agents"] if a.get("testDemo")]),
+                   (f"agents stale {AI_STALE_DAYS}+ days", [a["n"] for a in ai["agents"] if a.get("stale")]),
+                   ("Trial connections", [c["n"] for c in ai["connections"] if c.get("entitlement") == "Trial"])]
+        for label, names in flagged:
+            if names:
+                text += f"; {label}: {_names(names)}"
         out.append(text + ". Agent definitions and non-model connections are not covered by this source")
     return out
+
+
+def _names(names: list[str]) -> str:
+    shown = ", ".join(names[:SUMMARY_NAMES])
+    return shown + (f" (+{len(names) - SUMMARY_NAMES} more)" if len(names) > SUMMARY_NAMES else "")
 
 
 def _fmt_ts(ts) -> str:
