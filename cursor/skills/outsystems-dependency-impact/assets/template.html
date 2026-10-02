@@ -169,6 +169,7 @@
       gap: 8px;
     }
     .target-row:hover { background: var(--os-card); }
+    .target-row:focus-visible, th.sortable:focus-visible { outline: 2px solid var(--c-target); outline-offset: -2px; }
     .target-row.selected {
       background: rgba(181,123,255,0.12);
       border: 1px solid rgba(181,123,255,0.36);
@@ -472,10 +473,24 @@
             </div>
             <div class="tr-count" title="${esc(t.summary)}">${esc(countLabel(t))}</div>
           `;
-          row.addEventListener('click', () => {
+          // A div is not a control: give it button semantics, expose the
+          // selection, and handle Enter / Space (the list re-renders, so the
+          // keyboard focus is put back on the selected row).
+          row.setAttribute('role', 'button');
+          row.setAttribute('aria-pressed', String(t.k === selectedKey));
+          row.tabIndex = 0;
+          const pick = () => {
             selectedKey = t.k;
             renderList();
             renderDetail(t);
+          };
+          row.addEventListener('click', pick);
+          row.addEventListener('keydown', e => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            pick();
+            const sel = listEl.querySelector('.target-row.selected');
+            if (sel) sel.focus();
           });
           listEl.appendChild(row);
         });
@@ -543,14 +558,25 @@
           tbody.appendChild(tr);
         });
         document.querySelectorAll('table.users th.sortable').forEach(th => {
-          th.addEventListener('click', () => {
-            const col = th.dataset.col;
+          const col = th.dataset.col;
+          th.tabIndex = 0;
+          th.setAttribute('aria-sort', userSort.col !== col ? 'none'
+            : userSort.dir === 'asc' ? 'ascending' : 'descending');
+          const sort = () => {
             if (userSort.col === col) {
               userSort.dir = userSort.dir === 'asc' ? 'desc' : 'asc';
             } else {
               userSort = { col, dir: 'asc' };
             }
             renderDetail(t);
+          };
+          th.addEventListener('click', sort);
+          th.addEventListener('keydown', e => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            sort();
+            const again = document.querySelector(`table.users th.sortable[data-col="${col}"]`);
+            if (again) again.focus();
           });
         });
         const th = document.querySelector(`table.users th[data-col="${userSort.col}"]`);

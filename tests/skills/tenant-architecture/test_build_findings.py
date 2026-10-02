@@ -269,5 +269,20 @@ def test_an_unwritable_output_path_is_one_clean_line(capsys):
     assert code == 1 and "could not write the output file" in capsys.readouterr().err
 
 
+def test_every_page_control_works_from_the_keyboard():
+    """Filter rows, table rows and target rows are not native controls: each
+    template gives them a role, a tab stop and Enter / Space handling."""
+    skills = t._SKILL.parent
+    tenant = (skills / "outsystems-tenant-architecture" / "assets" / "template.html").read_text()
+    assert "role', 'checkbox'" in tenant and 'role="radio"' in tenant and "radiogroup" in tenant
+    assert tenant.count("keyActivate(") >= 5          # helper + type rows + radios + two tables
+    app = (skills / "outsystems-app-architecture" / "assets" / "template.html").read_text()
+    assert "role', 'checkbox'" in app and 'id="view-list"' in app and "function renderListing" in app
+    dep = (skills / "outsystems-dependency-impact" / "assets" / "template.html").read_text()
+    assert "row.setAttribute('role', 'button')" in dep and "aria-sort" in dep
+    for html in (tenant, app):
+        assert 'aria-live="polite"' in html
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

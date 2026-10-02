@@ -396,6 +396,52 @@ def test_an_unwritable_output_path_is_one_clean_line():
     assert "Traceback" not in proc.stderr
 
 
+def test_a_target_without_a_record_is_unknown_not_dropped():
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        impact = td / "impact"
+        impact.mkdir()
+        (impact / f"{LIB_CORE}.json").write_text(json.dumps({
+            "targetKey": LIB_CORE,
+            "launch": fx("launch-deletion-inventory-core.json"),
+            "result": fx("status-deletion-inventory-core.json")}), encoding="utf-8")
+        targets = td / "targets.json"
+        targets.write_text(json.dumps([LIB_CORE, "a0000999-0000-4000-8000-000000000999"]))
+        proc = subprocess.run([sys.executable, str(BUILD), str(td / "cache"), str(td / "o.html"),
+                               "--impact-dir", str(impact), "--targets", str(targets),
+                               "--tenant-assets", str(FIX / "tenant-assets.json")],
+                              capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        bundle = json.loads((td / "cache" / "impact-data.json").read_text())
+    missing = bundle["byTarget"]["a0000999-0000-4000-8000-000000000999"]
+    assert missing["state"] == "unknown" and "no analysis record" in missing["summary"]
+    s = bundle["stats"]
+    assert s["targetCount"] == 2 and s["unknownCount"] == 1 and s["missingCount"] == 1
+    assert "1 with no saved record" in proc.stdout
+
+
+def test_the_report_is_dated_by_its_oldest_record_not_the_build():
+    import os, time as _time
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        impact = td / "impact"
+        impact.mkdir()
+        rec = impact / f"{LIB_CORE}.json"
+        rec.write_text(json.dumps({
+            "targetKey": LIB_CORE,
+            "launch": fx("launch-deletion-inventory-core.json"),
+            "result": fx("status-deletion-inventory-core.json")}), encoding="utf-8")
+        old = int(_time.time()) - 20 * 3600              # reused from the 24-hour cache
+        os.utime(rec, (old, old))
+        proc = subprocess.run([sys.executable, str(BUILD), str(td / "cache"), str(td / "o.html"),
+                               "--impact-dir", str(impact),
+                               "--tenant-assets", str(FIX / "tenant-assets.json")],
+                              capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        bundle = json.loads((td / "cache" / "impact-data.json").read_text())
+    assert bundle["tenant"]["scannedAt"] == old
+
+
 if __name__ == "__main__":
     _run()
 

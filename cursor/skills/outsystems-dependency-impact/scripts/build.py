@@ -191,7 +191,8 @@ def main(argv: list[str]) -> int:
     size_kb = out_path.stat().st_size / 1024
     print(f"wrote {out_path} ({size_kb:.1f} KB)")
     print(f"  targets: {s['targetCount']} analysed · {s['knownCount']} impact known · "
-          f"{s['unknownCount']} impact unknown ({s['refusedCount']} not available)")
+          f"{s['unknownCount']} impact unknown ({s['refusedCount']} not available"
+          + (f", {s['missingCount']} with no saved record" if s.get("missingCount") else "") + ")")
     print(f"  dependents: {'at least ' if s.get('edgeCountIsLowerBound') else ''}"
           f"{s['edgeCount']} (sum of report totals) · "
           f"{s['consumerCount']} distinct consumer assets listed")
@@ -239,10 +240,12 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
         raise FileNotFoundError(f"--impact-dir is not a directory: {impact_dir}")
 
     by_target: dict[str, dict] = {}
+    used: list[pathlib.Path] = []   # the record (and result) files this report reads
     for path in sorted(impact_dir.glob("*.json")):
         record = json.loads(path.read_text(encoding="utf-8"))
         if target_keys is not None and (record.get("targetKey") or path.stem) not in target_keys:
             continue   # cached from another run's scope: kept on disk, not shown
+        used.append(path)
         if "result" not in record and record.get("resultFile"):
             rf = pathlib.Path(record["resultFile"]).expanduser()
             if not rf.is_absolute():
@@ -250,17 +253,29 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
             # A missing or unreadable file leaves no result: impact unknown.
             try:
                 record["result"] = _unwrap_tool_result(json.loads(rf.read_text(encoding="utf-8")))
+                used.append(rf)
             except (OSError, json.JSONDecodeError):
                 pass
         key = record.get("targetKey") or path.stem
         meta = by_key.get(key, {})
         by_target[key] = classify_target(record, meta, env_names)
 
+    # A target of this run with no record file (the run stopped before it, or
+    # its launch was never saved) is unknown, never left out: otherwise the
+    # totals would understate the scope the user asked about.
+    missing = sorted((target_keys or set()) - set(by_target))
+    for key in missing:
+        by_target[key] = classify_target({"targetKey": key, "noRecord": True},
+                                         by_key.get(key, {}), env_names)
+
     known = [t for t in by_target.values() if t["state"] == "known"]
     refused = [t for t in by_target.values() if t["state"] == "refused"]
     consumers = {u["k"] for t in known for u in t["users"] if u.get("k")}
+    # Dated by the oldest record it shows, not by the build: records reused
+    # from the 24-hour cache must not read as freshly scanned.
+    stamps = [p.stat().st_mtime for p in used if p.exists()]
     return {
-        "tenant": {"id": tenant_id or "", "scannedAt": int(time.time())},
+        "tenant": {"id": tenant_id or "", "scannedAt": int(min(stamps)) if stamps else int(time.time())},
         "stats": {
             "targetCount":   len(by_target),
             "knownCount":    len(known),
@@ -270,6 +285,7 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
             # True when a known target's count is only the rows that arrived.
             "edgeCountIsLowerBound": any(t.get("totalKnown") is False for t in known),
             "consumerCount": len(consumers),
+            "missingCount":  len(missing),   # targets with no record: counted as unknown
         },
         "byTarget": by_target,
     }
@@ -291,6 +307,13 @@ def classify_target(record: dict, meta: dict, env_names: dict) -> dict:
         "truncated": False,
         "users": [],
     }
+
+    if record.get("noRecord"):
+        return {**base, "state": "unknown",
+                "summary": "Impact unknown: no analysis record was saved for this "
+                           "target (the run stopped before it, or its launch was "
+                           "not saved). Re-run to analyse it. This is not the same "
+                           "as 'no dependents'."}
 
     if record.get("skipped") == "type-unsupported":
         why = error_text(record.get("probeError")) or "the platform refused it"

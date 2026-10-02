@@ -352,6 +352,7 @@
     .table-view.with-banner { padding-top: 120px; }
     /* The detail panel floats top-right: keep the table's last columns clear of it. */
     .graph-wrap.has-detail .table-view { padding-right: 360px; }
+    .filter-row:focus-visible, .asset-table tbody tr:focus-visible { outline: 2px solid var(--os-red); outline-offset: -2px; }
     .asset-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .asset-table th {
       position: sticky; top: 0; background: var(--os-bg-2); text-align: left;
@@ -485,7 +486,7 @@
           <div id="network"><div class="graph-loading" id="graph-loading">Loading graph library…</div></div>
           <div class="table-view" id="table-view" hidden></div>
           <div class="table-view ai-view" id="ai-view" hidden></div>
-          <div class="graph-overlay" id="overlay">
+          <div class="graph-overlay" id="overlay" role="region" aria-label="Details" aria-live="polite">
             <button class="overlay-close" id="ov-close" title="Close">×</button>
             <div id="ov-body"></div>
           </div>
@@ -745,6 +746,15 @@
           && matchesEnv(a) && matchesHealth(a) && matchesAi(a);
       }
 
+      // Enter / Space activate an element that is not a native control
+      // (filter rows, table rows), so the page works from the keyboard.
+      function keyActivate(node, fn) {
+        node.tabIndex = 0;
+        node.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
+        });
+      }
+
       // ----- Type filter UI -----
       const filterList = document.getElementById('filter-list');
       presentTypes.forEach(t => {
@@ -757,28 +767,41 @@
           <span class="filter-name">${esc(m.label)}${TYPES[t] ? '' : ' <span class="badge off">other</span>'}</span>
           <span class="filter-count">${counts[t] || 0}</span>
         `;
-        row.addEventListener('click', () => {
+        row.setAttribute('role', 'checkbox');
+        row.setAttribute('aria-checked', 'true');
+        const toggle = () => {
           if (activeTypes.has(t)) { activeTypes.delete(t); row.classList.add('is-off'); }
           else { activeTypes.add(t); row.classList.remove('is-off'); }
+          row.setAttribute('aria-checked', String(activeTypes.has(t)));
           applyFilters();
-        });
+        };
+        row.addEventListener('click', toggle);
+        keyActivate(row, toggle);
         filterList.appendChild(row);
       });
 
       // ----- Single-choice filters (deployments, health) -----
       function radioRows(container, rows, current, onPick) {
         container.innerHTML = rows.map(r => `
-          <div class="filter-row radio${r.value === current ? ' is-selected' : ''}" data-value="${esc(r.value)}" title="${esc(r.title || '')}">
+          <div class="filter-row radio${r.value === current ? ' is-selected' : ''}" role="radio" aria-checked="${r.value === current}" data-value="${esc(r.value)}" title="${esc(r.title || '')}">
             <span class="filter-swatch" style="background:${r.color}"></span>
             <span class="filter-name">${esc(r.label)}</span>
             ${r.badge ? `<span class="badge${r.badgeOff ? ' off' : ''}">${esc(r.badge)}</span>` : ''}
             <span class="filter-count">${r.count}</span>
           </div>`).join('');
-        container.querySelectorAll('.filter-row').forEach(el => el.addEventListener('click', () => {
-          container.querySelectorAll('.filter-row').forEach(x => x.classList.remove('is-selected'));
-          el.classList.add('is-selected');
-          onPick(el.dataset.value);
-        }));
+        container.setAttribute('role', 'radiogroup');
+        container.querySelectorAll('.filter-row').forEach(el => {
+          const pick = () => {
+            container.querySelectorAll('.filter-row').forEach(x => {
+              x.classList.remove('is-selected'); x.setAttribute('aria-checked', 'false');
+            });
+            el.classList.add('is-selected');
+            el.setAttribute('aria-checked', 'true');
+            onPick(el.dataset.value);
+          };
+          el.addEventListener('click', pick);
+          keyActivate(el, pick);
+        });
       }
 
       const deployList = document.getElementById('deploy-list');
@@ -900,7 +923,9 @@
       document.getElementById('filter-reset').addEventListener('click', () => {
         activeTypes.clear();
         presentTypes.forEach(t => activeTypes.add(t));
-        document.querySelectorAll('#filter-list .filter-row').forEach(r => r.classList.remove('is-off'));
+        document.querySelectorAll('#filter-list .filter-row').forEach(r => {
+          r.classList.remove('is-off'); r.setAttribute('aria-checked', 'true');
+        });
         searchInput.value = '';
         envFilter = 'all'; healthFilter = 'all'; aiFilter = 'all';
         renderDeployFilter(); renderHealthFilter(); renderAiFilter();
@@ -935,8 +960,11 @@
           </table>
           <div class="panel-note" style="margin:10px 0 0">${rows.length} of ${ASSETS.length} assets shown.</div>
           ${unlistedTable()}`;
-        tableView.querySelectorAll('tbody tr').forEach(tr =>
-          tr.addEventListener('click', () => tr.dataset.unlisted ? showUnlisted(tr.dataset.key) : showAsset(tr.dataset.key)));
+        tableView.querySelectorAll('tbody tr').forEach(tr => {
+          const open = () => tr.dataset.unlisted ? showUnlisted(tr.dataset.key) : showAsset(tr.dataset.key);
+          tr.addEventListener('click', open);
+          keyActivate(tr, open);
+        });
       }
 
       // Deployed but not in the asset list: follows the search box and the
@@ -999,7 +1027,11 @@
             Agent definitions, knowledge bases and MCP / search / A2A connections are not covered by this source; they appear in the graph and table as "not reported".
             "Not in asset list" rows are indexed by the Context Service but absent from app_list (for example deleted assets).
             The test/demo flag is a name heuristic, not a verdict.</div>`;
-        aiView.querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', () => showAsset(tr.dataset.key)));
+        aiView.querySelectorAll('tbody tr').forEach(tr => {
+          const open = () => showAsset(tr.dataset.key);
+          tr.addEventListener('click', open);
+          keyActivate(tr, open);
+        });
       }
 
       let view = 'graph';

@@ -352,8 +352,10 @@ python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>"
   of N" when capped, or "impact unknown: <reason>" / "analysis not
   available for this asset"
 - Branch D: targets analysed, impact known / unknown / not available,
-  the top targets by dependents
-- Cache state — "analysed now" / "reused records (Xh old)"
+  the top targets by dependents; when the `targets:` line counts targets
+  "with no saved record", say they were not analysed and offer to re-run
+- Cache state — "analysed now" / "reused records (Xh old)"; the page is
+  dated by the oldest record it shows, so say that age"
 
 ## Data shape contract
 
@@ -361,7 +363,7 @@ python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>"
 
 ```js
 {
-  tenant: { id, scannedAt },
+  tenant: { id, scannedAt },          // the oldest record file's save time
   stats: {
     targetCount, knownCount,
     unknownCount,      // includes refusedCount
@@ -369,6 +371,7 @@ python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>"
     edgeCount,         // sum of report.total over known targets
     edgeCountIsLowerBound, // a known target's report had no visible total
     consumerCount,     // distinct consumer assets in the listed rows
+    missingCount,      // targets.json keys with no record file: unknown, not dropped
   },
   byTarget: {
     "<assetKey>": {

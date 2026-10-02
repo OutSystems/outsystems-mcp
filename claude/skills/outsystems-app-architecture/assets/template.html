@@ -251,8 +251,12 @@
     }
     .ov-note { font-size: 10.5px; color: var(--os-text-dim); line-height: 1.4; margin-top: 4px; }
 
-    /* Fallback listing (graph library unavailable) */
+    /* Fallback listing (graph library unavailable); also the List view */
     .fallback { padding: 24px 28px; overflow-y: auto; height: 100%; }
+    .listing-view { position: absolute; inset: 0; z-index: 3; background: var(--os-bg); padding-bottom: 72px; }
+    .ctrl-btn.text { width: auto; padding: 0 12px; font-size: 12px; }
+    .ctrl-btn[aria-pressed="true"] { border-color: var(--os-red); }
+    .filter-row:focus-visible, .ctrl-btn:focus-visible { outline: 2px solid var(--os-red); outline-offset: 1px; }
     .fallback-banner {
       background: var(--os-card); border: 1px solid var(--os-red); border-radius: 10px;
       padding: 12px 16px; margin-bottom: 18px; font-size: 13px; line-height: 1.5; color: var(--os-text);
@@ -428,7 +432,7 @@
 
         <div class="graph-wrap">
           <div id="network"></div>
-          <div class="graph-overlay" id="overlay">
+          <div class="graph-overlay" id="overlay" role="region" aria-label="Details" aria-live="polite">
             <div class="overlay-title" id="ov-title"></div>
             <div class="overlay-type" id="ov-type"></div>
             <div class="overlay-desc" id="ov-desc"></div>
@@ -450,6 +454,7 @@
             <div style="color:var(--os-text-dim);font-size:10px;margin-left:4px;">Scroll · Drag · Click</div>
           </div>
           <div class="graph-controls">
+            <button class="ctrl-btn text" id="view-list" aria-pressed="false" title="Every item as a text list, with its details (keyboard and screen readers)">List</button>
             <button class="ctrl-btn" id="zoom-fit" title="Fit">⤢</button>
             <button class="ctrl-btn" id="zoom-in" title="Zoom in">+</button>
             <button class="ctrl-btn" id="zoom-out" title="Zoom out">−</button>
@@ -671,7 +676,13 @@
         row.appendChild(el('span', m.label, 'filter-name'));
         row.appendChild(el('span', m.count, 'filter-count'));
         if (m.title) row.title = m.title;
-        row.addEventListener('click', () => onToggle(row));
+        // A label with no input is not focusable: give it checkbox semantics
+        // and Enter / Space so the filter works from the keyboard.
+        row.setAttribute('role', 'checkbox');
+        row.setAttribute('aria-checked', String(isOn));
+        const toggle = () => { onToggle(row); row.setAttribute('aria-checked', String(!row.classList.contains('is-off'))); };
+        row.addEventListener('click', toggle);
+        keyActivate(row, toggle);
         list.appendChild(row);
       }
       Object.keys(CATS).forEach(c => {
@@ -1055,7 +1066,9 @@
       document.getElementById('filter-reset').addEventListener('click', () => {
         activeCats.clear();
         Object.keys(CATS).forEach(c => activeCats.add(c));
-        document.querySelectorAll('#filter-list .filter-row').forEach(r => r.classList.remove('is-off'));
+        document.querySelectorAll('#filter-list .filter-row').forEach(r => {
+          r.classList.remove('is-off'); r.setAttribute('aria-checked', 'true');
+        });
         searchInput.value = '';
         applyFilters();
       });
@@ -1081,6 +1094,26 @@
         nodes.update(updates);
       }
 
+      // List view: the canvas nodes are not focusable, so the same data is
+      // also a text listing (every signature, attribute and record), on demand.
+      const listBtn = document.getElementById('view-list');
+      let listing = null;
+      const setList = on => {
+        if (on && !listing) {
+          listing = document.querySelector('.graph-wrap').appendChild(el('div', null, 'fallback listing-view'));
+          listing.setAttribute('role', 'region');
+          listing.setAttribute('aria-label', 'Text listing of the app');
+          listing.tabIndex = -1;
+          renderListing(listing, D, kindOf);
+        }
+        if (listing) listing.hidden = !on;
+        listBtn.setAttribute('aria-pressed', String(on));
+        listBtn.textContent = on ? 'Graph' : 'List';
+        if (on) listing.focus();
+      };
+      listBtn.addEventListener('click', () => setList(listBtn.getAttribute('aria-pressed') !== 'true'));
+      document.addEventListener('keydown', e => { if (e.key === 'Escape' && listing && !listing.hidden) { setList(false); listBtn.focus(); } });
+
       // Zoom
       document.getElementById('zoom-fit').addEventListener('click', () =>
         network.fit({ animation: { duration: 600, easingFunction: 'easeInOutCubic' } }));
@@ -1089,6 +1122,14 @@
       });
       document.getElementById('zoom-out').addEventListener('click', () => {
         const s = network.getScale(); network.moveTo({ scale: s * 0.8, animation: { duration: 200 } });
+      });
+    }
+
+    // Enter / Space activate an element that is not a native control.
+    function keyActivate(node, fn) {
+      node.tabIndex = 0;
+      node.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
       });
     }
 
@@ -1107,6 +1148,11 @@
         'failed the integrity check. ' +
         'The same data is listed below; open this file with internet access for the graph.',
         'fallback-banner'));
+      renderListing(box, D, kindOf);
+    }
+
+    // Every item of the bundle as text, grouped like the graph's layers.
+    function renderListing(box, D, kindOf) {
       function list(title, items, line) {
         if (!items.length) return;
         box.appendChild(el('h2', `${title} (${items.length})`));
