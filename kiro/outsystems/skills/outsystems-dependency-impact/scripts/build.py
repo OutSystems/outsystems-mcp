@@ -279,9 +279,59 @@ def _select_targets_command(argv) -> int:
     return 0
 
 
+
+# Branch D resume: a record younger than this is reused.
+RECORD_TTL_S = 24 * 3600
+
+
+def _pending_command(argv) -> int:
+    """`--pending <impact-dir> <targets.json> [--rescan-failures]`: which
+    targets of the work list Step 5 still has to analyse. A target is reused
+    when its record (and result file) is under 24h old; with
+    --rescan-failures, a fresh record without a verdict is analysed again."""
+    rest = list(argv)
+    rescan = "--rescan-failures" in rest
+    rest = [a for a in rest if a != "--rescan-failures"]
+    if len(rest) != 2:
+        print("usage: build.py --pending <impact-dir> <targets.json> [--rescan-failures]", file=sys.stderr)
+        return 2
+    impact_dir, targets_path = pathlib.Path(rest[0]), pathlib.Path(rest[1])
+    try:
+        keys = load_target_keys(targets_path)
+        raw = json.loads(targets_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"could not read {targets_path}: {exc}", file=sys.stderr)
+        return 1
+    rows = raw.get("targets", raw.get("results", [])) if isinstance(raw, dict) else raw
+    names = {r.get("key") or r.get("k"): r.get("name") or r.get("n") or ""
+             for r in rows if isinstance(r, dict)}
+    records = {}
+    for path in sorted(impact_dir.glob("*.json")) if impact_dir.is_dir() else []:
+        record, files = _read_record(path)
+        records[record.get("targetKey") or path.stem] = (record, files)
+    now = time.time()
+    fresh, todo = [], []
+    for key in sorted(keys, key=lambda k: (names.get(k) or k).lower()):
+        record, files = records.get(key, (None, []))
+        age_ok = bool(files) and all(now - f.stat().st_mtime < RECORD_TTL_S for f in files if f.exists())
+        verdict = record is not None and classify_target(record, {}, {})["state"] != "unknown"
+        if record is not None and age_ok and (verdict or not rescan):
+            fresh.append(key)
+        else:
+            todo.append(key)
+    print(f"reuse: {len(fresh)} target(s) with a record under 24h old"
+          + ("" if rescan else " (with or without a verdict)"))
+    print(f"analyse: {len(todo)} target(s)")
+    for key in todo:
+        print(f"{key}\t{names.get(key, '')}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if len(argv) > 1 and argv[1] == "--cache-dir":
         return _cache_dir_command(argv[2:])
+    if len(argv) > 1 and argv[1] == "--pending":
+        return _pending_command(argv[2:])
     if len(argv) > 1 and argv[1] == "--select-targets":
         return _select_targets_command(argv[2:])
     if len(argv) > 1 and argv[1] == "--cache-age":
@@ -465,7 +515,14 @@ def load_assets(tenant_assets_paths) -> dict:
         if chain is None and tenant.get("truncated") is True:
             chain = {"path": path, "total": tenant["total"], "keys": set(), "rows": 0, "next": None}
         if chain is None:
-            continue                       # a whole listing in one page
+            # A whole listing in one page carries all of its total. One that
+            # carries fewer is a later page passed without its first.
+            if len(rows) < tenant["total"]:
+                raise IncompleteAssets(
+                    f"{pathlib.Path(path).name} holds {len(rows)} of {tenant['total']} assets but is "
+                    f"not truncated: it is a later page of a listing whose earlier pages were "
+                    f"not passed; pass every page of that listing from offset 0, in order")
+            continue
         chain["keys"].update(a["k"] for a in rows)
         chain["rows"] += len(rows)
         chain["next"] = tenant.get("next_offset")
@@ -482,36 +539,43 @@ def load_assets(tenant_assets_paths) -> dict:
     return by_key
 
 
+def _read_record(path: pathlib.Path) -> tuple[dict, list[pathlib.Path]]:
+    """One target's record, with its launch / result unwrapped and its
+    resultFile read, plus the files it came from. An unreadable record is a
+    `badRecord` (that target unknown); it never stops a build."""
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        record = None
+    if not isinstance(record, dict):
+        return {"targetKey": path.stem, "badRecord": True}, [path]
+    files = [path]
+    # A launch or result saved as the whole MCP result is unwrapped, the
+    # same as a resultFile.
+    for part in ("launch", "result"):
+        if part in record:
+            record[part] = _unwrap_tool_result(record[part])
+    if "result" not in record and record.get("resultFile"):
+        rf = pathlib.Path(record["resultFile"]).expanduser()
+        if not rf.is_absolute():
+            rf = path.parent / rf
+        # A missing or unreadable file leaves no result: impact unknown.
+        try:
+            record["result"] = _unwrap_tool_result(json.loads(rf.read_text(encoding="utf-8")))
+            files.append(rf)
+        except (OSError, json.JSONDecodeError):
+            pass
+    return record, files
+
+
 def _build_from_records(impact_dir, by_key, env_names, tenant_id, target_keys) -> dict:
     by_target: dict[str, dict] = {}
     used: list[pathlib.Path] = []   # the record (and result) files this report reads
     for path in sorted(impact_dir.glob("*.json")):
-        # One unreadable record makes that target unknown; it never stops the
-        # build or drops the target. The file name is the target key then.
-        try:
-            record = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-            record = None
-        if not isinstance(record, dict):
-            record = {"targetKey": path.stem, "badRecord": True}
+        record, files = _read_record(path)
         if target_keys is not None and (record.get("targetKey") or path.stem) not in target_keys:
             continue   # cached from another run's scope: kept on disk, not shown
-        used.append(path)
-        # A launch or result saved as the whole MCP result is unwrapped, the
-        # same as a resultFile.
-        for part in ("launch", "result"):
-            if part in record:
-                record[part] = _unwrap_tool_result(record[part])
-        if "result" not in record and record.get("resultFile"):
-            rf = pathlib.Path(record["resultFile"]).expanduser()
-            if not rf.is_absolute():
-                rf = path.parent / rf
-            # A missing or unreadable file leaves no result: impact unknown.
-            try:
-                record["result"] = _unwrap_tool_result(json.loads(rf.read_text(encoding="utf-8")))
-                used.append(rf)
-            except (OSError, json.JSONDecodeError):
-                pass
+        used += files
         key = record.get("targetKey") or path.stem
         meta = by_key.get(key, {})
         by_target[key] = classify_target(record, meta, env_names)

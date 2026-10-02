@@ -477,7 +477,7 @@ def test_a_truncated_asset_page_without_its_next_page_is_incomplete():
         mixed = _dep_build(td, rec, [td / "s1.json", td / "s2.json"])
         assert mixed.returncode == 3 and "starting at s1.json" in mixed.stderr, mixed.stderr
         # Two complete searches, any totals, pass.
-        (td / "s3.json").write_text(json.dumps(dict(other, results=[a])))
+        (td / "s3.json").write_text(json.dumps(dict(other, results=[a], total=1, displayed=1)))
         assert _dep_build(td, rec, [td / "s3.json", td / "s2.json"]).returncode == 0
 
 
@@ -578,6 +578,46 @@ def test_select_targets_writes_the_work_list_and_names_every_target():
         proc = subprocess.run([sys.executable, str(BUILD), "--select-targets", str(out), str(cut)],
                               capture_output=True, text=True)
         assert proc.returncode == 3 and "INCOMPLETE" in proc.stderr
+
+
+def test_a_later_page_alone_is_not_taken_for_a_whole_listing():
+    rows = [{"assetKey": a["k"], "name": a["n"], "assetType": a["t"]} for a in fx("tenant-assets.json")]
+    rec = {LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                      "result": fx("status-deletion-inventory-core.json")}}
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        (td / "p2.json").write_text(json.dumps({"results": rows[2:], "total": len(rows) + 10,
+                                                "displayed": len(rows) - 2, "truncated": False}))
+        proc = _dep_build(td, rec, [td / "p2.json"])
+    assert proc.returncode == 3 and "later page" in proc.stderr, proc.stderr
+
+
+def test_pending_lists_only_the_targets_without_a_fresh_record():
+    import os, time as _time
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        impact = td / "impact"; impact.mkdir()
+        good = {"targetKey": LIB_CORE, "launch": fx("launch-deletion-inventory-core.json"),
+                "result": fx("status-deletion-inventory-core.json")}
+        (impact / f"{LIB_CORE}.json").write_text(json.dumps(good))                      # fresh, verdict
+        (impact / f"{OS_UI}.json").write_text(json.dumps({"targetKey": OS_UI,           # fresh, no verdict
+                                                          "launch": fx("launch-deletion-outsystems-ui.json")}))
+        old = impact / f"{TESTLIB}.json"
+        old.write_text(json.dumps(dict(good, targetKey=TESTLIB)))
+        t = int(_time.time()) - 30 * 3600; os.utime(old, (t, t))                       # stale
+        targets = td / "targets.json"
+        targets.write_text(json.dumps({"targets": [{"key": k, "name": n, "type": "LowCodeLibrary"} for k, n in
+                                                   ((LIB_CORE, "Core"), (OS_UI, "UI"), (TESTLIB, "TestLib"),
+                                                    (AGENT, "Never run"))]}))
+        run = lambda *extra: subprocess.run([sys.executable, str(BUILD), "--pending", str(impact), str(targets), *extra],
+                                            capture_output=True, text=True)
+        p = run()
+        assert p.returncode == 0, p.stderr
+        todo = {l.split("\t")[0] for l in p.stdout.splitlines()[2:]}
+        assert todo == {TESTLIB, AGENT} and "reuse: 2" in p.stdout
+        p = run("--rescan-failures")
+        todo = {l.split("\t")[0] for l in p.stdout.splitlines()[2:]}
+        assert todo == {TESTLIB, AGENT, OS_UI} and "reuse: 1" in p.stdout
 
 
 if __name__ == "__main__":

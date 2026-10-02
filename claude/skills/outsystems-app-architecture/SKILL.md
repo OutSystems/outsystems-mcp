@@ -471,6 +471,11 @@ writes are the main cost (see the whitelist's token trade-off).
   output path is not writable (no space left, no permission, or a folder
   of that name). Only the HTML failed: ask the user for another output
   path and re-run the same command with it.
+- **`build.py` exits 1 with `could not write the cache files`** → the
+  cache folder is not writable (no space left, or no permission on the
+  folder the message names). Ask the user to free space or fix that
+  folder's permissions, then re-run the same command. Another output
+  path does not help here.
 - **A description or static-entity record list shows "truncated by the
   server (N bytes)"** → the server replaces any `additionalData` string
   over 2048 bytes with `{"_truncated": true, "_originalBytes": N}` (a

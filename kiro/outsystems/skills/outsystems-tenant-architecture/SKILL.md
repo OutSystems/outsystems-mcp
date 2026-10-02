@@ -558,6 +558,11 @@ error. A metric in the `metrics` echo but absent from a row is shown as
   output path is not writable (no space left, no permission, or a folder
   of that name). Only the HTML failed: ask the user for another output
   path and re-run the same command with it.
+- **`build.py` exits 1 with `could not write the cache files`** → the
+  cache folder is not writable (no space left, or no permission on the
+  folder the message names). Ask the user to free space or fix that
+  folder's permissions, then re-run the same command. Another output
+  path does not help here.
 - **`build.py` exits 3 (`INCOMPLETE: ... offset: N`)** → a page set has
   a next page (app_list, one environment's env_apps, or one environment's
   app_health). Make every printed call with its `offset`, save, re-run

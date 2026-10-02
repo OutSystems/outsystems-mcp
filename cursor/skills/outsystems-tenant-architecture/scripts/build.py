@@ -1396,7 +1396,7 @@ def _ai(assets: list[dict], args) -> tuple[dict, list[str], list[pathlib.Path]]:
         if date:
             try:
                 d = _parse_iso(date)
-                stale = (now - d).days > AI_STALE_DAYS
+                stale = (now - d).days >= AI_STALE_DAYS   # "180+ days" includes 180
             except ValueError:
                 pass
         agents.append({

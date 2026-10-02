@@ -306,5 +306,18 @@ def test_an_unwritable_cache_is_one_clean_line(capsys):
     assert code == 1 and "could not write the cache files" in capsys.readouterr().err
 
 
+def test_an_agent_exactly_180_days_old_is_stale(capsys):
+    import datetime
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    agents = _load("ai-agents.json")
+    when = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=180, hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    agents["data"][0].setdefault("additionalData", {})["revisionDateTime"] = when
+    code, cache, _ = _run(["--ai-agents", _write(tmp, "a.json", agents), "--ai-connections", _fx("ai-connections.json")],
+                          apps=[_write(tmp, "apps.json", t._apps_with_ai())])
+    assert code == 0
+    row = next(a for a in _bundle(cache)["ai"]["agents"] if a["k"] == agents["data"][0]["key"])
+    assert row["stale"] is True
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

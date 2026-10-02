@@ -327,9 +327,18 @@ cut the result, keep `processStatus`, `impactKnown`, `report.status`,
 `report.total` and `report.truncated` from the visible tail, the rows
 that arrived intact, and set `harnessTruncated: true`.
 
-**Resume (Branch D).** Before launching, skip targets whose record exists and is
-under 24h old. "rescan failures" re-runs the targets whose record has no
-verdict.
+**Resume (Branch D).** Before launching, ask the script which targets
+still need an analysis; it reads every record's age and verdict, so you
+never inspect the records yourself:
+
+```bash
+python3 "<skill-folder>/scripts/build.py" --pending "<cache-folder>/impact" "<cache-folder>/targets.json"
+```
+
+It prints how many targets are reused (a record under 24h old) and then
+one line per target to analyse (its key, a tab, its name): launch only those. On
+"rescan failures", add `--rescan-failures`: a fresh record without a
+verdict is analysed again.
 
 ### Step 6 — Build
 
@@ -472,6 +481,11 @@ same ratio.
   output path is not writable (no space left, no permission, or a folder
   of that name). Only the HTML failed: ask the user for another output
   path and re-run the same command with it.
+- **`build.py` exits 1 with `could not write the cache files`** → the
+  cache folder is not writable (no space left, or no permission on the
+  folder the message names). Ask the user to free space or fix that
+  folder's permissions, then re-run the same command. Another output
+  path does not help here.
 - **`--tenant-assets must be a list, ...`** → the file passed is not an
   `app_list` page, a compact asset list or a tenant-architecture bundle;
   pass the saved `app_list` page(s) instead.
