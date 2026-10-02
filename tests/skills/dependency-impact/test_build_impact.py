@@ -456,3 +456,31 @@ def test_poll_pacing_follows_each_harness():
     skill = (BUILD.parent.parent / "SKILL.md").read_text(encoding="utf-8")
     assert "a short foreground `sleep` where it\n   has none (Kiro)" in skill
     assert "never a bare foreground `sleep`" not in skill
+
+
+def test_targets_list_limits_the_page_to_this_runs_scope(tmp_path):
+    impact = tmp_path / "impact"
+    impact.mkdir()
+    for key in (LIB_CORE, AGENT):
+        (impact / f"{key}.json").write_text(json.dumps({
+            "targetKey": key, "launch": fx("launch-deletion-inventory-core.json"),
+            "result": fx("status-deletion-inventory-core.json")}), encoding="utf-8")
+    targets = tmp_path / "targets.json"
+    targets.write_text(json.dumps([{"key": LIB_CORE, "name": "Inventory Core Library",
+                                    "type": "LowCodeLibrary"}]), encoding="utf-8")
+    base = [sys.executable, str(BUILD), str(tmp_path / "cache"), str(tmp_path / "o.html"),
+            "--impact-dir", str(impact), "--tenant-assets", str(FIX / "tenant-assets.json")]
+    proc = subprocess.run(base + ["--targets", str(targets)], capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads((tmp_path / "cache" / "impact-data.json").read_text())
+    assert list(data["byTarget"]) == [LIB_CORE] and data["stats"]["targetCount"] == 1
+    assert (impact / f"{AGENT}.json").exists()          # still cached for reuse
+    proc = subprocess.run(base, capture_output=True, text=True)
+    assert proc.returncode == 0
+    assert len(json.loads((tmp_path / "cache" / "impact-data.json").read_text())["byTarget"]) == 2
+
+
+def test_branch_d_confirmation_names_the_targets():
+    skill = (BUILD.parent.parent / "SKILL.md").read_text(encoding="utf-8")
+    assert "Name the\ntargets in the same message" in skill
+    assert "list them if the user\nwants" not in skill

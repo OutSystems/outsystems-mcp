@@ -84,6 +84,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                    default=None)
     p.add_argument("--env-list",      type=pathlib.Path, default=None)
     p.add_argument("--tenant-id",     type=str,          default="")
+    p.add_argument("--targets",       type=pathlib.Path, default=None,
+                   help="targets.json of this run: render only these target keys "
+                        "(other records stay cached for reuse)")
     return p.parse_args(argv[1:])
 
 
@@ -135,7 +138,8 @@ def main(argv: list[str]) -> int:
             return 2
         try:
             bundle = build_bundle(args.impact_dir, args.tenant_assets,
-                                  args.env_list, args.tenant_id)
+                                  args.env_list, args.tenant_id,
+                                  load_target_keys(args.targets))
         except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError) as exc:
             print(f"build failed: {exc}", file=sys.stderr)
             return 1
@@ -194,8 +198,29 @@ def main(argv: list[str]) -> int:
 # Build (fresh mode)
 # =====================================================================
 
+def load_target_keys(path):
+    """The keys in a targets.json work list (a list of keys, of {key|k|assetKey}
+    rows, or {targets: [...]}), or None when no list was given."""
+    if path is None:
+        return None
+    raw = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    if isinstance(raw, dict):
+        raw = raw.get("targets", raw.get("results"))
+    if not isinstance(raw, list):
+        raise ValueError(f"--targets {path}: expected a list of target keys or rows")
+    keys = set()
+    for r in raw:
+        k = r if isinstance(r, str) else next(
+            (r.get(f) for f in ("key", "k", "assetKey", "targetKey") if isinstance(r, dict) and r.get(f)), None)
+        if not isinstance(k, str):
+            raise ValueError(f"--targets {path}: a row has no key: {str(r)[:80]}")
+        keys.add(k)
+    return keys
+
+
 def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
-                 env_list_path: pathlib.Path | None, tenant_id: str) -> dict:
+                 env_list_path: pathlib.Path | None, tenant_id: str,
+                 target_keys=None) -> dict:
     if isinstance(tenant_assets_paths, (str, pathlib.Path)):
         tenant_assets_paths = [tenant_assets_paths]
     by_key: dict[str, dict] = {}
@@ -212,6 +237,8 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
     by_target: dict[str, dict] = {}
     for path in sorted(impact_dir.glob("*.json")):
         record = json.loads(path.read_text(encoding="utf-8"))
+        if target_keys is not None and (record.get("targetKey") or path.stem) not in target_keys:
+            continue   # cached from another run's scope: kept on disk, not shown
         if "result" not in record and record.get("resultFile"):
             rf = pathlib.Path(record["resultFile"]).expanduser()
             if not rf.is_absolute():

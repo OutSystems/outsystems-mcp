@@ -20,6 +20,8 @@ import importlib.util
 import inspect
 import io
 import json
+
+import pytest
 import os
 import pathlib
 import subprocess
@@ -589,3 +591,11 @@ def test_claude_code_content_block_saved_file_is_unwrapped(tmp_path):
     # A saved isError result stays an error.
     assert build._is_error_result(build._unwrap_tool_result(
         {"isError": True, "content": [{"type": "text", "text": "boom"}]}))
+
+
+@pytest.mark.parametrize("asset_type", ["AIModelConnection", "AINativeConnection",
+                                        "KnowledgeBase", "MCPConnection", "Workflow"])
+def test_untracked_types_are_never_not_deployed(asset_type):
+    dep = build._build_deployments(ENVS, {"d": _env_apps([]), "t": _env_apps([]), "p": _env_apps([])},
+                                   APP, 3, "2026-09-29T10:00:00Z", app_type=asset_type)
+    assert {e["status"] for e in dep["envs"]} == {"unknown"}

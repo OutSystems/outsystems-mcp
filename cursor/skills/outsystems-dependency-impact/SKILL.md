@@ -220,15 +220,16 @@ tokens_k   = count * 0.5                      # estimate, before dependents
 Ask: *"Run {count} deletion-impact analyses ({libs} libraries, {agents}
 agents, {conns} connections) to map who depends on what? Read-only:
 nothing is deleted. Estimate: ~{wall_min} min, ~{tokens_k}K tokens plus
-~0.1–0.15K per dependent found. Results are cached for 24h."* Offer to
-list the target names first (the main OutSystems skill asks for named
-targets before a deletion-impact analysis), and list them if the user
-wants. Offer
-three choices: **Yes — all {count}**, **Libraries only ({libs})**, and
+~0.1–0.15K per dependent found. Results are cached for 24h."* Name the
+targets in the same message, grouped by type (the main OutSystems skill
+names every asset before a deletion-impact analysis); for a long list,
+name them all in a compact comma-separated form rather than leaving any
+out. Offer three choices: **Yes — all {count}**, **Libraries only ({libs})**, and
 **No — cancel**.
 
 On "No" → stop; the asset list stays cached (cheap and useful for other
-skills).
+skills). On "Libraries only", rewrite `<cache-folder>/targets.json` to the
+libraries before Step 5, so the build shows only them.
 
 ### Step 5 — Analyse
 
@@ -322,8 +323,11 @@ python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>" \
   --impact-dir    "<cache-folder>/impact"            \
   --tenant-assets "<cache-folder>/tenant-assets-1.json" \
   --env-list      "<cache-folder>/env-list.json"     \
-  --tenant-id     "<TENANT_ID>"
-# Branch C: --impact-dir "<cache-folder>/impact-named"
+  --tenant-id     "<TENANT_ID>" \
+  --targets       "<cache-folder>/targets.json"
+# Branch D: --targets limits the page to this run's targets (older records stay cached).
+# Branch C: --impact-dir "<cache-folder>/impact-named" and no --targets (that folder
+#           holds only this question's records)
 # Several searches (Branch C) or a paged asset list: repeat --tenant-assets once per file.
 # Reused tenant-architecture bundle: --tenant-assets "<tenant-cache-folder>/tenant-data.json"
 ```

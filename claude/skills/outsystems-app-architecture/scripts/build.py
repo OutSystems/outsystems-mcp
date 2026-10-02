@@ -800,6 +800,10 @@ def _not_listed_reason(app_type: str):
         return "unknown", "env_apps does not list workflows"
     if t.endswith("Library"):
         return "n/a", "libraries are not deployed on their own"
+    # env_apps lists apps and agents. Connections and knowledge bases have
+    # never been seen there, so their absence proves nothing either way.
+    if t.endswith("Connection") or t == "KnowledgeBase":
+        return "unknown", "env_apps does not list this asset type"
     return None
 
 
