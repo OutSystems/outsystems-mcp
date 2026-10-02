@@ -693,7 +693,7 @@ def _deployments(envs_raw: list[dict], assets: list[dict], args) -> tuple[dict, 
                 "env": key,
                 "rev": r.get("revision"),
                 "date": (r.get("deploymentDateTime") or "")[:10],
-                "url": r.get("url") or "",
+                "url": _web_url(r.get("url")),
             }
             app_key = str(r["applicationKey"])
             deployed_name = _ai_str(r.get("name"))
@@ -957,6 +957,12 @@ def _window_hours(since: str | None, to: str | None) -> int | None:
         return round((_parse_iso(to) - _parse_iso(since)).total_seconds() / 3600)
     except (TypeError, ValueError, AttributeError):
         return None
+
+
+def _web_url(value) -> str:
+    """A deployment URL kept only when it is an absolute http(s) URL: the page
+    turns it into a link, and a "javascript:" value must never become one."""
+    return value if isinstance(value, str) and re.match(r"(?i)^https?://[^\s]+$", value) else ""
 
 
 def _oldest_mtime(paths: list[pathlib.Path]) -> int | None:

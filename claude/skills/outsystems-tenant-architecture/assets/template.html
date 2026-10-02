@@ -585,6 +585,19 @@
     function boot() {
       const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
         c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      // A deployment URL comes from tool data: escaping keeps it inside the
+      // attribute but would let "javascript:" through, so only an absolute
+      // http(s) URL becomes a link; anything else gets no link at all.
+      const safeUrl = u => {
+        try {
+          const p = new URL(String(u));
+          return p.protocol === 'https:' || p.protocol === 'http:' ? p.href : '';
+        } catch (e) { return ''; }
+      };
+      const openLink = u => {
+        const href = safeUrl(u);
+        return href ? ` · <a href="${esc(href)}" target="_blank" rel="noopener noreferrer">open</a>` : '';
+      };
 
       // ----- Asset type catalog -----
       // One entry per app_list `assetType` seen on real tenants. Labels are
@@ -1081,7 +1094,7 @@
           <div class="overlay-type">${u.t ? esc(typeMeta(u.t).label) + ' · ' : ''}Deployed · not in the asset list</div>
           ${row('Key', `<span style="font-size:9px;user-select:all">${esc(u.k)}</span>`)}
           <div class="overlay-section">Deployments</div>
-          ${u.deps.map(d => row(envName(d.env), `r${esc(d.rev)} · ${esc(d.date || '—')}${d.url ? ` · <a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">open</a>` : ''}`)).join('')}
+          ${u.deps.map(d => row(envName(d.env), `r${esc(d.rev)} · ${esc(d.date || '—')}${openLink(d.url)}`)).join('')}
           <div class="overlay-note">env_apps lists this deployment but the asset has no source-control record, so app_list does not return it (typically an orphaned agent definition). Its latest revision and drift are unknown.</div>`;
         showOverlay();
       }
@@ -1115,7 +1128,7 @@
             const d = deps.find(x => x.env === e.key);
             const st = (depStatus(e.key) || {}).status;
             if (d) {
-              const link = d.url ? ` · <a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">open</a>` : '';
+              const link = openLink(d.url);
               html += row(e.name, `r${esc(d.rev)} · ${esc(d.date || '—')}${link}`);
               if (d.as) html += `<div class="overlay-note">Deployed in ${esc(e.name)} as <b>${esc(d.as)}</b> (the name at the deployed revision).</div>`;
             } else {

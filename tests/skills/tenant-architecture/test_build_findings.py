@@ -284,5 +284,19 @@ def test_every_page_control_works_from_the_keyboard():
         assert 'aria-live="polite"' in html
 
 
+def test_only_http_deployment_urls_reach_the_page():
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    prod = _load("env-apps-prod.json")
+    prod["results"][0]["url"] = "javascript:alert(document.domain)"
+    prod["results"][1]["url"] = "https://acme.outsystems.app/RequestFlowTestApp"
+    code, cache, _ = _run(["--deployments", f"{PROD}={_write(tmp, 'prod.json', prod)}"])
+    assert code == 0
+    urls = {e["url"] for v in _bundle(cache)["deployments"]["assets"].values() for e in v}
+    assert "https://acme.outsystems.app/RequestFlowTestApp" in urls
+    assert not any(u.lower().startswith("javascript:") for u in urls)
+    html = t.TEMPLATE.read_text(encoding="utf-8")
+    assert "const safeUrl" in html and 'href="${esc(d.url)}"' not in html
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
