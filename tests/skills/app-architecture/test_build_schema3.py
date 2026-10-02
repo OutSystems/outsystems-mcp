@@ -512,6 +512,21 @@ def test_script_close_tag_in_a_description_cannot_break_the_page():
     assert html.count("</script>") == 2   # the CDN tag and the app script only
 
 
+def test_page_without_a_data_list_is_bad_input():
+    tmp = _tmp()
+    p = tmp / "screens-raw.json"; p.write_text('{"results": []}')
+    r = _run(tmp / "cache", tmp / "out.html", *_six(tmp, **{"--screens": p}))
+    assert r.returncode == 1 and "BAD INPUT" in r.stderr and "no `data` list" in r.stderr, r.stderr
+
+
+def test_an_unwritable_output_path_is_one_clean_line():
+    tmp = _tmp()
+    (tmp / "out.html").mkdir()                       # a folder where the page should go
+    r = _run(tmp / "cache", tmp / "out.html", *_six(tmp))
+    assert r.returncode == 1 and "could not write the output file" in r.stderr, r.stderr
+    assert "Traceback" not in r.stderr
+
+
 if __name__ == "__main__":
     fns = [f for n, f in sorted(globals().items()) if n.startswith("test_") and inspect.isfunction(f)]
     for f in fns:

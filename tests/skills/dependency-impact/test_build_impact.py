@@ -378,6 +378,24 @@ def _run():
     print(f"\n{len(fns)} passed")
 
 
+def test_an_unwritable_output_path_is_one_clean_line():
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        impact = td / "impact"
+        impact.mkdir()
+        (impact / f"{LIB_CORE}.json").write_text(json.dumps({
+            "targetKey": LIB_CORE,
+            "launch": fx("launch-deletion-inventory-core.json"),
+            "result": fx("status-deletion-inventory-core.json")}), encoding="utf-8")
+        (td / "out.html").mkdir()                    # a folder where the page should go
+        proc = subprocess.run([sys.executable, str(BUILD), str(td / "cache"), str(td / "out.html"),
+                               "--impact-dir", str(impact),
+                               "--tenant-assets", str(FIX / "tenant-assets.json")],
+                              capture_output=True, text=True)
+    assert proc.returncode == 1 and "could not write the output file" in proc.stderr, proc.stderr
+    assert "Traceback" not in proc.stderr
+
+
 if __name__ == "__main__":
     _run()
 

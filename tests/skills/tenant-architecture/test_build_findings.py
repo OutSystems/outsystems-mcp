@@ -251,5 +251,23 @@ def test_skill_doc_carries_the_refresh_and_compact_rules():
     assert "this skill's contract\n  overrides it" in skill
 
 
+# ---------------------------------------------------------------------------
+# Error paths the agent reads
+# ---------------------------------------------------------------------------
+
+def test_app_list_page_without_results_is_a_bad_page(capsys):
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    code, _, _ = _run([], apps=[_write(tmp, "apps.json", {"data": []})])
+    assert code == 1 and "BAD PAGE: app_list page 1 has no `results` list" in capsys.readouterr().err
+
+
+def test_an_unwritable_output_path_is_one_clean_line(capsys):
+    tmp, cache = t._tmp_cache()
+    (tmp / "out.html").mkdir()                       # a folder where the page should go
+    code = build.main(["build.py", str(cache), str(tmp / "out.html"), "--tenant-id", t.TENANT,
+                       "--apps", _fx("apps-page.json")])
+    assert code == 1 and "could not write the output file" in capsys.readouterr().err
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

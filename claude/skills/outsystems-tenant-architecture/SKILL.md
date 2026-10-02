@@ -2,7 +2,7 @@
 name: outsystems-tenant-architecture
 description: "[Beta] Generate an interactive HTML graph of an OutSystems Developer Cloud tenant's assets (web/mobile apps, agents and agent definitions, AI model connections, knowledge bases, libraries, integrations) with filter-by-type controls, where each asset is deployed (revision drift per environment), a 7-day Production traffic/error overlay and an AI governance view (model providers, Trial vs Customer entitlement, test/demo-named and stale agents). ONE tenant-level pass per invocation, no per-app deep dives (use outsystems-app-architecture for one app); also the entry point for 'architecture of every app' requests, which it confirms before any per-app run. First run 2-5 min; cached re-runs ~5s. Use when the user asks for a tenant overview, architecture diagram, asset inventory, 'what's in my tenant', 'show me my apps', 'what is deployed where', an AI inventory, 'audit my AI', 'which models are we using', 'show me my agents', AI governance, or similar."
 license: MIT
-compatibility: Needs an agent that can run shell commands and Python 3.7+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The output HTML embeds the tenant data but loads its graph library and fonts from public CDNs; offline it falls back to a plain asset table.
+compatibility: Needs an agent that can run shell commands and Python 3.8+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The output HTML embeds the tenant data but loads its graph library and fonts from public CDNs; offline it falls back to a plain asset table.
 allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__app_health mcp__plugin_outsystems_outsystems__context_agents mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__auth_status mcp__outsystems__env_list mcp__outsystems__app_list mcp__outsystems__env_apps mcp__outsystems__app_health mcp__outsystems__context_agents mcp__outsystems__context_connections
 metadata:
   version: "1.9.0"
@@ -35,7 +35,7 @@ to system fonts.
   the tools named below; tool names here are the server's own, and your
   harness may show them with a prefix (in Claude Code,
   `mcp__plugin_outsystems_outsystems__app_list` for `app_list`).
-- A shell with `python3` (3.7 or later, standard library only). The
+- A shell with `python3` (3.8 or later, standard library only). The
   scripts read the saved tool results from disk and write the HTML; they
   never call the server and hold no sign-in of their own.
 - `<skill-folder>` below is this skill's own folder: the one holding this
@@ -544,8 +544,12 @@ error. A metric in the `metrics` echo but absent from a row is shown as
   then start over. Don't loop.
 - **The OutSystems tools are missing** → the MCP server is not connected;
   ask the user to connect it (see the main OutSystems skill's setup).
-- **`python3: command not found`** → ask the user to install Python 3.7
+- **`python3: command not found`** → ask the user to install Python 3.8
   or later; nothing else is needed.
+- **`build.py` exits 1 with `could not write the output file`** → the
+  output path is not writable (no space left, no permission, or a folder
+  of that name). Only the HTML failed: ask the user for another output
+  path and re-run the same command with it.
 - **`build.py` exits 3 (`INCOMPLETE: ... offset: N`)** → a page set has
   a next page (app_list, one environment's env_apps, or one environment's
   app_health). Make every printed call with its `offset`, save, re-run

@@ -180,8 +180,12 @@ def main(argv: list[str]) -> int:
     # double-escaped script state (which blanks the page).
     html = html.replace(PLACEHOLDER, payload.replace("<", "\\u003c"), 1)
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(html, encoding="utf-8")
+    try:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(html, encoding="utf-8")
+    except OSError as exc:  # disk full, permission denied, a folder in the way
+        print(f"could not write the output file {out_path}: {exc}", file=sys.stderr)
+        return 1
 
     s = b["stats"]
     size_kb = out_path.stat().st_size / 1024

@@ -366,8 +366,12 @@ def main(argv: list[str]) -> int:
     pattern = re.compile("|".join(re.escape(p) for p in payloads))
     html = pattern.sub(lambda m: payloads[m.group(0)], html)
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(html, encoding="utf-8")
+    try:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(html, encoding="utf-8")
+    except OSError as exc:  # disk full, permission denied, a folder in the way
+        print(f"could not write the output file {out_path}: {exc}", file=sys.stderr)
+        return 1
 
     size_kb = out_path.stat().st_size / 1024
     print(f"wrote {out_path} ({size_kb:.1f} KB; {len(bundle['assets'])} assets)")
@@ -515,7 +519,8 @@ def _merge_pages(pages: list[dict]) -> tuple[list[dict], int]:
     total: int | None = None
     for i, page in enumerate(pages, 1):
         if not isinstance(page, dict) or not isinstance(page.get("results"), list):
-            raise KeyError("results")
+            raise BadPage(f"app_list page {i} has no `results` list; save the app_list "
+                          f"response verbatim (envelope included) and re-run")
         if "truncated" not in page:
             # The envelope is what tells us whether this page is the whole
             # tenant; a saved page must keep it. A page as long as either page
@@ -948,9 +953,8 @@ def _parse_iso(value):
 
 
 def _window_hours(since: str | None, to: str | None) -> int | None:
-    parse = _parse_iso
     try:
-        return round((parse(to) - parse(since)).total_seconds() / 3600)
+        return round((_parse_iso(to) - _parse_iso(since)).total_seconds() / 3600)
     except (TypeError, ValueError, AttributeError):
         return None
 

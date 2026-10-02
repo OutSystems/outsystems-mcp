@@ -290,7 +290,8 @@ def _load_section(paths, section: str) -> dict:
     for path in paths:
         page = _read_json(path, section)
         if not isinstance(page, dict) or not isinstance(page.get("data"), list):
-            raise KeyError(f"{section}: data")
+            raise BadInput(f"{section}: {path} is valid JSON but has no `data` list; save the "
+                           f"tool result verbatim (envelope included) and re-run")
         pages.append(page)
 
     def _offset(p):
@@ -1277,8 +1278,12 @@ def main(argv: list) -> int:
         return 1
     html = _inject(html, payload)
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(html, encoding="utf-8")
+    try:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(html, encoding="utf-8")
+    except OSError as exc:  # disk full, permission denied, a folder in the way
+        print(f"could not write the output file {out_path}: {exc}", file=sys.stderr)
+        return 1
 
     fk_edges = sum(1 for e in bundle["entities"] + bundle.get("enums", [])
                    for a in e.get("attrs", []) if (a.get("fk") or {}).get("in") in ("owned", "inherited"))

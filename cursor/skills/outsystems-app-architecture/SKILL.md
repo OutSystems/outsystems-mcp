@@ -2,7 +2,7 @@
 name: outsystems-app-architecture
 description: "[Beta] Generate an interactive HTML graph of a single OutSystems app's architecture — UI flows + screens, server/client/service actions with signatures, entities with attributes and relationships, static enums, structures, roles, AI model connections, library dependencies and where the app is deployed — with OutSystems-themed dark mode styling. ONE app per invocation — do NOT iterate over multiple apps in a single call (run the skill explicitly per-app; for more than 3 named apps, ask the user and wait for an explicit answer first). For 'every app' / 'all apps' requests and tenant-wide views, use outsystems-tenant-architecture instead: its scope guard asks before any per-app run, without listing the apps first. Use when the user asks for the architecture of a specific app, 'show me the architecture of [app]', 'explore [app]', 'what's inside [app]', 'give me an overview of [app]', or similar."
 license: MIT
-compatibility: Needs an agent that can run shell commands and Python 3.7+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The generated HTML loads its graph library from a CDN; offline it shows a plain listing instead.
+compatibility: Needs an agent that can run shell commands and Python 3.8+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it. The generated HTML loads its graph library from a CDN; offline it shows a plain listing instead.
 allowed-tools: Bash(python3 *) Bash(cp *) Bash(mkdir *) Write mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_info mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__app_revisions mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__env_apps mcp__plugin_outsystems_outsystems__context_screens mcp__plugin_outsystems_outsystems__context_actions mcp__plugin_outsystems_outsystems__context_entities mcp__plugin_outsystems_outsystems__context_structures mcp__plugin_outsystems_outsystems__context_roles mcp__plugin_outsystems_outsystems__context_connections mcp__outsystems__app_list mcp__outsystems__app_info mcp__outsystems__app_refs mcp__outsystems__app_revisions mcp__outsystems__env_list mcp__outsystems__env_apps mcp__outsystems__context_screens mcp__outsystems__context_actions mcp__outsystems__context_entities mcp__outsystems__context_structures mcp__outsystems__context_roles mcp__outsystems__context_connections
 metadata:
   version: "1.7.0"
@@ -35,7 +35,7 @@ instead of the graph.
   the tools named below; tool names here are the server's own, and your
   harness may show them with a prefix (in Claude Code,
   `mcp__plugin_outsystems_outsystems__app_info` for `app_info`).
-- A shell with `python3` (3.7 or later, standard library only). The
+- A shell with `python3` (3.8 or later, standard library only). The
   script reads the saved tool results from disk and writes the HTML; it
   never calls the server and holds no sign-in of its own.
 - `<skill-folder>` below is this skill's own folder: the one holding this
@@ -451,8 +451,12 @@ writes are the main cost (see the whitelist's token trade-off).
   then start over. Don't loop.
 - **The OutSystems tools are missing** → the MCP server is not connected;
   ask the user to connect it (see the main OutSystems skill's setup).
-- **`python3: command not found`** → ask the user to install Python 3.7
+- **`python3: command not found`** → ask the user to install Python 3.8
   or later; nothing else is needed.
+- **`build.py` exits 1 with `could not write the output file`** → the
+  output path is not writable (no space left, no permission, or a folder
+  of that name). Only the HTML failed: ask the user for another output
+  path and re-run the same command with it.
 - **A description or static-entity record list shows "truncated by the
   server (N bytes)"** → the server replaces any `additionalData` string
   over 2048 bytes with `{"_truncated": true, "_originalBytes": N}` (a
