@@ -1,0 +1,5 @@
+# Shell scripts keep LF line endings in every checkout. Git for Windows
+# writes CRLF by default (core.autocrlf=true), and a script with CRLF stops
+# sh with a syntax error and exit code 2, which Claude Code reads from the
+# plugin's status-watcher hook as a denial of every Bash call.
+*.sh text eol=lf

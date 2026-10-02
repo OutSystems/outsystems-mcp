@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Shared harness for the tests in this directory: the `ai-review.yml` step
-# tests and the skill-doc contract suites, which use only the assertion
-# helpers (`check`, `check_match`, `check_no_match`, `check_file_exists`,
-# `check_file_absent`, `section`, `finish`).
+# tests, and the skill-doc contract suites and the plugin hook suite,
+# which use only the assertion helpers (`check`, `check_match`,
+# `check_no_match`, `check_file_exists`, `check_file_absent`, `section`,
+# `finish`).
 #
 # The `run:` bodies are extracted from the committed workflow and executed
 # under the command GitHub expands each step's declared shell to, derived

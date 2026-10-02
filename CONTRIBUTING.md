@@ -45,6 +45,7 @@ claude/                   # The Claude plugin folder: what `claude plugin instal
     outsystems-feedback.md  # Slash command shipped by the Claude plugin
   hooks/
     hooks.json            # PreToolUse hook limiting the status-watcher agent's Bash use to a single sleep
+    limit-watcher-bash.sh # The plain shell script that hook runs
   skills/
     outsystems/
       SKILL.md            # Agent-facing skill loaded by the Claude Code plugin (and Claude Desktop via the same plugin)
@@ -121,7 +122,7 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`.
 
 ## Testing
 
-Apart from the Beta skills' scripts, the shipped content has no automated test suite: verify changes manually, accounting for every harness in the AGENTS.md table as step 4 above requires. Two parts are covered by `.github/tests/run.sh`: `.github/workflows/ai-review.yml`'s shell steps and structural guarantees, and the deployment-impact recipe in all five skill docs, which `.github/tests/skill-deploy-impact-recipe.test.sh` pins word for word and checks is byte-identical across them, and `.github/tests/spec_deploy_impact_recipe.test.sh` checks against the recipe's requirements. The second suite also checks that the five plugin manifests carry one version. Run it when you touch that workflow or a skill doc; no CI runs it.
+Apart from the Beta skills' scripts, the shipped content has no automated test suite: verify changes manually, accounting for every harness in the AGENTS.md table as step 4 above requires. Three parts are covered by `.github/tests/run.sh`: `.github/workflows/ai-review.yml`'s shell steps and structural guarantees; the deployment-impact recipe in all five skill docs, which `.github/tests/skill-deploy-impact-recipe.test.sh` pins word for word and checks is byte-identical across them, and `.github/tests/spec_deploy_impact_recipe.test.sh` checks against the recipe's requirements; and the Claude plugin's status-watcher hook, which `.github/tests/status-watcher-hook.test.sh` runs from the command in `claude/hooks/hooks.json` against sample hook inputs. `spec_deploy_impact_recipe.test.sh` also checks that the five plugin manifests carry one version. Run it when you touch that workflow, a skill doc, or the hook; no CI runs it.
 
 The three architecture Beta skills' scripts have offline suites in `tests/skills/` (Python 3.8+ and `pytest`; the scripts themselves use only the standard library): `python3 -m pytest -q -p no:cacheprovider tests/skills`. They also check that the Cursor and Kiro copies match `claude/skills/`. `.github/workflows/skills-tests.yml` runs them on every pull request that touches those folders. They test the scripts against recorded responses; a change to a Beta skill still needs a live run through an agent against a tenant.
 
