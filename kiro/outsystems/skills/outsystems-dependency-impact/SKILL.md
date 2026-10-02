@@ -153,8 +153,9 @@ rm -rf "<cache-folder>/impact-named" && mkdir -p "<cache-folder>/impact-named/ra
 Read `impact-named` wherever the steps below say `impact`. Then resolve
 each named target with `app_list`
 `{search: "<name>"}` (1 match → use it; several → ask the user to pick;
-0 → ask for a more specific name). Save the matching page(s) as
-`<cache-folder>/tenant-assets.json`.
+0 → ask for a more specific name). Save each search's response as its own
+file, `<cache-folder>/tenant-assets-<n>.json` (never several searches in
+one file), and pass every one in Step 6 with its own `--tenant-assets`.
 
 **Branch D:** the full tenant asset list.
 
@@ -239,9 +240,10 @@ For each target:
    parameter is `analysis_id`, not `analysisKey`) and `kind: "deletion"`.
    Poll right away — small analyses are often finished by then. While
    `processStatus` is `InProgress`, pause 5–15 seconds between rounds
-   (the response has no poll-interval hint), using your harness's
-   background wait as the main OutSystems skill's "Pacing polls"
-   describes, never a bare foreground `sleep`. Poll the batch yourself:
+   (the response has no poll-interval hint), the way the main OutSystems
+   skill's "Pacing polls" describes for your harness: a background wait
+   where it has one (Claude Code), a short foreground `sleep` where it
+   has none (Kiro). Poll the batch yourself:
    a status-watcher sub-agent waits on one operation at a time, which
    does not fit a batch of ten with a two-minute give-up. Stop at `Finished` or
    `Failed`. On `Unknown`, poll at most 3 more times while it stays
@@ -318,11 +320,11 @@ unless they asked for another one:
 ```bash
 python3 "<skill-folder>/scripts/build.py" "<cache-folder>" "<output-file>" \
   --impact-dir    "<cache-folder>/impact"            \
-  --tenant-assets "<cache-folder>/tenant-assets.json" \
+  --tenant-assets "<cache-folder>/tenant-assets-1.json" \
   --env-list      "<cache-folder>/env-list.json"     \
   --tenant-id     "<TENANT_ID>"
 # Branch C: --impact-dir "<cache-folder>/impact-named"
-# Paged asset list: repeat --tenant-assets once per page.
+# Several searches (Branch C) or a paged asset list: repeat --tenant-assets once per file.
 # Reused tenant-architecture bundle: --tenant-assets "<tenant-cache-folder>/tenant-data.json"
 ```
 

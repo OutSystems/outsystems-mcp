@@ -421,3 +421,38 @@ def test_report_without_total_or_truncation_hint_is_still_a_lower_bound():
     assert b["stats"]["edgeCountIsLowerBound"] is True
     # An older bundle without the certainty fields reads as a floor, not exact.
     assert "t.totalKnown !== true" in html and "S.edgeCountIsLowerBound !== false" in html
+
+
+def test_saved_content_block_report_and_several_searches(tmp_path):
+    status = fx("status-deletion-inventory-core.json")
+    impact = tmp_path / "impact"
+    (impact / "raw").mkdir(parents=True)
+    (impact / "raw" / f"{LIB_CORE}.status.json").write_text(
+        json.dumps([{"type": "text", "text": json.dumps(status)}]), encoding="utf-8")
+    (impact / f"{LIB_CORE}.json").write_text(json.dumps({
+        "targetKey": LIB_CORE, "launch": fx("launch-deletion-inventory-core.json"),
+        "resultFile": f"raw/{LIB_CORE}.status.json"}), encoding="utf-8")
+    rows = [{"assetKey": a["k"], "name": a["n"], "assetType": a["t"], "revision": a["r"],
+             "revisionDateTime": a["d"] + "T00:00:00Z", "isExternal": a["x"]}
+            for a in fx("tenant-assets.json")]                 # as app_list returns them
+    rows.sort(key=lambda r: r["assetKey"] != LIB_CORE)        # the target in the first search
+    # One file per search (repeat --tenant-assets), and a hand-merged raw-row list.
+    one, two = tmp_path / "ta-1.json", tmp_path / "ta-2.json"
+    one.write_text(json.dumps({"results": rows[:1]}), encoding="utf-8")
+    two.write_text(json.dumps({"results": rows[1:]}), encoding="utf-8")
+    merged = tmp_path / "merged.json"
+    merged.write_text(json.dumps(rows), encoding="utf-8")
+    for extra in (["--tenant-assets", str(one), "--tenant-assets", str(two)],
+                  ["--tenant-assets", str(merged)]):
+        out = tmp_path / "cache"
+        proc = subprocess.run([sys.executable, str(BUILD), str(out), str(tmp_path / "o.html"),
+                               "--impact-dir", str(impact), *extra], capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        t = json.loads((out / "impact-data.json").read_text())["byTarget"][LIB_CORE]
+        assert t["state"] == "known" and t["n"] == "Inventory Core Library"
+
+
+def test_poll_pacing_follows_each_harness():
+    skill = (BUILD.parent.parent / "SKILL.md").read_text(encoding="utf-8")
+    assert "a short foreground `sleep` where it\n   has none (Kiro)" in skill
+    assert "never a bare foreground `sleep`" not in skill

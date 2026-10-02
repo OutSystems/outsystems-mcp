@@ -576,3 +576,16 @@ def test_refs_cache_fallback_keeps_coverage_and_wording_never_claims_completenes
     assert "cov === undefined && D.depsSource" in html
     src = (_SCRIPTS / "build.py").read_text(encoding="utf-8")
     assert '"refsCoverage":      _refs_coverage(refs_raw),' in src
+
+
+def test_claude_code_content_block_saved_file_is_unwrapped(tmp_path):
+    # Claude Code saves a result without structuredContent as [{"type": "text", "text": ...}].
+    raw = (FX / "entities.json").read_text(encoding="utf-8")
+    wrapped = tmp_path / "entities-saved.json"
+    wrapped.write_text(json.dumps([{"type": "text", "text": raw}]), encoding="utf-8")
+    plain = _fixture_bundle()
+    got = _fixture_bundle(entities=[wrapped])
+    assert got["entities"] == plain["entities"] and got["inheritedCount"] == plain["inheritedCount"]
+    # A saved isError result stays an error.
+    assert build._is_error_result(build._unwrap_tool_result(
+        {"isError": True, "content": [{"type": "text", "text": "boom"}]}))

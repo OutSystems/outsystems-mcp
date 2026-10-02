@@ -131,6 +131,29 @@ _CODEX_ADVICE = ("Codex cuts MCP results above ~10K tokens and does not save the
                  "`offset`, writing each page to its own file.")
 
 
+def _unwrap_tool_result(page):
+    """Accept a raw payload, an MCP `{structuredContent}` / `{content: [...]}`
+    result, or a bare content-block list (the form Claude Code saves when a
+    result has no structuredContent). An `isError` result is returned as-is
+    so it is still recognised as an error. Anything else is returned as-is."""
+    if isinstance(page, dict) and page.get("isError") is True:
+        return page
+    if isinstance(page, dict) and not any(k in page for k in ("results", "data", "references", "report")):
+        if isinstance(page.get("structuredContent"), dict):
+            return page["structuredContent"]
+        if isinstance(page.get("content"), list):
+            page = page["content"]
+    if isinstance(page, list) and page and all(isinstance(b, dict) for b in page) \
+            and all(b.get("type") for b in page):
+        texts = [b.get("text") for b in page if b.get("type") == "text"]
+        if len(texts) == 1 and isinstance(texts[0], str):
+            try:
+                return json.loads(texts[0])
+            except json.JSONDecodeError:
+                pass
+    return page
+
+
 def _read_json(path, label: str):
     """Read one saved MCP response. Raises BadInput for a file that starts with
     Codex's truncation header and for a file that is not JSON (naming the
@@ -141,7 +164,7 @@ def _read_json(path, label: str):
         raise BadInput(f"{label}: {path} starts with the harness's output-truncation header, "
                        f"so rows are missing. {_CODEX_ADVICE}")
     try:
-        return json.loads(text)
+        return _unwrap_tool_result(json.loads(text))
     except json.JSONDecodeError as exc:
         seen = _CODEX_MID_MARKER.search(text)
         if seen:

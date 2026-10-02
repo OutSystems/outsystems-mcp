@@ -218,7 +218,7 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
                 rf = path.parent / rf
             # A missing or unreadable file leaves no result: impact unknown.
             try:
-                record["result"] = json.loads(rf.read_text(encoding="utf-8"))
+                record["result"] = _unwrap_tool_result(json.loads(rf.read_text(encoding="utf-8")))
             except (OSError, json.JSONDecodeError):
                 pass
         key = record.get("targetKey") or path.stem
@@ -422,11 +422,40 @@ def error_text(err) -> str:
     return json.dumps(err, separators=(",", ":"))[:300]
 
 
+def _unwrap_tool_result(page):
+    """Accept a raw payload, an MCP `{structuredContent}` / `{content: [...]}`
+    result, or a bare content-block list (the form Claude Code saves when a
+    result has no structuredContent). An `isError` result is returned as-is
+    so it is still recognised as an error. Anything else is returned as-is."""
+    if isinstance(page, dict) and page.get("isError") is True:
+        return page
+    if isinstance(page, dict) and not any(k in page for k in ("results", "data", "references", "report")):
+        if isinstance(page.get("structuredContent"), dict):
+            return page["structuredContent"]
+        if isinstance(page.get("content"), list):
+            page = page["content"]
+    if isinstance(page, list) and page and all(isinstance(b, dict) for b in page) \
+            and all(b.get("type") for b in page):
+        texts = [b.get("text") for b in page if b.get("type") == "text"]
+        if len(texts) == 1 and isinstance(texts[0], str):
+            try:
+                return json.loads(texts[0])
+            except json.JSONDecodeError:
+                pass
+    return page
+
+
 def normalize_tenant_assets(raw) -> list[dict]:
     """Accept the tenant-architecture bundle (tenant-data.json), its compact
     asset list, or a raw app_list page."""
+    raw = _unwrap_tool_result(raw)
     if isinstance(raw, list):
-        return raw
+        # A compact list ({k, n, t, ...}) as is; a list of raw app_list rows
+        # (several searches merged by hand) is converted like a page.
+        if raw and all(isinstance(a, dict) and "k" not in a and "assetKey" in a for a in raw):
+            raw = {"results": raw}
+        else:
+            return raw
     if isinstance(raw, dict) and isinstance(raw.get("assets"), list) and "schema" in raw:
         return raw["assets"]
     if isinstance(raw, dict) and "results" in raw:
