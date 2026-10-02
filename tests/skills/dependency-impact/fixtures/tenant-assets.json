@@ -1,0 +1,42 @@
+[
+ {
+  "k": "a000005a-0000-4000-8000-00000000005a",
+  "n": "TestLib",
+  "t": "LowCodeLibrary",
+  "r": 11,
+  "d": "2026-08-27",
+  "x": false
+ },
+ {
+  "k": "a00000ba-0000-4000-8000-0000000000ba",
+  "n": "OutSystems UI",
+  "t": "LowCodeLibrary",
+  "r": 5,
+  "d": "2026-08-26",
+  "x": true
+ },
+ {
+  "k": "a000007e-0000-4000-8000-00000000007e",
+  "n": "Inventory Core Library",
+  "t": "LowCodeLibrary",
+  "r": 5,
+  "d": "2026-08-27",
+  "x": false
+ },
+ {
+  "k": "a0000065-0000-4000-8000-000000000065",
+  "n": "template_Agent",
+  "t": "Agent",
+  "r": 2,
+  "d": "2026-07-02",
+  "x": false
+ },
+ {
+  "k": "a00000fd-0000-4000-8000-0000000000fd",
+  "n": "TrialGPT5",
+  "t": "AIModelConnection",
+  "r": 1,
+  "d": "2026-07-13",
+  "x": false
+ }
+]

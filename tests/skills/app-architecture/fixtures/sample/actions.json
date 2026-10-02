@@ -1,0 +1,452 @@
+{
+ "data": [
+  {
+   "additionalData": {
+    "actionType": 1,
+    "actionTypeStr": "ClientAction",
+    "parameters": [
+     {
+      "dataType": "Text",
+      "description": "Name of the user logging in.",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a0000049-0000-4000-8000-000000000049",
+      "name": "Username",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     },
+     {
+      "dataType": "Boolean",
+      "description": "True if the user was successfully logged in.",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a000008a-0000-4000-8000-00000000008a",
+      "name": "Success",
+      "parameterType": 1,
+      "parameterTypeStr": "Output"
+     },
+     {
+      "dataType": "Text",
+      "description": "Password of the user logging in.",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a00000a5-0000-4000-8000-0000000000a5",
+      "name": "Password",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     },
+     {
+      "dataType": "Text",
+      "description": "If unsuccessful, details the failure reason.",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a00000a8-0000-4000-8000-0000000000a8",
+      "name": "ErrorMessage",
+      "parameterType": 1,
+      "parameterTypeStr": "Output"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Performs a login using the system action for the given username and password. Returns if the login was succesful, and if it wasn't, the detailed error message.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a00000f8-0000-4000-8000-0000000000f8",
+   "name": "DoLogin",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 1,
+    "actionTypeStr": "ClientAction",
+    "parameters": [
+     {
+      "dataType": "UpdateUserResult",
+      "description": "Result of the update user action. Returns the failure reason if unsuccessful.",
+      "isComplex": true,
+      "isMandatory": false,
+      "key": "a0000042-0000-4000-8000-000000000042",
+      "name": "UpdateUserResult",
+      "parameterType": 1,
+      "parameterTypeStr": "Output",
+      "schema": "{\"key\":\"a00000c0-0000-4000-8000-0000000000c0\",\"name\":\"UpdateUserResult\",\"type\":\"ReferenceStructure\",\"attributes\":null}"
+     },
+     {
+      "dataType": "UserUpdateInfo",
+      "description": "New user information used to update the user.",
+      "isComplex": true,
+      "isMandatory": true,
+      "key": "a00000d8-0000-4000-8000-0000000000d8",
+      "name": "UserUpdateInfo",
+      "parameterType": 0,
+      "parameterTypeStr": "Input",
+      "schema": "{\"key\":\"a00000c4-0000-4000-8000-0000000000c4\",\"name\":\"UserUpdateInfo\",\"type\":\"ReferenceStructure\",\"attributes\":null}"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Allows a logged-in user to edit profile information. The user email can't be changed using this action.  Throws an exception if the built-in identity provider is disabled for the current app.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000025-0000-4000-8000-000000000025",
+   "name": "UpdateUser",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 0,
+    "actionTypeStr": "ServerAction",
+    "parameters": [
+     {
+      "dataType": "Text",
+      "description": "The X-Seed-Key header value to validate.",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a0000136-0000-4000-8000-000000000136",
+      "name": "XSeedKey",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Validates the X-Seed-Key request header against the SeedApiKey setting. Raises SecurityException if invalid.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000080-0000-4000-8000-000000000080",
+   "name": "ValidateSeedApiKey",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 0,
+    "actionTypeStr": "ServerAction",
+    "parameters": [
+     {
+      "dataType": "Boolean",
+      "description": "Indicates if the process usas successfully started.",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a0000076-0000-4000-8000-000000000076",
+      "name": "Success",
+      "parameterType": 1,
+      "parameterTypeStr": "Output"
+     },
+     {
+      "dataType": "Email",
+      "description": "Email to which the email will be sent.",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a0000090-0000-4000-8000-000000000090",
+      "name": "CustomerEmail",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     },
+     {
+      "dataType": "Text",
+      "description": "Name of the app from which the request is being made.",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a00000ed-0000-4000-8000-0000000000ed",
+      "name": "ApplicationName",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Triggers the reset password operation for users that don’t have access to the ODC Portal, returning a verification code that can be sent by email to the user.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000057-0000-4000-8000-000000000057",
+   "name": "SendResetPasswordEmail",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 0,
+    "actionTypeStr": "ServerAction",
+    "parameters": [
+     {
+      "dataType": "Email",
+      "description": "Email to which the email will be sent.",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a0000037-0000-4000-8000-000000000037",
+      "name": "CustomerEmail",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     },
+     {
+      "dataType": "Text",
+      "description": "Name of the app from which the request is being made.",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a000005b-0000-4000-8000-00000000005b",
+      "name": "ApplicationName",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     },
+     {
+      "dataType": "Boolean",
+      "description": "Indicates if the process usas successfully started.",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a000007b-0000-4000-8000-00000000007b",
+      "name": "Success",
+      "parameterType": 1,
+      "parameterTypeStr": "Output"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Triggers the update email operation for users who don't  have access to the ODC Portal, returning a verification code that  can be sent by email to the user.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000055-0000-4000-8000-000000000055",
+   "name": "SendChangeEmail",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 1,
+    "actionTypeStr": "ClientAction",
+    "parameters": [
+     {
+      "dataType": "Boolean",
+      "description": "Indicates if the process usas successfully started.",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a00000c5-0000-4000-8000-0000000000c5",
+      "name": "Success",
+      "parameterType": 1,
+      "parameterTypeStr": "Output"
+     },
+     {
+      "dataType": "Email",
+      "description": "Email to which the email will be sent.",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a0000112-0000-4000-8000-000000000112",
+      "name": "CustomerEmail",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Triggers the update email operation for users who don't  have access to the ODC Portal, returning a verification code that  can be sent by email to the user.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000038-0000-4000-8000-000000000038",
+   "name": "SendChangeEmail",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 1,
+    "actionTypeStr": "ClientAction",
+    "parameters": [
+     {
+      "dataType": "Boolean",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a00000a0-0000-4000-8000-0000000000a0",
+      "name": "Success",
+      "parameterType": 1,
+      "parameterTypeStr": "Output"
+     },
+     {
+      "dataType": "Email",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a00000a9-0000-4000-8000-0000000000a9",
+      "name": "CustomerEmail",
+      "parameterType": 0,
+      "parameterTypeStr": "Input"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Starts the reset password process for users that don’t have access to the ODC Portal, returning a verification code that can be sent by email to the user.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000024-0000-4000-8000-000000000024",
+   "name": "SendResetPasswordEmail",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 0,
+    "actionTypeStr": "ServerAction",
+    "parameters": [
+     {
+      "dataType": "Binary Data",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a0000064-0000-4000-8000-000000000064",
+      "name": "CSVContent",
+      "parameterType": 1,
+      "parameterTypeStr": "Output"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Fetches all assets with requester and approver emails and returns them as a CSV file (BinaryData).",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000121-0000-4000-8000-000000000121",
+   "name": "GetAssetsCSV",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-08-26T14:51:40.824000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 0,
+    "actionTypeStr": "ServerAction",
+    "parameters": [
+     {
+      "dataType": "UserUpdateInfo",
+      "description": "New user information used to update the user.",
+      "isComplex": true,
+      "isMandatory": true,
+      "key": "a000000d-0000-4000-8000-00000000000d",
+      "name": "UserUpdateInfo",
+      "parameterType": 0,
+      "parameterTypeStr": "Input",
+      "schema": "{\"key\":\"a00000c4-0000-4000-8000-0000000000c4\",\"name\":\"UserUpdateInfo\",\"type\":\"ReferenceStructure\",\"attributes\":null}"
+     },
+     {
+      "dataType": "UpdateUserResult",
+      "description": "Result of the update user action. Returns the failure reason if unsuccessful.",
+      "isComplex": true,
+      "isMandatory": false,
+      "key": "a00000d4-0000-4000-8000-0000000000d4",
+      "name": "UpdateUserResult",
+      "parameterType": 1,
+      "parameterTypeStr": "Output",
+      "schema": "{\"key\":\"a00000c0-0000-4000-8000-0000000000c0\",\"name\":\"UpdateUserResult\",\"type\":\"ReferenceStructure\",\"attributes\":null}"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Allows a logged-in user to edit profile information. The user email can't be changed using this action.  Throws an exception if the built-in identity provider is disabled for the current app.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a000005f-0000-4000-8000-00000000005f",
+   "name": "UpdateUser",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "actionType": 0,
+    "actionTypeStr": "ServerAction",
+    "parameters": [
+     {
+      "dataType": "maintenance_contract",
+      "isComplex": false,
+      "isMandatory": true,
+      "key": "a000003e-0000-4000-8000-00000000003e",
+      "name": "Source",
+      "parameterType": 0,
+      "parameterTypeStr": "Input",
+      "schema": "{\"key\":\"a0000009-0000-4000-8000-000000000009\",\"name\":\"maintenance_contract\",\"type\":\"ReferenceEntity\",\"attributes\":null}"
+     },
+     {
+      "dataType": "maintenance_contract Identifier",
+      "isComplex": false,
+      "isMandatory": false,
+      "key": "a00000f9-0000-4000-8000-0000000000f9",
+      "name": "Id",
+      "parameterType": 1,
+      "parameterTypeStr": "Output"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a000007a-0000-4000-8000-00000000007a",
+   "name": "maintenance_contractCreateOrUpdate",
+   "objectType": "actions",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-08-12T01:36:04.563000+00:00"
+  }
+ ],
+ "displayed": 10,
+ "pagination": {
+  "limit": 100,
+  "offset": 0,
+  "total": 10
+ },
+ "total": 10,
+ "truncated": false
+}

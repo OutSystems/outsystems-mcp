@@ -1,0 +1,21 @@
+{
+ "metrics": [
+  "appScore",
+  "requests",
+  "errors",
+  "errorPercent",
+  "responseTimeP95",
+  "responseTimeP99",
+  "uniqueUsers",
+  "lastErrorOccurred"
+ ],
+ "nextPageOffset": 0,
+ "resolvedApps": [],
+ "results": [],
+ "since": "2026-09-09T08:24:53Z",
+ "stageKey": "a000003f-0000-4000-8000-00000000003f",
+ "to": "2026-09-16T08:24:53Z",
+ "total": 0,
+ "unresolved": [],
+ "_provenance": "Illustrative app_health {apps: \"\", env_key: prod, hours: 168} response with 0 rows (noData absent)"
+}

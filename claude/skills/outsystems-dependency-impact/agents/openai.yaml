@@ -1,0 +1,3 @@
+display_name: OutSystems Dependency Impact (Beta)
+short_description: "[Beta] Explore reverse dependencies for a library, agent, or connection."
+default_prompt: Use $outsystems-dependency-impact to find out who depends on a given OutSystems library or agent before I publish it.

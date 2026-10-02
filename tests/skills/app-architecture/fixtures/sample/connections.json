@@ -1,0 +1,29 @@
+{
+ "_comment": "SYNTHETIC: app-scoped context_connections page in the server's shape. Connections are application-typed rows narrowed to assetType AIModelConnection; on an app-scoped query a connection the app uses is a referenced row (isReferenced true, assetKey/ownerAppKey = the visiting app) identified by its own key/name. The server never sets producerAssetKey/producerAssetName on agent or connection rows.",
+ "data": [
+  {
+   "additionalData": {
+    "providerId": "azureopenai"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": true,
+   "isStatic": false,
+   "key": "a00000e7-0000-4000-8000-0000000000e7",
+   "name": "AzureOpenAIDefault",
+   "objectType": "application",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "providerName": "Azure OpenAI"
+  }
+ ],
+ "displayed": 1,
+ "pagination": {
+  "limit": 100,
+  "nextPageOffset": null,
+  "offset": 0
+ },
+ "total": 1,
+ "truncated": false
+}

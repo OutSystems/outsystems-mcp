@@ -288,6 +288,21 @@ Update the OutSystems skill in this harness.
 Find the copy an earlier install injected into this harness's instructions/rules/system-prompt mechanism: the block that begins with the heading `# OutSystems - Remote MCP` and ends where the text of its last section, `## Feedback`, ends. Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and replace that whole block with the fetched contents, leaving everything else in place. If you can't find the block, or can't tell where it ends, write nothing and tell me what you found.
 ```
 
+## Beta skills
+
+The following skills are Beta Features. OutSystems provides Beta Features to collect customer feedback on non-final capabilities. A Beta Feature can change significantly, including through breaking changes, or OutSystems can discontinue it. For the terms that apply, refer to <https://www.outsystems.com/legal/beta-features-agreement>.
+
+- **outsystems-app-architecture**: produces an interactive HTML graph of one app: screens, actions with their signatures, entities with attributes and relationships, roles, dependencies, and where the app is deployed. It ships in the Claude Code, Claude Desktop, Kiro, and Cursor App plugins, next to the main OutSystems skill. The Copilot, Cursor CLI, and other-assistant install paths do not include it.
+- **outsystems-dependency-impact**: produces an HTML explorer of who depends on a library, agent, or connection, from the platform's deletion-impact analysis (read-only: nothing is deleted). It ships in the Claude Code, Claude Desktop, Kiro, and Cursor App plugins, next to the main OutSystems skill. The Copilot, Cursor CLI, and other-assistant install paths do not include it.
+- **outsystems-tenant-architecture**: produces an interactive HTML graph of every asset in your tenant, where each one is deployed, a 7-day Production traffic and error overlay, and an AI governance view (model providers, Trial vs Customer entitlement). It ships in the Claude Code, Claude Desktop, Kiro, and Cursor App plugins, next to the main OutSystems skill. The Copilot, Cursor CLI, and other-assistant install paths do not include it.
+
+The three architecture skills (`outsystems-tenant-architecture`, `outsystems-app-architecture`, and `outsystems-dependency-impact`) load in Claude Code when a request matches them. Cursor and Kiro receive the same folders, but running them there has not been validated yet. Unlike the main skill, each one runs a Python script that turns the tool results into an HTML page, so the agent needs:
+
+- a shell it can run commands in, with Python 3.8 or later (standard library only); Claude Desktop's Chat tab has no shell, so it cannot run them;
+- the OutSystems MCP server connected and signed in. The scripts never call the server themselves: the agent fetches the data with its own MCP connection and the scripts only read the saved results.
+
+They are validated on Claude Code, which also keeps the largest tool results out of the conversation by saving them to disk. A harness without that passes every result through the conversation, so the same run costs more tokens. The pages are written to your working folder; they embed your tenant data and, when opened, load fonts from Google Fonts and, for the two graph pages, a graph library from unpkg or jsDelivr. They keep a cache in `~/.cache/outsystems-skills`, a hidden `.cache` folder in your home folder on every operating system (macOS and Windows included), and reuse it for up to an hour (a day for dependency-impact analyses); delete that folder to clear it.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |

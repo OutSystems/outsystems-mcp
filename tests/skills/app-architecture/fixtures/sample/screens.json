@@ -1,0 +1,369 @@
+{
+ "data": [
+  {
+   "additionalData": {
+    "inputParameters": [],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Change password\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a000002b-0000-4000-8000-00000000002b",
+    "uiFlowName": "Common"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Screen where users can change their current password.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000115-0000-4000-8000-000000000115",
+   "name": "ChangePassword",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [
+     {
+      "dataType": "Text",
+      "description": "Holds the code of the form.",
+      "isRequired": false,
+      "key": "a00000aa-0000-4000-8000-0000000000aa",
+      "name": "VerificationCode"
+     },
+     {
+      "dataType": "Email",
+      "description": "Receives the email of the user that is recovering the password",
+      "isRequired": true,
+      "key": "a00000c7-0000-4000-8000-0000000000c7",
+      "name": "Email"
+     }
+    ],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Set a new password\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a000002b-0000-4000-8000-00000000002b",
+    "uiFlowName": "Common"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Screen where users can set a new password for this app. Users should be redirected here from a password recovery request.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000017-0000-4000-8000-000000000017",
+   "name": "RecoverPasswordReset",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Log in\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a000002b-0000-4000-8000-00000000002b",
+    "uiFlowName": "Common"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Screen where users login.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a00000db-0000-4000-8000-0000000000db",
+   "name": "Login",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Your profile\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a000002b-0000-4000-8000-00000000002b",
+    "uiFlowName": "Common"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Screen where the users can see and edit the user profile.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000103-0000-4000-8000-000000000103",
+   "name": "UserProfile",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Recover password\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a000002b-0000-4000-8000-00000000002b",
+    "uiFlowName": "Common"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Screen where users can request a new password.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000058-0000-4000-8000-000000000058",
+   "name": "RecoverPasswordRequest",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Invalid permissions\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a000002b-0000-4000-8000-00000000002b",
+    "uiFlowName": "Common"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": "Screen where users will be redirected when they have invalid permissions.",
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a000003a-0000-4000-8000-00000000003a",
+   "name": "InvalidPermissions",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [
+     {
+      "dataType": "maintenance_contract Identifier",
+      "isRequired": true,
+      "key": "a0000012-0000-4000-8000-000000000012",
+      "name": "MaintenanceContractId"
+     }
+    ],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "uiFlowKey": "a00000a3-0000-4000-8000-0000000000a3",
+    "uiFlowName": "MaintenanceContracts"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000122-0000-4000-8000-000000000122",
+   "name": "MaintenanceContractDetail",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-08-12T01:36:04.563000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Equipment Requests\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a00000e8-0000-4000-8000-0000000000e8",
+    "uiFlowName": "MainFlow"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a000011b-0000-4000-8000-00000000011b",
+   "name": "EquipmentRequests",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T19:13:48.963000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Assets\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a00000e8-0000-4000-8000-0000000000e8",
+    "uiFlowName": "MainFlow"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a000007f-0000-4000-8000-00000000007f",
+   "name": "Assets",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-08-26T14:51:40.824000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [
+     {
+      "dataType": "EquipmentRequest Identifier",
+      "isRequired": true,
+      "key": "a0000043-0000-4000-8000-000000000043",
+      "name": "EquipmentRequestId"
+     }
+    ],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "title": "\"Equipment Request\" [TitleExpression[ServiceStudio.Expressions.AbstractExpression]]",
+    "uiFlowKey": "a00000e8-0000-4000-8000-0000000000e8",
+    "uiFlowName": "MainFlow"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000104-0000-4000-8000-000000000104",
+   "name": "EquipmentRequestForm",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T19:13:48.963000+00:00"
+  },
+  {
+   "additionalData": {
+    "inputParameters": [],
+    "roles": [
+     {
+      "isPublic": false,
+      "isReferenced": false,
+      "key": "a00000dc-0000-4000-8000-0000000000dc",
+      "name": "ITAssetsPortal"
+     }
+    ],
+    "uiFlowKey": "a00000a3-0000-4000-8000-0000000000a3",
+    "uiFlowName": "MaintenanceContracts"
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a000012d-0000-4000-8000-00000000012d",
+   "name": "MaintenanceContracts",
+   "objectType": "screens",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-08-12T01:36:04.563000+00:00"
+  }
+ ],
+ "displayed": 11,
+ "pagination": {
+  "limit": 100,
+  "offset": 0,
+  "total": 11
+ },
+ "total": 11,
+ "truncated": false
+}

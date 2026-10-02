@@ -1,0 +1,3 @@
+display_name: OutSystems Tenant Architecture (Beta)
+short_description: "[Beta] Graph a tenant's apps, agents, libraries, and integrations."
+default_prompt: Use $outsystems-tenant-architecture to generate an interactive graph of everything in my OutSystems tenant.
