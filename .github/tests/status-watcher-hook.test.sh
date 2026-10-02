@@ -7,8 +7,10 @@
 # passes untouched. Claude Code denies the call when a hook exits with 2
 # and runs it on any other code, so a script that cannot run breaks one
 # side or the other: a missing file exits 127 under bash, which lets every
-# watcher call through, and 2 under dash, which blocks every caller, as a
-# syntax error does under both, CRLF line endings included.
+# watcher call through, and 2 under dash, which reports a script it cannot
+# open as an error (its 127 is for a command it cannot find) and so blocks
+# every caller, as a syntax error does under both, CRLF line endings
+# included.
 
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
