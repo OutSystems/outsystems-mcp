@@ -181,7 +181,8 @@ review silently instead of failing the job.
 
 Needs `bash`, `git`, `jq` and `python3` with PyYAML. Nothing invokes it
 automatically: this repo runs no CI beyond the review itself, so run it
-before pushing a change to `ai-review.yml` or to a skill doc.
+before pushing a change to `ai-review.yml`, to a skill doc, or to the
+Claude plugin's hook.
 
 The step suites extract the `run:` bodies from the committed workflow and
 execute them under the command the shell each step declares expands to.
@@ -242,6 +243,13 @@ the suites pin down:
 - `spec_deploy_impact_recipe.test.sh` - the same recipe checked against
   its requirements rather than its wording, and the five plugin manifests
   carrying one version.
+- `status-watcher-hook.test.sh` - the Claude plugin's status-watcher
+  hook, run from the command in `claude/hooks/hooks.json` under `sh -c`
+  with `CLAUDE_PLUGIN_ROOT` set and the working directory outside the
+  plugin: a watcher call passes only as a foreground `sleep <n>` with n
+  of at least 1, every other caller passes untouched, and the script the
+  command names stays plain shell, as the plugin directory's validator
+  requires.
 
 A case that needs `gh` behaviour the stub does not have belongs in the
 stub, not in a mock of the step: a test that reimplements the step
