@@ -208,6 +208,13 @@ def main(argv: list[str]) -> int:
     except json.JSONDecodeError as exc:
         print(f"{data_path} not valid JSON: {exc}", file=sys.stderr)
         return 1
+    stats = b.get("stats") if isinstance(b, dict) else None
+    if not isinstance(stats, dict) or not isinstance(b.get("byTarget"), dict) or not all(
+            isinstance(stats.get(f), int) for f in ("targetCount", "knownCount", "unknownCount",
+                                                    "refusedCount", "edgeCount", "consumerCount")):
+        print(f"STALE: {data_path} is not a bundle this build.py renders (written by an "
+              f"older version, or edited); re-run fresh mode", file=sys.stderr)
+        return 3
     if PLACEHOLDER not in html:
         print(f"placeholder {PLACEHOLDER!r} not in template", file=sys.stderr)
         return 1
@@ -293,6 +300,13 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
             by_key[a["k"]] = a
         paged = (isinstance(tenant, dict) and isinstance(tenant.get("results"), list)
                  and isinstance(tenant.get("total"), int))
+        if (isinstance(tenant, dict) and tenant.get("truncated") is True
+                and not isinstance(tenant.get("total"), int)):
+            # Truncated with no total: nothing can say when the listing ends.
+            raise IncompleteAssets(
+                f"{pathlib.Path(path).name} is a truncated app_list page with no `total`, so "
+                f"its listing cannot be checked; save the app_list responses verbatim "
+                f"(envelope included) and pass every page")
         if chain is not None and (not paged or tenant["total"] != chain["total"]):
             raise IncompleteAssets(_cut_listing(chain))
         if not paged:
@@ -323,10 +337,22 @@ def build_bundle(impact_dir: pathlib.Path, tenant_assets_paths,
     by_target: dict[str, dict] = {}
     used: list[pathlib.Path] = []   # the record (and result) files this report reads
     for path in sorted(impact_dir.glob("*.json")):
-        record = json.loads(path.read_text(encoding="utf-8"))
+        # One unreadable record makes that target unknown; it never stops the
+        # build or drops the target. The file name is the target key then.
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            record = None
+        if not isinstance(record, dict):
+            record = {"targetKey": path.stem, "badRecord": True}
         if target_keys is not None and (record.get("targetKey") or path.stem) not in target_keys:
             continue   # cached from another run's scope: kept on disk, not shown
         used.append(path)
+        # A launch or result saved as the whole MCP result is unwrapped, the
+        # same as a resultFile.
+        for part in ("launch", "result"):
+            if part in record:
+                record[part] = _unwrap_tool_result(record[part])
         if "result" not in record and record.get("resultFile"):
             rf = pathlib.Path(record["resultFile"]).expanduser()
             if not rf.is_absolute():
@@ -389,6 +415,12 @@ def classify_target(record: dict, meta: dict, env_names: dict) -> dict:
         "users": [],
     }
 
+    if record.get("badRecord"):
+        return {**base, "state": "unknown",
+                "summary": "Impact unknown: this target's record file is not a JSON "
+                           "object (it was cut or edited). Re-run the analysis for it. "
+                           "This is not the same as 'no dependents'."}
+
     if record.get("noRecord"):
         return {**base, "state": "unknown",
                 "summary": "Impact unknown: no analysis record was saved for this "
@@ -426,7 +458,13 @@ def classify_target(record: dict, meta: dict, env_names: dict) -> dict:
     # the wrong record) must not publish someone else's dependents here.
     if isinstance(result, dict):
         target = record.get("targetKey")
-        if base["analysisKey"] and result.get("analysisKey") != base["analysisKey"]:
+        if not base["analysisKey"]:
+            return {**base, "state": "unknown",
+                    "summary": "Impact unknown: a status was saved without the launch "
+                               "record (its analysisKey) to pair it with, so it cannot be "
+                               "trusted for this target. Re-run the analysis. This is not "
+                               "the same as 'no dependents'."}
+        if result.get("analysisKey") != base["analysisKey"]:
             return {**base, "state": "unknown",
                     "summary": f"Impact unknown: the saved status is for analysis "
                                f"{result.get('analysisKey') or '(none named)'}, not this "

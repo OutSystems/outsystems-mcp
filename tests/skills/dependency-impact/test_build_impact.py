@@ -492,6 +492,56 @@ def test_a_status_saved_for_another_analysis_is_unknown():
         assert t["state"] == "unknown" and word in t["summary"] and t["users"] == []
 
 
+def test_one_unreadable_record_is_an_unknown_target_not_a_failed_build():
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        good = {LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                           "result": fx("status-deletion-inventory-core.json")}}
+        (td / "impact").mkdir()
+        (td / "impact" / f"{OS_UI}.json").write_text('{"targetKey": "' + OS_UI + '", "launch"')  # cut
+        (td / "impact" / f"{TESTLIB}.json").write_text("[]")                                   # not an object
+        proc = _dep_build(td, good, [FIX / "tenant-assets.json"])
+        assert proc.returncode == 0 and "Traceback" not in proc.stderr, proc.stderr
+        by = json.loads((td / "cache" / "impact-data.json").read_text())["byTarget"]
+    assert by[LIB_CORE]["state"] == "known"
+    for k in (OS_UI, TESTLIB):
+        assert by[k]["state"] == "unknown" and "not a JSON object" in by[k]["summary"]
+
+
+def test_a_launch_and_result_saved_as_whole_mcp_results_are_unwrapped():
+    wrap = lambda payload: {"content": [{"type": "text", "text": json.dumps(payload)}]}
+    html, bundle = run_build({LIB_CORE: {"launch": wrap(fx("launch-deletion-inventory-core.json")),
+                                         "result": wrap(fx("status-deletion-inventory-core.json"))}})
+    assert bundle["byTarget"][LIB_CORE]["state"] == "known"
+
+
+def test_a_status_without_its_launch_record_is_not_trusted():
+    html, bundle = run_build({LIB_CORE: {"result": fx("status-deletion-inventory-core.json")}})
+    t = bundle["byTarget"][LIB_CORE]
+    assert t["state"] == "unknown" and "without the launch record" in t["summary"] and t["users"] == []
+
+
+def test_a_truncated_asset_page_without_a_total_is_incomplete():
+    rows = [{"assetKey": a["k"], "name": a["n"], "assetType": a["t"]} for a in fx("tenant-assets.json")]
+    rec = {LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                      "result": fx("status-deletion-inventory-core.json")}}
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        (td / "p.json").write_text(json.dumps({"results": rows[:2], "truncated": True, "next_offset": 2}))
+        proc = _dep_build(td, rec, [td / "p.json"])
+    assert proc.returncode == 3 and "no `total`" in proc.stderr, proc.stderr
+
+
+def test_cached_render_of_a_foreign_bundle_is_stale_not_a_traceback():
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        (td / "cache").mkdir()
+        (td / "cache" / "impact-data.json").write_text('{"tenant": {}, "byTarget": {}}')
+        proc = subprocess.run([sys.executable, str(BUILD), str(td / "cache"), str(td / "o.html")],
+                              capture_output=True, text=True)
+    assert proc.returncode == 3 and "STALE" in proc.stderr and "Traceback" not in proc.stderr
+
+
 if __name__ == "__main__":
     _run()
 

@@ -445,6 +445,12 @@ same ratio.
   later pages were not passed right after it. Fetch the page at the
   printed `offset` (same arguments), save it, and re-run passing each
   listing's pages one after another, in offset order.
+- **A target reads "record file is not a JSON object" or "a status was
+  saved without the launch record"** → that target's record was cut,
+  edited, or written without its `deploy_impact` response. Launch and
+  poll it again, and save `launch` and `result` together in its record.
+- **Cached re-render exits 3 with `STALE`** → `impact-data.json` was
+  written by an older version or edited: re-run fresh mode (Step 6).
 - **A target reads "the saved status is for analysis …"** → its saved
   `deploy_impact_status` response belongs to another analysis or asset
   (polls paired with the wrong record). Poll that target's own
