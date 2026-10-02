@@ -17,13 +17,13 @@
 
 We don't write OMLs directly. But we DO control which `app_key` we load into the Mentor session:
 
-- The skill's Step 1 (Identify or create the app shell) currently has three paths: existing key from user, mint a new shell via `app_create`, or have the user create one in Portal.
+- The skill's Step 1 (Identify or create the app shell) currently has three paths: existing key from user, mint a new shell via `mentor_start_session` → `mentor_create_asset`, or have the user create one in Portal.
 - For **iterative builds**, the FIRST run mints a shell (or uses an existing one). Every subsequent run on "the same app" must use the **same `app_key`** — that's the identity pin.
 
 The catalog should already do this if used correctly, but it's worth flagging explicitly:
 
-- ✅ Right: store the `app_key` returned by the first build's `app_create` in a per-app config (e.g., `~/.claude/cache/outsystems-spec-driven-build/<APP_NAME>/.app-key`) and re-use it for every subsequent build against `APP_NAME`.
-- ❌ Wrong: every run calls `app_create` with a fresh name (`HomeBanking_v1`, `HomeBanking_v2`, ...). New asset every time.
+- ✅ Right: store the `app_key` of the app the first build created with `mentor_create_asset` in a per-app config (e.g., `~/.claude/cache/outsystems-spec-driven-build/<APP_NAME>/.app-key`) and re-use it for every subsequent build against `APP_NAME`.
+- ❌ Wrong: every run calls `mentor_create_asset` with a fresh name (`HomeBanking_v1`, `HomeBanking_v2`, ...). New asset every time.
 
 ## What "Keep" vs "Replace" looks like across iterations
 

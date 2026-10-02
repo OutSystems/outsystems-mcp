@@ -6,7 +6,7 @@ This skill drives app generation via the **OutSystems MCP server** (`mcp__outsys
 
 - `outsystems` MCP server connected in Claude Code (`mcp__outsystems__*` tools available)
 - User authenticated — call `mcp__outsystems__auth_status` first; if expired, surface a re-auth prompt
-- Target app exists in the OutSystems environment (use `app_list` to find it, or `app_create` to mint a new shell)
+- Target app exists in the OutSystems environment (use `app_list` to find it, or `mentor_start_session` → `mentor_create_asset` to mint a new shell)
 
 ## Finding the App
 

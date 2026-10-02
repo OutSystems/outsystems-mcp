@@ -8,7 +8,7 @@
 
 **App shell key:** 4917e928-cb9f-40bb-a3dc-fe9ebacc8b2f
 
-> *Note: this is a placeholder. Replace with the asset key of a shell minted via `mcp__outsystems__app_create` (template-backed by default since ODC MCP 0.14.0) or created in ODC Portal. **Do NOT use** `Template_*` / `template_*` / `OutSystems Sample Data` — they're System modules and Mentor's Model API refuses to load them.*
+> *Note: this is a placeholder. Replace with the asset key of a shell minted via `mcp__outsystems__mentor_create_asset` or created in ODC Portal. **Do NOT use** `Template_*` / `template_*` / `OutSystems Sample Data` — they're System modules and Mentor's Model API refuses to load them.*
 
 **Style direction:** Apply OutSystems UI defaults — no custom theme needed for v1.
 

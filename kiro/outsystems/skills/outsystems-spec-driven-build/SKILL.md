@@ -3,7 +3,7 @@ name: outsystems-spec-driven-build
 description: '[Beta] Drive ODC Mentor to bootstrap an OutSystems app from a TEXT-ONLY structured spec — no design source needed. For Figma/image/HTML inputs, use `outsystems-design-to-app` instead. EXPERIMENTAL — Mentor is positioned for in-flow edits to existing apps; using it for end-to-end greenfield builds is a pattern this skill layers on top and quality varies with spec detail, so treat results as draft scaffolds for review, NOT ship-ready apps. Pre-flight validates the spec for things Mentor commonly fumbles (RBAC roles per screen, entity relationships, integration points), then drives Mentor with anti-failure guardrails. Three entry modes — your own markdown spec file, an interview, or clone from an example template. Use when the user asks to "build a new app from spec", "generate an app from requirements", "create a new app", "build app from scratch", "have Mentor build [app] from this spec", "build an app from this written description", or similar greenfield-build asks with NO design artifact.'
 license: MIT
 compatibility: Agent-neutral workflow for Codex and Claude Code (Claude Code is the most token-efficient path — see Harness notes). Requires Python 3.7+ (stdlib only) and the `outsystems` MCP server connected and authenticated, with the session-based Mentor tools available. Mentor must be enabled on the tenant.
-allowed-tools: AskUserQuestion Bash Read Write Edit mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__app_create mcp__outsystems__mentor_start_session mcp__outsystems__mentor_create_asset mcp__outsystems__mentor_load_asset mcp__outsystems__mentor_prompt mcp__outsystems__mentor_get_run mcp__outsystems__mentor_cancel_prompt mcp__outsystems__mentor_publish mcp__outsystems__publish_status mcp__outsystems__mentor_close_session
+allowed-tools: AskUserQuestion Bash Read Write Edit mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__mentor_start_session mcp__outsystems__mentor_create_asset mcp__outsystems__mentor_load_asset mcp__outsystems__mentor_prompt mcp__outsystems__mentor_get_run mcp__outsystems__mentor_cancel_prompt mcp__outsystems__mentor_publish mcp__outsystems__publish_status mcp__outsystems__mentor_close_session
 metadata:
   version: "1.3.1"
   author: outsystems-r-and-d
@@ -47,9 +47,8 @@ enabled on the tenant.** Shared rules: §7b (API quirks), §8
 (token-efficiency).
 
 **One platform constraint to know:** Mentor works on an app loaded into
-its session. This skill mints a fresh shell with `app_create` and loads
-that (Step 1) — the low-friction path. Mentor can also create the asset
-itself, which needs a portfolio key; Step 1 covers the shell either way.
+its session. This skill mints a fresh shell with `mentor_start_session`
+→ `mentor_create_asset`, which needs a portfolio key (Step 1).
 
 ## When NOT to use
 
@@ -71,24 +70,21 @@ Mentor needs an app key to edit. Three paths in order of preference:
   their prompt or `mcp__outsystems__app_list` with their app name
   search.
 - **Mint a shell programmatically (recommended)** →
-  call `mcp__outsystems__app_create` with `name=<their-app-name>`
-  and `kind=CrossDevice` (or `Mobile`, `AIAgent`, etc. matching the
-  spec's intent). Since ODC MCP 0.14.0 this clones the kind's standard
-  application template by default — Studio new-app-wizard parity, so the
-  shell arrives with a theme, `Layouts` and the `Common` authentication
-  screens. Pass `blank=true` only when a bare shell is genuinely wanted.
-  Returns `{assetKey, revision, name?, assetType?, clonedFromTemplateKey?,
-  warnings?, wired?}` — use that `assetKey` as the `APP_KEY`, and treat a
-  missing `clonedFromTemplateKey` as evidence the shell is blank. Note
-  `kind` and `template` are mutually exclusive, and a repeat `name` is
-  rejected with `OS-APPS-40018`. One MCP call (~$0.01).
+  call `mcp__outsystems__mentor_start_session`, then
+  `mcp__outsystems__mentor_create_asset` with `sessionId`,
+  `name=<their-app-name>`, `assetType=WebApplication` (or `Agent`,
+  matching the spec's intent) and `portfolioKey` (required;
+  `app_list` with `detailed: true` shows the portfolio key of existing
+  apps). By default the new app is cloned from the built-in template
+  for its asset type. Use the new app's key as the `APP_KEY`.
 - **User creates one in ODC Portal** → if they prefer the GUI path,
   ask them to create an empty app, then come back with the key.
 
 **Do NOT use Template_* / template_* apps as the shell.** They are
 System modules and Mentor's Model API refuses to load them with:
 *"System modules cannot be loaded with the Model API. Consider using
-the Clone method instead."* Use `app_create` (above) or have the user
+the Clone method instead."* Use `mentor_start_session` →
+`mentor_create_asset` (above) or have the user
 clone via ODC Portal first. Confirmed via live test 2026-05-31 —
 `Template Web App`, `Template_TestAgent`, `template_Agent`, and
 `OutSystems Sample Data` all hit this error.
@@ -362,17 +358,18 @@ Shared rules apply (CONVENTIONS §8.4). Skill-specific:
   rejected by Mentor's Model API with *"System modules cannot be
   loaded with the Model API. Consider using the Clone method instead."*
   Specifically avoid `Template_*`, `template_*`, `OutSystems Sample
-  Data`. Use `mcp__outsystems__app_create` to mint a fresh shell, or
+  Data`. Use `mcp__outsystems__mentor_start_session` →
+  `mcp__outsystems__mentor_create_asset` to mint a fresh shell, or
   have the user clone via ODC Portal.
 - **Don't skip the spec validation step.** Validation catches missing
   RBAC, missing entity relationships, missing screen-role mappings
   before Mentor burns tokens on them.
 - **Don't fire Mentor without user confirmation (Step 3).** A $1–5
   call shouldn't happen on assumption. Always show + confirm.
-- **Don't try to make Mentor create a brand-new app shell** — it
-  edits existing ones. If the user has no shell, mint one with
-  `app_create` (template-backed by default since ODC MCP 0.14.0); the
-  ODC Portal path is the fallback when the tenant predates it.
+- **Don't ask Mentor to create a brand-new app shell in a prompt** —
+  it edits the app loaded in its session. If the user has no shell,
+  mint one with `mentor_start_session` → `mentor_create_asset`; the
+  ODC Portal path is the fallback.
 - **Don't auto-publish the result.** The build report ends with a
   publish handoff. A human reviews and publishes the session.
 - **Don't omit the anti-Mentor-failure guardrails in the prompt

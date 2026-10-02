@@ -53,7 +53,7 @@ echo "[$(date +%H:%M:%S)] Pipeline started" > "$LOG_DIR/timing.log"
 Ask the user for:
 1. **Design source** (required unless Pre-built spec provided) — Figma URL, web URL, image path, HTML file, or structured front-end code (TSX/React/HTML — highest fidelity)
 2. **App context** (optional) — path to a context.md describing existing app state. Reference existing elements by name, don't recreate.
-3. **App name** (required) — target app name in the OutSystems environment. If the app doesn't exist, `app_create` mints a shell.
+3. **App name** (required) — target app name in the OutSystems environment. If the app doesn't exist, `mentor_start_session` → `mentor_create_asset` mints a shell.
 4. **Pre-built spec** (optional) — skip Stage 1, go straight to Stage 2.
 
 ## Design Extraction → author styling-complete `spec.json` sections
@@ -119,7 +119,7 @@ app_list { search: "<app-name>" }
 ```
 
 - If found → use `app_key`
-- If not found → `app_create { name: "<app-name>" }` to mint a shell (recommended for clean tests). Template-backed by default since ODC MCP 0.14.0 — the returned `clonedFromTemplateKey` confirms it; pass `blank=true` for the old bare shell. **Do not** use `Template_*` / `template_*` / `OutSystems Sample Data` shells — Mentor's Model API rejects System modules.
+- If not found → `mentor_start_session {}` → `mentor_create_asset { sessionId, assetType: "WebApplication", name: "<app-name>", portfolioKey }` to mint a shell (recommended for clean tests). By default the new app is cloned from the built-in template for its asset type. **Do not** use `Template_*` / `template_*` / `OutSystems Sample Data` shells — Mentor's Model API rejects System modules.
 
 ### Batch strategy
 

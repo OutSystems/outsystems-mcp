@@ -3,7 +3,7 @@ name: outsystems-design-to-app
 description: '[Beta] Drive ODC Mentor to bootstrap an OutSystems app from a design source — Figma URL, screenshot/image, HTML mockup, or structured front-end code (TSX/React/HTML, the highest-fidelity input). EXPERIMENTAL — greenfield-from-design layers on top of Mentor (built for in-flow edits) and fidelity varies; treat results as draft scaffolds, NOT ship-ready apps. Authors the design into a styling-complete spec.json (real OS UI blocks, not fake CSS; tokens, data model, sample data, chart series), then drives Mentor in batches and publishes. For prose-only briefs with NO concrete design or code, use `outsystems-spec-driven-build` instead. Use when the user asks to "build this design as an OutSystems app", "implement this Figma in OutSystems", "design to model", "design to app", "generate a screen from this mockup", "build this screen", or provides a Figma URL / image path / HTML or TSX file and wants it turned into a live OutSystems app.'
 license: MIT
 compatibility: Agent-neutral workflow for Codex and Claude Code (Claude Code is the most token-efficient path; see Harness notes). Requires Python 3.7+ (stdlib only) and the `outsystems` MCP server connected and authenticated, with the session-based Mentor tools available. Mentor must be enabled on the tenant. For Figma sources, the Figma MCP server must also be connected.
-allowed-tools: AskUserQuestion Bash Read Write Edit mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__app_create mcp__outsystems__env_list mcp__outsystems__env_app mcp__outsystems__context_screens mcp__outsystems__context_entities mcp__outsystems__context_actions mcp__outsystems__context_themes mcp__outsystems__mentor_start_session mcp__outsystems__mentor_create_asset mcp__outsystems__mentor_load_asset mcp__outsystems__mentor_prompt mcp__outsystems__mentor_get_run mcp__outsystems__mentor_cancel_prompt mcp__outsystems__mentor_publish mcp__outsystems__publish_status mcp__outsystems__publish_logs mcp__plugin_figma_figma__get_screenshot mcp__plugin_figma_figma__get_variable_defs mcp__plugin_figma_figma__get_design_context
+allowed-tools: AskUserQuestion Bash Read Write Edit mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__env_list mcp__outsystems__env_app mcp__outsystems__context_screens mcp__outsystems__context_entities mcp__outsystems__context_actions mcp__outsystems__context_themes mcp__outsystems__mentor_start_session mcp__outsystems__mentor_create_asset mcp__outsystems__mentor_load_asset mcp__outsystems__mentor_prompt mcp__outsystems__mentor_get_run mcp__outsystems__mentor_cancel_prompt mcp__outsystems__mentor_publish mcp__outsystems__publish_status mcp__outsystems__publish_logs mcp__plugin_figma_figma__get_screenshot mcp__plugin_figma_figma__get_variable_defs mcp__plugin_figma_figma__get_design_context
 metadata:
   version: "1.4.1"
   author: outsystems-r-and-d
@@ -21,7 +21,7 @@ Turn a design source (Figma, screenshot, HTML mockup, or written brief) into a w
 Standard catalog prereqs (see CONVENTIONS §4b), **plus** the following:
 - **Mentor enabled on the tenant** (this skill drives Mentor).
 - **Figma MCP server connected** if the design source is a Figma URL (`mcp__plugin_figma_figma__*` tools). For HTML / image / text sources, the Figma MCP is not required.
-- A target app shell in the OutSystems environment. The skill mints one via `app_create` if the user has none — template-backed by default since ODC MCP 0.14.0, so it arrives with a theme, `Layouts` and `Common` rather than empty. **Do not** use `Template_*` / `template_*` / `OutSystems Sample Data` as the shell — Mentor's Model API rejects System modules; naming a custom template as `app_create`'s `template` argument is a different thing and is fine.
+- A target app shell in the OutSystems environment. The skill mints one with `mentor_start_session` → `mentor_create_asset` if the user has none; by default the new app is cloned from the built-in template for its asset type. **Do not** use `Template_*` / `template_*` / `OutSystems Sample Data` as the shell — Mentor's Model API rejects System modules.
 
 ## When NOT to use
 
@@ -63,7 +63,7 @@ Ask the user and wait for an explicit answer:
 
 App discovery:
 - `mcp__outsystems__app_list { search: "<app-name>" }` → if found, capture `app_key`
-- If not found → `mcp__outsystems__app_create { name: "<app-name>" }` to mint a shell — template-backed by default since ODC MCP 0.14.0; confirm via the returned `clonedFromTemplateKey`
+- If not found → `mcp__outsystems__mentor_start_session {}` → `mcp__outsystems__mentor_create_asset { sessionId, assetType: "WebApplication", name: "<app-name>", portfolioKey }` to mint a shell, cloned from the built-in template for its asset type by default. `portfolioKey` is required; `app_list { detailed: true }` shows the portfolio key of existing apps. Capture the new app's key as `app_key`
 
 ### Step 2: Load the OutSystems UI knowledge + start design extraction (in parallel)
 
@@ -345,7 +345,7 @@ Shared rules apply (CONVENTIONS §8.4). Skill-specific:
 - **Don't fire Mentor without user confirmation (Step 4).** An expensive, slow, not-cheaply-reversible build shouldn't happen on assumption.
 - **Don't skip the spec preamble.** It's a field-tested instruction that prevents Mentor from stopping mid-build or skipping acceptance items.
 - **Don't auto-publish to Prod.** `mentor_publish` ships to the connected dev environment; promoting to Test / Prod is a separate `deploy_start` step gated by `outsystems-deploy-preview` — surface it, don't auto-promote.
-- **Don't use a System-module template app as the shell.** `Template_*` / `template_*` / `OutSystems Sample Data` are rejected by Mentor's Model API; use `app_create` instead.
+- **Don't use a System-module template app as the shell.** `Template_*` / `template_*` / `OutSystems Sample Data` are rejected by Mentor's Model API; use `mentor_start_session` → `mentor_create_asset` instead.
 - **Don't load all reference docs at once.** Start with the default load set (Step 2), then load on demand based on what the design contains.
 - **Don't skip the `references/gotchas/` checklist for visual-source builds.** Eleven specific engine-level traps (SVG icon baking, theme class collisions, SPA visibility toggles, TableRecords empty Source, duplicate primary actions, etc.) are documented in `references/gotchas/INDEX.md`. Each maps a specific source pattern to its fix. Field-tested against real app builds; ignoring them is the difference between a polished published surface and a "mostly works but icons are black and tables are empty" outcome.
 
