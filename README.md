@@ -288,6 +288,14 @@ Update the OutSystems skill in this harness.
 Find the copy an earlier install injected into this harness's instructions/rules/system-prompt mechanism: the block that begins with the heading `# OutSystems - Remote MCP` and ends where the text of its last section, `## Feedback`, ends. Fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/SKILL.md and replace that whole block with the fetched contents, leaving everything else in place. If you can't find the block, or can't tell where it ends, write nothing and tell me what you found.
 ```
 
+## Beta skills
+
+The following skills are Beta Features. OutSystems provides Beta Features to collect customer feedback on non-final capabilities. A Beta Feature can change significantly, including through breaking changes, or OutSystems can discontinue it. For the terms that apply, refer to <https://www.outsystems.com/legal/beta-features-agreement>.
+
+- **outsystems-custom-code**: guides building, testing, and deploying C# External Logic libraries for OutSystems Developer Cloud (ODC): SDK attributes, supported data types, runtime limits, unit and container tests, and deployment through the OutSystems MCP. It ships in the Claude Code, Claude Desktop, Kiro, and Cursor App plugins, next to the main OutSystems skill. The Copilot, Cursor CLI, and other-assistant install paths do not include it.
+- **outsystems-design-to-app**: builds a draft OutSystems app through Mentor from a design source: a Figma URL, a screenshot, an HTML mockup, or front-end code. It ships in the Claude Code, Claude Desktop, Kiro, and Cursor App plugins, next to the main OutSystems skill. The Copilot, Cursor CLI, and other-assistant install paths do not include it.
+- **outsystems-spec-driven-build**: builds a draft OutSystems app through Mentor from a text-only spec, with no design source: your own markdown spec, an interview, or an example template. It ships in the Claude Code, Claude Desktop, Kiro, and Cursor App plugins, next to the main OutSystems skill. The Copilot, Cursor CLI, and other-assistant install paths do not include it.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |

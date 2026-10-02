@@ -1,0 +1,3 @@
+display_name: OutSystems Custom Code (Beta)
+short_description: '[Beta] Build, test, and deploy C# External Logic libraries for ODC.'
+default_prompt: Use $outsystems-custom-code to build, test, and deploy a C# External Logic library for OutSystems Developer Cloud.

@@ -1,0 +1,3 @@
+display_name: OutSystems Design To App (Beta)
+short_description: '[Beta] Bootstrap an app from a Figma, image, or HTML design source.'
+default_prompt: Use $outsystems-design-to-app to turn my Figma, screenshot, or HTML mockup into a draft OutSystems app via Mentor.
