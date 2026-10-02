@@ -542,6 +542,17 @@ def test_cached_render_of_a_foreign_bundle_is_stale_not_a_traceback():
     assert proc.returncode == 3 and "STALE" in proc.stderr and "Traceback" not in proc.stderr
 
 
+def test_an_unwritable_cache_is_one_clean_line():
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        (td / "cache" / "impact-data.json").mkdir(parents=True)   # a folder where the bundle goes
+        proc = _dep_build(td, {LIB_CORE: {"launch": fx("launch-deletion-inventory-core.json"),
+                                          "result": fx("status-deletion-inventory-core.json")}},
+                          [FIX / "tenant-assets.json"])
+    assert proc.returncode == 1 and "could not write the cache files" in proc.stderr, proc.stderr
+    assert "Traceback" not in proc.stderr
+
+
 if __name__ == "__main__":
     _run()
 

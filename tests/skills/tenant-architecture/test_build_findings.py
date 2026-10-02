@@ -298,5 +298,13 @@ def test_only_http_deployment_urls_reach_the_page():
     assert "const safeUrl" in html and 'href="${esc(d.url)}"' not in html
 
 
+def test_an_unwritable_cache_is_one_clean_line(capsys):
+    tmp, cache = t._tmp_cache()
+    (cache / "tenant-data.json").mkdir()               # a folder where the bundle goes
+    code = build.main(["build.py", str(cache), str(tmp / "out.html"), "--tenant-id", t.TENANT,
+                       "--apps", _fx("apps-page.json")])
+    assert code == 1 and "could not write the cache files" in capsys.readouterr().err
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

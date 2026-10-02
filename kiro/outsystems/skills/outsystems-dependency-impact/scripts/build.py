@@ -182,16 +182,20 @@ def main(argv: list[str]) -> int:
             print(f"build failed: {exc}", file=sys.stderr)
             return 1
         s = bundle["stats"]
-        (cache_dir / "impact-data.json").write_text(
-            json.dumps(bundle, separators=(",", ":")), encoding="utf-8")
-        (cache_dir / "meta.json").write_text(json.dumps({
-            "scanned_at":    bundle["tenant"]["scannedAt"],
-            "target_count":  s["targetCount"],
-            "known_count":   s["knownCount"],
-            "unknown_count": s["unknownCount"],
-            "refused_count": s["refusedCount"],
-            "edge_count":    s["edgeCount"],
-        }, separators=(",", ":")), encoding="utf-8")
+        try:
+            (cache_dir / "impact-data.json").write_text(
+                json.dumps(bundle, separators=(",", ":")), encoding="utf-8")
+            (cache_dir / "meta.json").write_text(json.dumps({
+                "scanned_at":    bundle["tenant"]["scannedAt"],
+                "target_count":  s["targetCount"],
+                "known_count":   s["knownCount"],
+                "unknown_count": s["unknownCount"],
+                "refused_count": s["refusedCount"],
+                "edge_count":    s["edgeCount"],
+            }, separators=(",", ":")), encoding="utf-8")
+        except OSError as exc:
+            print(f"could not write the cache files in {cache_dir}: {exc}", file=sys.stderr)
+            return 1
 
     data_path = cache_dir / "impact-data.json"
     if not data_path.exists():

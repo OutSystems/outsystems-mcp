@@ -527,6 +527,30 @@ def test_an_unwritable_output_path_is_one_clean_line():
     assert "Traceback" not in r.stderr
 
 
+def test_meta_is_dated_by_the_oldest_required_response_not_the_build():
+    import os, time as _time
+    tmp = _tmp()
+    old = int(_time.time()) - 1800                    # fetched half an hour before the build
+    files = {}
+    for flag, name in (("--app-info", "app-info"), ("--screens", "screens"), ("--actions", "actions"),
+                       ("--entities", "entities"), ("--structures", "structures"), ("--roles", "roles")):
+        dst = tmp / f"{name}.json"
+        dst.write_text((FX / f"{name}.json").read_text())
+        files[flag] = dst
+    os.utime(files["--screens"], (old, old))
+    r = _run(tmp / "cache", tmp / "out.html", *_six(tmp, **files))
+    assert r.returncode == 0, r.stderr
+    assert json.loads((tmp / "cache" / "meta.json").read_text())["fetched_at"] == old
+
+
+def test_an_unwritable_cache_is_one_clean_line():
+    tmp = _tmp()
+    (tmp / "cache" / "app-data.json").mkdir(parents=True)     # a folder where the bundle goes
+    r = _run(tmp / "cache", tmp / "out.html", *_six(tmp))
+    assert r.returncode == 1 and "could not write the cache files" in r.stderr, r.stderr
+    assert "Traceback" not in r.stderr
+
+
 if __name__ == "__main__":
     fns = [f for n, f in sorted(globals().items()) if n.startswith("test_") and inspect.isfunction(f)]
     for f in fns:

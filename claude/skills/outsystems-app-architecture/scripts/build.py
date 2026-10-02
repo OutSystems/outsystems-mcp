@@ -1237,17 +1237,27 @@ def main(argv: list) -> int:
                   f"{exc}). Nothing was written; re-fetch the Step 3 responses unchanged, and "
                   f"report the file if it persists.", file=sys.stderr)
             return 1
-        # Write compact bundle + freshness metadata
-        (cache_dir / "app-data.json").write_text(
-            json.dumps(app_data, separators=(",", ":")), encoding="utf-8")
+        # Write compact bundle + freshness metadata. The one-hour TTL runs
+        # from the fetch: the oldest required response file's save time, not
+        # the end of the build (a paginated or slow run is older than that).
+        required = []
+        for flag in raw_flags:
+            required += flag if isinstance(flag, list) else [flag]
+        stamps = [pathlib.Path(p).stat().st_mtime for p in required if pathlib.Path(p).exists()]
         meta = {
             "revision": app_data["app"]["revision"],
-            "fetched_at": int(time.time()),
+            "fetched_at": int(min(stamps)) if stamps else int(time.time()),
             "schema": BUNDLE_SCHEMA,
         }
         if app_data.get("deployments"):
             meta["deployments_fetched_at"] = app_data["deployments"]["fetchedAt"]
-        (cache_dir / "meta.json").write_text(json.dumps(meta, separators=(",", ":")), encoding="utf-8")
+        try:
+            (cache_dir / "app-data.json").write_text(
+                json.dumps(app_data, separators=(",", ":")), encoding="utf-8")
+            (cache_dir / "meta.json").write_text(json.dumps(meta, separators=(",", ":")), encoding="utf-8")
+        except OSError as exc:
+            print(f"could not write the cache files in {cache_dir}: {exc}", file=sys.stderr)
+            return 1
 
     # Inject
     data_path = cache_dir / "app-data.json"

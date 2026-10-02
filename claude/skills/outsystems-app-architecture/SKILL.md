@@ -197,8 +197,9 @@ For **each** response, follow this rule:
   `{"assetKey": "<APP_KEY>", "failed": true}` as `refs-raw.json` and
   continue (the graph then renders without libraries; connections still
   show). For `context_connections`, `app_revisions` or an `env_apps`
-  call, leave that file out (see Step 4): the section degrades, and an
-  environment renders as "unknown". An `app_info` error or an error on
+  call, write `{"error": "<the error message>"}` to that file (see
+  Step 4): the section degrades, and an environment renders as
+  "unknown". An `app_info` error or an error on
   any other `context_*` call stops the run — report it.
 
 Every `context_*` response is one server page and carries `total`,
@@ -278,9 +279,11 @@ are optional and each only adds its part (an omitted `--env-apps`
 and `--env-list` mean no deployment section).
 
 **When an optional call (#7–#10, `env_list`) fails, still pass its path.**
-Leave that file missing, or write `{"error": "<the error message>"}` to
-it (JSON, never the raw error text, which fails as `BAD INPUT`):
-`build.py` treats a missing file or an error object as "unavailable" and
+Write `{"error": "<the error message>"}` to it (JSON, never the raw error
+text, which fails as `BAD INPUT`). Always write it, even on a first run:
+on a refresh the file from the previous run is still there, and leaving
+it would render that run's data as current. `build.py` treats an error
+object (or a missing file) as "unavailable" and
 degrades only that section — AI model connections or libraries are left
 out of Dependencies (it prints a `warning:`), the revisions table is left
 out, and an environment whose `env_apps` call failed renders as

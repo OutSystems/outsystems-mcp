@@ -255,6 +255,10 @@ class UsageError(Exception):
     """Arguments that do not describe a build (exit 2)."""
 
 
+class CacheWriteError(Exception):
+    """The cache folder cannot be written (disk full, permission): exit 1."""
+
+
 class BadBundle(Exception):
     """A bundle the render step cannot use: a missing or mistyped field
     (exit 1). The message names the field."""
@@ -329,6 +333,9 @@ def main(argv: list[str]) -> int:
             return 1
         except BadBundle as bad:
             print(f"BAD BUNDLE: {bad}. Nothing was written to the cache.", file=sys.stderr)
+            return 1
+        except CacheWriteError as exc:
+            print(str(exc), file=sys.stderr)
             return 1
         except (FileNotFoundError, KeyError, TypeError, json.JSONDecodeError) as exc:
             print(f"cache build failed: {exc!r}", file=sys.stderr)
@@ -1113,8 +1120,11 @@ def _build_cache(cache_dir: pathlib.Path, args) -> None:
     def write(name, obj):
         (cache_dir / name).write_text(json.dumps(obj, separators=(",", ":")), encoding="utf-8")
 
-    write(BUNDLE_NAME, bundle)
-    write("meta.json", meta)
+    try:
+        write(BUNDLE_NAME, bundle)
+        write("meta.json", meta)
+    except OSError as exc:
+        raise CacheWriteError(f"could not write the cache files in {cache_dir}: {exc}") from None
     for name in LEGACY_CACHE_FILES:
         if (cache_dir / name).exists():
             (cache_dir / name).unlink()
