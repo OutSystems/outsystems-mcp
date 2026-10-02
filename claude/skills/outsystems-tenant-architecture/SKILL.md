@@ -119,7 +119,9 @@ python3 "<skill-folder>/scripts/build.py" --cache-dir <TENANT_ID>
 If `<cache-folder>/meta.json` is present:
 
 1. Call `app_list` with `limit: 1` (tiny — ~300 tokens).
-2. Compute `AGE = now - meta.fetched_at`.
+2. Compute `AGE = now - meta.fetched_at`:
+   `python3 -c "import json,time; m=json.load(open('<cache-folder>/meta.json')); print(m, 'age', int(time.time()) - m['fetched_at'])"`
+   prints both in one call, within this skill's allowed tools (no `cat`, no `date`).
 3. If `AGE < 3600` **and** `probe.total == meta.total` **and**
    `meta.overlays_fetched_at` is a number **and** `meta.schema` is `1`
    → **cache valid, jump to Step 5** (cached re-render). `meta.total` is the server-reported
@@ -191,7 +193,9 @@ context_connections) — inspect only the result text, never the payload:
   `<cache-folder>/env-apps-<ENV_KEY>-<N>.json` or `<cache-folder>/health-<ENV_KEY>-<N>.json`.
   Write the two AI governance pages in the compact form below to
   `<cache-folder>/ai-agents-<N>.json` and `<cache-folder>/ai-connections-<N>.json`.
-  That is the page file.
+  That is the page file. Write it with the Write tool, one call per file:
+  this skill's allowed tools grant Write, `cp`, `mkdir` and `python3`, not
+  a shell redirect (`cat > file`), which makes the harness ask the user.
 - **If a call failed** (for example `app_health` on a tenant whose
   analytics are not enabled, or an `env_apps` error for one environment):
   a server error or timeout (5xx, 504) is retried once, every failed call
@@ -568,8 +572,9 @@ error. A metric in the `metrics` echo but absent from a row is shown as
   use the `key` values from the env_list response.
 - **`build.py` exits 1 (`cache build failed: KeyError(...)`)** → a raw
   response is missing a field the script expects (see Data shape
-  contract). Check the saved file with `head -c 600 <path>` in a shell,
-  not by reading it into context.
+  contract). Check the saved file's start with
+  `python3 -c "print(open('<path>').read(600))"`, not by reading it into
+  context.
 - **An environment shows PARTIAL** → an older server returned 100 of
   its deployments and takes no offset. Expected; report it.
 - **`app_health` fails** (e.g. analytics not available) → pass
@@ -590,7 +595,7 @@ error. A metric in the `metrics` echo but absent from a row is shown as
   ~50 KB ≈ 12-15K tokens; on a 1000-asset tenant it's ~150 KB ≈ 35-50K
   tokens. Once that's in context, every subsequent turn processes it —
   turning a 3-min skill into a 15-25 min skill. If you need to check
-  content for debugging, run `head -c 1000 <path>` in a shell. The
+  content for debugging, run `python3 -c "print(open('<path>').read(1000))"`. The
   contract is: data goes through disk → build.py → output HTML, never
   re-entering the model's context.
 - 🔴 **Don't dump an inline payload back into the conversation or re-read

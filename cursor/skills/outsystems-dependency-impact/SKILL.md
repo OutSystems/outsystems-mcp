@@ -135,8 +135,11 @@ those targets), so an interrupted map resumes where it stopped. If the
 user said "refresh" / "rescan" / "fresh data", start the folder over:
 
 ```bash
-rm -rf "<cache-folder>/impact" && mkdir -p "<cache-folder>/impact/raw"
+python3 "<skill-folder>/scripts/build.py" --cache-dir <TENANT_ID> --clear impact
 ```
+
+(It empties `<cache-folder>/impact`, recreates its `raw/` folder and
+prints the path; it can only clear this skill's own record folders.)
 
 Branch C never reuses records; it starts its own folder in Step 3.
 
@@ -147,7 +150,7 @@ only the targets named now and never an earlier run's records (one
 analysis takes seconds):
 
 ```bash
-rm -rf "<cache-folder>/impact-named" && mkdir -p "<cache-folder>/impact-named/raw"
+python3 "<skill-folder>/scripts/build.py" --cache-dir <TENANT_ID> --clear impact-named
 ```
 
 Read `impact-named` wherever the steps below say `impact`. Then resolve
@@ -242,9 +245,12 @@ For each target:
    Poll right away — small analyses are often finished by then. While
    `processStatus` is `InProgress`, pause 5–15 seconds between rounds
    (the response has no poll-interval hint), the way the main OutSystems
-   skill's "Pacing polls" describes for your harness: a background wait
-   where it has one (Claude Code), a short foreground `sleep` where it
-   has none (Kiro). Poll the batch yourself:
+   skill's "Pacing polls" describes for your harness, with
+   `python3 "<skill-folder>/scripts/build.py" --wait <seconds>` (1–60) as
+   the pause: in the background where the harness has background tasks
+   (Claude Code), in the foreground where it has none (Kiro). It is the
+   script, not a shell `sleep`, so it runs within this skill's allowed
+   tools. Poll the batch yourself:
    a status-watcher sub-agent waits on one operation at a time, which
    does not fit a batch of ten with a two-minute give-up. Stop at `Finished` or
    `Failed`. On `Unknown`, poll at most 3 more times while it stays
@@ -459,8 +465,8 @@ same ratio.
   interface: use the saved-to path it printed, or write the response you
   received.
 - **Don't read a harness-saved report or asset page into context.**
-  `cp` it into the cache and pass the path; check content with
-  `head -c 1000 <path>` in a shell if you must.
+  `cp` it into the cache and pass the path; check its start with
+  `python3 -c "print(open('<path>').read(1000))"` if you must.
 
 ## When NOT to use
 

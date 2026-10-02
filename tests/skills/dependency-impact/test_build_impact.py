@@ -518,7 +518,8 @@ def test_saved_content_block_report_and_several_searches(tmp_path):
 
 def test_poll_pacing_follows_each_harness():
     skill = (BUILD.parent.parent / "SKILL.md").read_text(encoding="utf-8")
-    assert "a short foreground `sleep` where it\n   has none (Kiro)" in skill
+    assert "in the foreground where it has none (Kiro)" in skill
+    assert "--wait <seconds>" in skill                 # the pause runs inside the allowed tools
     assert "never a bare foreground `sleep`" not in skill
 
 

@@ -62,6 +62,7 @@ import argparse
 import json
 import pathlib
 import re
+import shutil
 import sys
 import time
 
@@ -101,27 +102,61 @@ _CACHE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,127}$")
 _SKILL_ID = re.compile(r"^outsystems-[a-z-]+$")
 
 
+# The record folders `--cache-dir <id> --clear <name>` may start over: the
+# skill never needs a shell `rm -rf`, which its allowed tools do not grant.
+CLEARABLE = ("impact", "impact-named")
+# `--wait <seconds>` bounds: a poll pause, never a way to stall the agent.
+WAIT_RANGE = (1, 60)
+
+
 def _cache_dir_command(argv) -> int:
-    """`--cache-dir <id> [--skill <name>]`: create and print the folder."""
+    """`--cache-dir <id> [--skill <name> | --clear impact|impact-named]`:
+    create and print the folder; with --clear, empty that record folder of
+    this skill's cache first and print it (its raw/ subfolder recreated)."""
     skill = SKILL_NAME
+    clear = None
     rest = list(argv)
     if len(rest) == 3 and rest[1] == "--skill":
         skill = rest.pop(2)
         rest.pop(1)
+    elif len(rest) == 3 and rest[1] == "--clear" and rest[2] in CLEARABLE:
+        clear = rest.pop(2)
+        rest.pop(1)
     if len(rest) != 1 or not _CACHE_ID.match(rest[0]) or not _SKILL_ID.match(skill):
-        print("usage: build.py --cache-dir <tenant-or-app-key> [--skill outsystems-<name>]",
-              file=sys.stderr)
+        print("usage: build.py --cache-dir <tenant-or-app-key> "
+              "[--skill outsystems-<name> | --clear impact|impact-named]", file=sys.stderr)
         return 2
     path = CACHE_ROOT / skill / rest[0]
     if skill == SKILL_NAME:
         path.mkdir(parents=True, exist_ok=True)
+    if clear:
+        path = path / clear
+        shutil.rmtree(path, ignore_errors=True)
+        (path / "raw").mkdir(parents=True, exist_ok=True)
     print(path)
+    return 0
+
+
+def _wait_command(argv) -> int:
+    """`--wait <seconds>`: the pause between status polls, so the skill
+    needs no shell `sleep`. Run it in the background where the harness can."""
+    try:
+        seconds = int(argv[0]) if len(argv) == 1 else None
+    except ValueError:
+        seconds = None
+    if seconds is None or not WAIT_RANGE[0] <= seconds <= WAIT_RANGE[1]:
+        print(f"usage: build.py --wait <seconds, {WAIT_RANGE[0]}-{WAIT_RANGE[1]}>", file=sys.stderr)
+        return 2
+    time.sleep(seconds)
+    print(f"waited {seconds}s")
     return 0
 
 
 def main(argv: list[str]) -> int:
     if len(argv) > 1 and argv[1] == "--cache-dir":
         return _cache_dir_command(argv[2:])
+    if len(argv) > 1 and argv[1] == "--wait":
+        return _wait_command(argv[2:])
     args = parse_args(argv)
     skill_dir = pathlib.Path(__file__).resolve().parent.parent
     template_path = skill_dir / "assets" / "template.html"

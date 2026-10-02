@@ -117,7 +117,9 @@ If `<cache-folder>/meta.json` is present:
 
 1. Call `app_info` with `key: <APP_KEY>` (cheap, ~500 tokens; skip if
    Step 1 already called it).
-2. Compute `AGE = now - meta.fetched_at`.
+2. Compute `AGE = now - meta.fetched_at`:
+   `python3 -c "import json,time; m=json.load(open('<cache-folder>/meta.json')); print(m, 'age', int(time.time()) - m['fetched_at'])"`
+   prints both in one call, within this skill's allowed tools (no `cat`, no `date`).
 3. If `AGE < 3600` AND `app_info.revision == meta.revision` AND
    `meta.schema == 3` → **cache valid, jump to Step 4** (cached re-render).
    A `meta.json` with `schema` 2 or none was written by an older version
@@ -187,7 +189,10 @@ For **each** response, follow this rule:
   auto-save): write the
   `context_*` responses in the **compact form** below to
   `<cache-folder>/<file>`, keeping the top-level envelope keys. Write the small
-  responses (#1, #8, #9, #10+) as returned.
+  responses (#1, #8, #9, #10+) as returned. Use the Write tool, one call
+  per file: this skill's allowed tools grant Write, `cp`, `mkdir` and
+  `python3`, not a shell redirect (`cat > file`), which makes the harness
+  ask the user.
 - **If a call errors**: for `app_refs`, save
   `{"assetKey": "<APP_KEY>", "failed": true}` as `refs-raw.json` and
   continue (the graph then renders without libraries; connections still
@@ -492,7 +497,7 @@ writes are the main cost (see the whitelist's token trade-off).
   payload alone can be 20-40 KB ≈ 5-10K tokens; across all context calls
   a large app pulls 50-150 KB = 12-35K tokens into context, and every
   later turn pays for it again. If you need to check content for
-  debugging, run `head -c 1000 <path>` in a shell.
+  debugging, run `python3 -c "print(open('<path>').read(1000))"`.
 - 🔴 **Don't dump an inline `context_*` payload back into the
   conversation or re-read the compact cache file (harnesses without
   auto-save).** Each response arrives inline (see Step 3) and is
