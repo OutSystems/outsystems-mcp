@@ -247,9 +247,10 @@ the suites pin down:
   hook, run from the command in `claude/hooks/hooks.json` under `sh -c`
   with `CLAUDE_PLUGIN_ROOT` set and the working directory outside the
   plugin: a watcher call passes only as a foreground `sleep <n>` with n
-  of at least 1, every other caller passes untouched, and the script the
+  of at least 1, every other caller passes untouched, the script the
   command names stays plain shell, as the plugin directory's validator
-  requires.
+  requires, and a checkout made with `core.autocrlf=true`, Git for
+  Windows' default, still gets the script with LF line endings.
 
 A case that needs `gh` behaviour the stub does not have belongs in the
 stub, not in a mock of the step: a test that reimplements the step

@@ -4,9 +4,11 @@
 # CLAUDE_PLUGIN_ROOT set to the plugin folder and the working directory
 # outside it, against sample PreToolUse inputs. A call from the watcher
 # passes only as a foreground `sleep <n>` with n >= 1; every other caller
-# passes untouched. The hook fails open: Claude Code runs the Bash call when
-# a hook exits with anything but 2, so a script the command cannot find
-# shows up here as a watcher call that is no longer denied.
+# passes untouched. Claude Code denies the call when a hook exits with 2
+# and runs it on any other code, so a script that cannot run breaks one
+# side or the other: a missing file exits 127 under bash, which lets every
+# watcher call through, and 2 under dash, which blocks every caller, as a
+# syntax error does under both, CRLF line endings included.
 
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -82,5 +84,21 @@ spaced="$WORK/plugin folder/claude"
 mkdir -p "$spaced/hooks" && cp "$SCRIPT" "$spaced/hooks/"
 check "ls from the watcher is still denied" \
   "$(run_hook "$(bash_call "$W" 'ls' false)" "$spaced")" "$DENIED"
+
+section "a checkout with core.autocrlf=true, Git for Windows' default, keeps the script at LF"
+win="$WORK/windows-checkout"
+mkdir -p "$win/claude/hooks"
+cp "$REPO_ROOT/.gitattributes" "$win/"
+cp "$SCRIPT" "$win/claude/hooks/"
+git -C "$win" -c init.defaultBranch=main init -q
+git -C "$win" add .gitattributes claude/hooks/limit-watcher-bash.sh
+rm "$win/claude/hooks/limit-watcher-bash.sh"
+git -C "$win" -c core.autocrlf=true checkout -- claude/hooks/limit-watcher-bash.sh
+check "the checked-out script has no carriage return" \
+  "$(grep -c $'\r' "$win/claude/hooks/limit-watcher-bash.sh")" "0"
+check "the user's own session still runs ls" \
+  "$(run_hook "$(bash_call '' 'ls' false)" "$win/claude")" "$ALLOWED"
+check "ls from the watcher is still denied" \
+  "$(run_hook "$(bash_call "$W" 'ls' false)" "$win/claude")" "$DENIED"
 
 finish
