@@ -47,6 +47,12 @@ check_file_exists "the script is in the plugin folder" "$SCRIPT"
 check_no_match "the script runs no inline program and no command substitution" \
   "$(grep -v '^[[:space:]]*#' "$SCRIPT")" \
   '(^|[^[:alnum:]_-])(awk|gawk|sed|perl|python3?|node|ruby)([^[:alnum:]_-]|$)|\$\(|`'
+# Every later check runs the command, so with none they would only repeat
+# the first check's failure as a list of wrong exit codes.
+if [ -z "$HOOK_CMD" ]; then
+  printf '# hooks.json holds no Bash hook command; skipping the checks that run it\n'
+  finish
+fi
 
 section "a status-watcher call passes only as a foreground sleep of at least one second"
 check "sleep 30 passes" "$(run_hook "$(bash_call "$W" 'sleep 30' false)")" "$ALLOWED"
@@ -87,13 +93,14 @@ check "ls from the watcher is still denied" \
 
 section "a checkout with core.autocrlf=true, Git for Windows' default, keeps the script at LF"
 win="$WORK/windows-checkout"
-mkdir -p "$win/claude/hooks"
-cp "$REPO_ROOT/.gitattributes" "$win/"
-cp "$SCRIPT" "$win/claude/hooks/"
-git -C "$win" -c init.defaultBranch=main init -q
-git -C "$win" add .gitattributes claude/hooks/limit-watcher-bash.sh
-rm "$win/claude/hooks/limit-watcher-bash.sh"
-git -C "$win" -c core.autocrlf=true checkout -- claude/hooks/limit-watcher-bash.sh
+mkdir -p "$win/claude/hooks" &&
+  cp "$SCRIPT" "$win/claude/hooks/" &&
+  cp "$REPO_ROOT/.gitattributes" "$win/" &&
+  git -C "$win" -c init.defaultBranch=main init -q &&
+  git -C "$win" add .gitattributes claude/hooks/limit-watcher-bash.sh &&
+  rm "$win/claude/hooks/limit-watcher-bash.sh" &&
+  git -C "$win" -c core.autocrlf=true checkout -- claude/hooks/limit-watcher-bash.sh
+check "a scratch repository checks the script out with core.autocrlf=true" "$?" "0"
 check "the checked-out script has no carriage return" \
   "$(grep -c $'\r' "$win/claude/hooks/limit-watcher-bash.sh")" "0"
 check "the user's own session still runs ls" \
