@@ -1,0 +1,3 @@
+display_name: OutSystems App Architecture (Beta)
+short_description: "[Beta] Graph one app's screens, actions, entities, roles, and dependencies."
+default_prompt: Use $outsystems-app-architecture to generate an interactive architecture graph for one OutSystems app.

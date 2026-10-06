@@ -1,0 +1,13 @@
+{
+ "assetKey": "a0000077-0000-4000-8000-000000000077",
+ "assetType": "WebApplication",
+ "clonedFromTemplateKey": "a00000fe-0000-4000-8000-0000000000fe",
+ "description": "Sample IT asset tracking app owned by example@example.com. Tracks laptops, badges and equipment requests (asset half; references People Onboarding). Safe to delete after the demo. Not for production use.",
+ "isExternal": false,
+ "modelDigest": "a0000070-0000-4000-8000-000000000070",
+ "name": "IT Assets Portal",
+ "portfolioKey": "a00000a4-0000-4000-8000-0000000000a4",
+ "revision": 13,
+ "revisionDateTime": "2026-09-01T03:07:35.990488Z",
+ "revisionUserKey": "a000010d-0000-4000-8000-00000000010d"
+}

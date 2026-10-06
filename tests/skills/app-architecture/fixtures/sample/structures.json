@@ -1,0 +1,116 @@
+{
+ "data": [
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "key": "a0000027-0000-4000-8000-000000000027",
+      "length": "",
+      "name": "Id"
+     },
+     {
+      "dataType": "Text",
+      "decimals": "",
+      "isMandatory": false,
+      "key": "a00000ab-0000-4000-8000-0000000000ab",
+      "length": "50",
+      "name": "Label"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a0000083-0000-4000-8000-000000000083",
+   "name": "StaticRecord",
+   "objectType": "structures",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  },
+  {
+   "additionalData": {
+    "attributes": [
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "key": "a0000002-0000-4000-8000-000000000002",
+      "length": "",
+      "name": "BadgeMaxId"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "key": "a000001b-0000-4000-8000-00000000001b",
+      "length": "",
+      "name": "EqCount"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "key": "a0000034-0000-4000-8000-000000000034",
+      "length": "",
+      "name": "BadgeCount"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "key": "a00000d6-0000-4000-8000-0000000000d6",
+      "length": "",
+      "name": "EqMaxId"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "key": "a0000117-0000-4000-8000-000000000117",
+      "length": "",
+      "name": "AssetMaxId"
+     },
+     {
+      "dataType": "Long Integer",
+      "decimals": "",
+      "isMandatory": false,
+      "key": "a0000132-0000-4000-8000-000000000132",
+      "length": "",
+      "name": "AssetCount"
+     }
+    ]
+   },
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetName": "ITAssetsPortal",
+   "assetType": "CrossDevice",
+   "description": null,
+   "isPublic": false,
+   "isReferenced": false,
+   "isStatic": false,
+   "key": "a00000b3-0000-4000-8000-0000000000b3",
+   "name": "CountsResult",
+   "objectType": "structures",
+   "ownerAppKey": "a0000077-0000-4000-8000-000000000077",
+   "physicalName": null,
+   "providerName": null,
+   "timestamp": "2026-07-30T16:16:16.594000+00:00"
+  }
+ ],
+ "displayed": 2,
+ "pagination": {
+  "limit": 100,
+  "offset": 0,
+  "total": 2
+ },
+ "total": 2,
+ "truncated": false
+}

@@ -1,0 +1,46 @@
+{
+ "_provenance": "Illustrative env_apps {env_key: test} rows (6 in total) split into two pages in the newer server's offset/next_offset envelope. Names and keys are invented.",
+ "displayed": 4,
+ "next_offset": 4,
+ "pagination_hint": "Showing 4 of 6. Pass offset=4 to fetch the next page.",
+ "results": [
+  {
+   "applicationKey": "a000000a-0000-4000-8000-00000000000a",
+   "buildKey": "a000005e-0000-4000-8000-00000000005e",
+   "deploymentDateTime": "2026-08-21T11:02:33.297Z",
+   "deploymentKey": "a0000105-0000-4000-8000-000000000105",
+   "name": "Lending Policy Agent",
+   "revision": 2,
+   "url": "https://acme-test.outsystems.app/LendingPolicyAgent"
+  },
+  {
+   "applicationKey": "a0000018-0000-4000-8000-000000000018",
+   "buildKey": "a0000128-0000-4000-8000-000000000128",
+   "deploymentDateTime": "2026-08-21T10:24:05.734Z",
+   "deploymentKey": "a000004d-0000-4000-8000-00000000004d",
+   "name": "Banking Account Services",
+   "revision": 4,
+   "url": "https://acme-test.outsystems.app/BankingAccountServices"
+  },
+  {
+   "applicationKey": "a0000035-0000-4000-8000-000000000035",
+   "buildKey": "a000005d-0000-4000-8000-00000000005d",
+   "deploymentDateTime": "2026-08-31T06:15:46.832Z",
+   "deploymentKey": "a0000040-0000-4000-8000-000000000040",
+   "name": "TestApp",
+   "revision": 8,
+   "url": "https://acme-test.outsystems.app/TestApp"
+  },
+  {
+   "applicationKey": "a0000094-0000-4000-8000-000000000094",
+   "buildKey": "00000000-0000-0000-0000-000000000000",
+   "deploymentDateTime": "2026-08-26T17:01:52.877Z",
+   "deploymentKey": "a00000b0-0000-4000-8000-0000000000b0",
+   "name": "Ops Advisor",
+   "revision": 3,
+   "url": ""
+  }
+ ],
+ "total": 6,
+ "truncated": true
+}

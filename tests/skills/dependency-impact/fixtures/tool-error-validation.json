@@ -1,0 +1,9 @@
+{
+ "category": "ValidationError",
+ "data": {
+  "category": "ValidationError",
+  "code": "missing_required_parameter",
+  "jsonrpc_code": -32602
+ },
+ "error": "ValidationError: missing required parameter: analysis_id"
+}

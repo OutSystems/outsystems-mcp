@@ -1,0 +1,27 @@
+{
+ "_provenance": "Illustrative env_apps {env_key: test} rows (6 in total) split into two pages in the newer server's offset/next_offset envelope. Names and keys are invented.",
+ "displayed": 2,
+ "next_offset": null,
+ "results": [
+  {
+   "applicationKey": "a00000b5-0000-4000-8000-0000000000b5",
+   "buildKey": "a0000088-0000-4000-8000-000000000088",
+   "deploymentDateTime": "2026-08-21T11:28:11.532Z",
+   "deploymentKey": "a00000fc-0000-4000-8000-0000000000fc",
+   "name": "Mobile Banking",
+   "revision": 4,
+   "url": "https://acme-test.outsystems.app/MobileBanking"
+  },
+  {
+   "applicationKey": "a00000df-0000-4000-8000-0000000000df",
+   "buildKey": "a0000123-0000-4000-8000-000000000123",
+   "deploymentDateTime": "2026-08-19T15:35:40.769Z",
+   "deploymentKey": "a000010b-0000-4000-8000-00000000010b",
+   "name": "ProductionMonitoringAgent",
+   "revision": 11,
+   "url": "https://acme-test.outsystems.app/ProductionMonitoringAgent"
+  }
+ ],
+ "total": 6,
+ "truncated": false
+}

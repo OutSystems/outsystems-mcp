@@ -1,0 +1,241 @@
+{
+ "_provenance": "Illustrative app_list {limit: 500} page: 29 of a 515-asset tenant (one row per assetType, plus every key the other fixtures reference), envelope rewritten to a complete single page. Names and keys are invented.",
+ "displayed": 29,
+ "next_offset": null,
+ "results": [
+  {
+   "assetKey": "a0000082-0000-4000-8000-000000000082",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "ZooApp",
+   "revision": 8,
+   "revisionDateTime": "2026-09-02T14:51:26.523241Z"
+  },
+  {
+   "assetKey": "a000004b-0000-4000-8000-00000000004b",
+   "assetType": "ExtensionLibrary",
+   "isExternal": true,
+   "name": "Zip",
+   "revision": 2,
+   "revisionDateTime": "2026-08-25T12:11:51.601019Z"
+  },
+  {
+   "assetKey": "a000006f-0000-4000-8000-00000000006f",
+   "assetType": "AgentDefinition",
+   "isExternal": false,
+   "name": "Zone Routing Agent",
+   "revision": 3,
+   "revisionDateTime": "2026-08-24T19:10:53.703263Z"
+  },
+  {
+   "assetKey": "a00000d7-0000-4000-8000-0000000000d7",
+   "assetType": "KnowledgeBase",
+   "isExternal": false,
+   "name": "Product FAQ",
+   "revision": 1,
+   "revisionDateTime": "2026-07-30T09:46:05.534919Z"
+  },
+  {
+   "assetKey": "a00000da-0000-4000-8000-0000000000da",
+   "assetType": "SearchServiceConnection",
+   "isExternal": false,
+   "name": "Product Search",
+   "revision": 1,
+   "revisionDateTime": "2026-06-30T14:15:31.703664Z"
+  },
+  {
+   "assetKey": "a00000e9-0000-4000-8000-0000000000e9",
+   "assetType": "ExternalLibrary",
+   "isExternal": false,
+   "name": "UltimatePDF_ExternalLogic",
+   "revision": 2,
+   "revisionDateTime": "2026-08-11T12:38:43.761827Z"
+  },
+  {
+   "assetKey": "a0000116-0000-4000-8000-000000000116",
+   "assetType": "MobileLibrary",
+   "isExternal": false,
+   "name": "Performance Plugin",
+   "revision": 4,
+   "revisionDateTime": "2026-07-21T09:55:32.189159Z"
+  },
+  {
+   "assetKey": "a00000fd-0000-4000-8000-0000000000fd",
+   "assetType": "AIModelConnection",
+   "isExternal": false,
+   "name": "TrialGPT5",
+   "revision": 1,
+   "revisionDateTime": "2026-07-13T11:25:00.991493Z"
+  },
+  {
+   "assetKey": "a000004a-0000-4000-8000-00000000004a",
+   "assetType": "ExternalConnection",
+   "isExternal": false,
+   "name": "vendor_contracts",
+   "revision": 1,
+   "revisionDateTime": "2026-08-11T11:04:44.954541Z"
+  },
+  {
+   "assetKey": "a0000026-0000-4000-8000-000000000026",
+   "assetType": "MobileApplication",
+   "isExternal": false,
+   "name": "Field Service Mobile",
+   "revision": 2,
+   "revisionDateTime": "2026-09-03T04:50:22.653388Z"
+  },
+  {
+   "assetKey": "a000005a-0000-4000-8000-00000000005a",
+   "assetType": "LowCodeLibrary",
+   "isExternal": false,
+   "name": "TestLib",
+   "revision": 11,
+   "revisionDateTime": "2026-08-27T10:38:53.304503Z"
+  },
+  {
+   "assetKey": "a0000065-0000-4000-8000-000000000065",
+   "assetType": "Agent",
+   "isExternal": false,
+   "name": "template_Agent",
+   "revision": 2,
+   "revisionDateTime": "2026-07-02T09:42:31.582634Z"
+  },
+  {
+   "assetKey": "a000012e-0000-4000-8000-00000000012e",
+   "assetType": "MCPConnection",
+   "isExternal": false,
+   "name": "Docs MCP Server",
+   "revision": 1,
+   "revisionDateTime": "2026-07-16T16:43:05.742317Z"
+  },
+  {
+   "assetKey": "a0000102-0000-4000-8000-000000000102",
+   "assetType": "A2AConnection",
+   "isExternal": false,
+   "name": "Partner A2A Agent",
+   "revision": 2,
+   "revisionDateTime": "2026-07-16T11:21:03.669413Z"
+  },
+  {
+   "assetKey": "a000010c-0000-4000-8000-00000000010c",
+   "assetType": "WidgetLibrary",
+   "isExternal": true,
+   "name": "MobileUI",
+   "revision": 3,
+   "revisionDateTime": "2026-07-07T09:19:10.098471Z"
+  },
+  {
+   "assetKey": "a00000ea-0000-4000-8000-0000000000ea",
+   "assetType": "Workflow",
+   "isExternal": false,
+   "name": "Lending Application Workflow",
+   "revision": 2,
+   "revisionDateTime": "2026-08-21T11:29:29.028683Z"
+  },
+  {
+   "assetKey": "a0000035-0000-4000-8000-000000000035",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "TestApp",
+   "revision": 11,
+   "revisionDateTime": "2026-09-02T11:59:11.913097Z"
+  },
+  {
+   "assetKey": "a000001a-0000-4000-8000-00000000001a",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "Content CMS",
+   "revision": 3,
+   "revisionDateTime": "2026-09-02T15:40:51.166926Z"
+  },
+  {
+   "assetKey": "a0000101-0000-4000-8000-000000000101",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "People Onboarding",
+   "revision": 5,
+   "revisionDateTime": "2026-09-01T03:08:16.350184Z"
+  },
+  {
+   "assetKey": "a0000077-0000-4000-8000-000000000077",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "IT Assets Portal",
+   "revision": 13,
+   "revisionDateTime": "2026-09-01T03:07:35.990488Z"
+  },
+  {
+   "assetKey": "a0000019-0000-4000-8000-000000000019",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "Reference Data Admin",
+   "revision": 1,
+   "revisionDateTime": "2026-08-27T12:36:31.234186Z"
+  },
+  {
+   "assetKey": "a0000010-0000-4000-8000-000000000010",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "RequestFlowTestApp",
+   "revision": 1,
+   "revisionDateTime": "2026-08-31T16:40:30.230709Z"
+  },
+  {
+   "assetKey": "a00000b5-0000-4000-8000-0000000000b5",
+   "assetType": "MobileApplication",
+   "isExternal": false,
+   "name": "Mobile Banking",
+   "revision": 4,
+   "revisionDateTime": "2026-08-21T11:25:29.580186Z"
+  },
+  {
+   "assetKey": "a0000001-0000-4000-8000-000000000001",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "Order Tracker",
+   "revision": 1,
+   "revisionDateTime": "2026-08-25T14:02:07.704649Z"
+  },
+  {
+   "assetKey": "a0000094-0000-4000-8000-000000000094",
+   "assetType": "AgentDefinition",
+   "isExternal": false,
+   "name": "Ops Advisor",
+   "revision": 4,
+   "revisionDateTime": "2026-08-26T17:12:22.766012Z"
+  },
+  {
+   "assetKey": "a0000014-0000-4000-8000-000000000014",
+   "assetType": "AgentDefinition",
+   "isExternal": false,
+   "name": "Claims Advisor",
+   "revision": 5,
+   "revisionDateTime": "2026-07-14T09:42:44.954391Z"
+  },
+  {
+   "assetKey": "a000000a-0000-4000-8000-00000000000a",
+   "assetType": "Agent",
+   "isExternal": false,
+   "name": "Lending Policy Agent",
+   "revision": 2,
+   "revisionDateTime": "2026-08-21T10:59:49.991076Z"
+  },
+  {
+   "assetKey": "a0000005-0000-4000-8000-000000000005",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "Data Conversion Tool",
+   "revision": 10,
+   "revisionDateTime": "2026-08-25T14:49:22.228136Z"
+  },
+  {
+   "assetKey": "a0000018-0000-4000-8000-000000000018",
+   "assetType": "WebApplication",
+   "isExternal": false,
+   "name": "Banking Account Services",
+   "revision": 4,
+   "revisionDateTime": "2026-08-21T10:23:18.041656Z"
+  }
+ ],
+ "total": 29,
+ "truncated": false
+}

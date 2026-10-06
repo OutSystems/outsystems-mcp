@@ -1,0 +1,6 @@
+{
+ "_provenance": "Illustrative auth_status response; tenant id and hostname are invented, `claims` and user_id omitted",
+ "logged_in": true,
+ "tenant_hostname": "acme.outsystems.dev",
+ "tenant_id": "a0000093-0000-4000-8000-000000000093"
+}
