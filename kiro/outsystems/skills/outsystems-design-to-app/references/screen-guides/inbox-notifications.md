@@ -4,7 +4,7 @@
 
 A list of messages, alerts, or actionable items with read/unread state management. Used for email inboxes, notification feeds, task inboxes, and approval queues.
 
-1. **Inbox header**: Title (heading3) + unread count badge + action buttons:
+1. **Inbox header**: Title (`AdvancedHtml Tag="h1"` in the Layout's `Title` placeholder) + unread count badge + action buttons:
    - "Mark All Read" button (secondary)
    - Filter/sort controls (unread only, by date, by type)
    - Optional: "Compose" / "New" button for email-style inboxes

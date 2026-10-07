@@ -6,15 +6,15 @@
 
 ## Reuse the same app_key
 
-- The skill's Step 1 has three paths: an existing app the user names (loaded with `mentor_load_asset`), a new app cloned from the tenant's "Template Web App" with `mentor_create_asset` (after confirmation), or an app the user creates in ODC Studio.
+- The skill has three paths to the target app, chosen in Step 1 and acted on at the start of Step 5: an existing app the user names (loaded with `mentor_load_asset`), a new app cloned from the tenant's "Template Web App" with `mentor_create_asset` (after confirmation), or an app the user creates in ODC Studio.
 - For **iterative builds**, the FIRST run creates the app (or uses an existing one). Every subsequent run on "the same app" loads the **same `app_key`** with `mentor_load_asset` — that's the identity pin.
 
-- ✅ Right: note the `app_key` from the first build in the working folder (`design-to-app/<APP_NAME>/`, in `spec.json` or the build report) and load that same app for every subsequent build against `APP_NAME`.
+- ✅ Right: note the `app_key` from the first build in the working folder (`design-to-app/<APP_NAME>/build-notes.md`) and load that same app for every subsequent build against `APP_NAME`.
 - ❌ Wrong: every run creates a new app with a fresh name (`HomeBanking_v1`, `HomeBanking_v2`, ...). New asset every time.
 
 ## Describe only what changes
 
-When sending another prompt to a session on the same app, describe what's CHANGING — not what's already in the app. Restating the whole app makes Mentor rebuild or duplicate existing screens and elements.
+When the app already has the screens, a follow-up prompt on it describes only what's CHANGING, not what's already in the app: restating the whole app makes Mentor rebuild or duplicate existing screens and elements. Re-send the full spec only to an app whose earlier build didn't land (empty or never published).
 
 ## How to detect mistakes
 

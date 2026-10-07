@@ -2,7 +2,7 @@
 
 A collection of specific traps and anti-patterns that bite when generating OutSystems apps from design sources. Each entry: what goes wrong, why, how to detect, how to instruct Mentor to avoid it.
 
-**Adapted from OutSystems' internal field-validated corpus** of traps documented against real app builds. The **engine-level traps apply regardless of how the app is being built**.
+The **engine-level traps apply regardless of how the app is being built**.
 
 **Why we have these:** field testing showed LLMs given a Figma routinely emit visually-plausible UI that ships broken — black SVGs on dark backgrounds, sections that vanish post-publish, tables that render "no records", primary buttons that double up. These gotchas are the catalog of those traps with the *why* attached.
 
@@ -41,7 +41,7 @@ A collection of specific traps and anti-patterns that bite when generating OutSy
 
 | File | When it bites |
 |---|---|
-| [`publish-validator-rejections.md`](publish-validator-rejections.md) | A publish fails with an `OS-*` build-engine code (e.g. OS-APPS-40028) even after Mentor reports success. Read `publish_logs`, report the code and cause, don't blindly re-publish; let Mentor fix the construct in a further turn |
+| [`publish-validator-rejections.md`](publish-validator-rejections.md) | A publish fails with an `OS-*` build-engine code (e.g. OS-APPS-40028) even after Mentor reports success. Read `publish_logs`, report the code and cause, don't blindly re-publish; ask the user, then let Mentor fix the construct in one fix turn (Step 6b) |
 | [`iterative-deployments.md`](iterative-deployments.md) | Keep updating the SAME ODC asset across iterations (same `app_key`, stable URL) instead of spawning `App_v1`, `App_v2`...; follow-up prompts describe only what changes |
 
 ---
@@ -53,9 +53,9 @@ These gotchas inform several stages of the design-to-app pipeline:
 - **Step 2 (load OS UI knowledge):** Loaded on-demand alongside the `outsystems-ui/` and `screen-guides/` references when a design contains any of the matching patterns (SVG icons, theme overrides, tables with seed data, etc.).
 - **Step 3 (compose `spec.json`):** The block-mapping pass and the per-screen `anatomy` should reference the relevant gotcha when its trap is detectable in the source (e.g., icons on dark containers → explicit light colour; figma React Lucide source → emit Phosphor names).
 - **Step 5 (Mentor batches):** The one batch prompt's rules R1–R6 enforce the core gotchas (R1 theme-collisions, R2 svg-icon-baking, R3 tablerecords-seeding, R4 widget-link-slot, R5 duplicate-buttons, R6 spa-section-visibility).
-- **Step 7 (build report):** Acceptance-checklist items can reference gotchas as named verification points ("checked against `gotchas/svg-icon-baking.md`").
+- **Step 3d (acceptance checklist):** Acceptance-checklist items can reference gotchas as named verification points ("checked against `gotchas/svg-icon-baking.md`").
 
 ## Contributing
 
-Each file follows **What goes wrong** → **Why (engine level)** → **How to detect** → **How to prevent**, and describes a trap observed in a real build as a rule (no internal links, app IDs, dates or names).
+Each file covers, roughly in this order, the trap, why it happens, how to spot it in the source, and what the anatomy or spec states to avoid it, written as a rule (no internal links, app IDs, dates or names).
 Keep it in our voice: we drive Mentor through `spec.json`; we don't mutate OML.

@@ -40,7 +40,7 @@ Choose the right UI component for the content and interaction pattern when the d
 | Interaction | Correct Component | Wrong Choice |
 |---|---|---|
 | Related actions (2-3) | ButtonGroup, or an OverflowMenu for secondary ones | Separate scattered buttons (no grouping) |
-| Destructive action confirmation | Popup widget with clear explanation | Browser `window.confirm()` (not branded, no context) |
+| Destructive action confirmation | The design's own pattern; if it shows none, a Popup widget with clear explanation | Browser `window.confirm()` (not branded, no context) |
 | Secondary information on hover | Tooltip block | Popup (too heavy for glanceable info) |
 | Status indicators | Tag / Badge blocks with semantic colors | Plain text (no visual weight) |
 | Transient confirmation | Notification block | Popup (too disruptive for simple confirmation) |

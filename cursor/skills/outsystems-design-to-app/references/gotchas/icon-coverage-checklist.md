@@ -25,8 +25,8 @@ For each location, look at the source screenshot. If the location has an icon, e
 In the design extraction phase (Step 2 extraction / Step 3.0 anatomy of the design-to-app procedure), after extracting the design (Figma screenshot, image, or HTML / code source), write a CONCRETE list — not *"there are some icons"*:
 
 ```
-sidebar nav (8): home, users, person-add, trend-up, calendar, chat-bubble, chart-bar, gear
-sidebar bottom (2): bell-with-red-badge-3 (Notifications), arrow-right (Sign out)
+sidebar nav (8): house, users, user-plus, trend-up, calendar, chat-circle, chart-bar, gear
+sidebar bottom (2): bell in an IconBadge with count 3 (Notifications), arrow-right (Sign out)
 KPI #1 AuM: briefcase top-right
 KPI #2 Clients: users top-right
 KPI #3 Alerts (highlighted): bell top-right
@@ -34,7 +34,7 @@ KPI #4 today: calendar top-right
 agenda card #1 (10:30): video-camera marker
 agenda card #2 (14:00): phone marker
 search: magnifying-glass left, ⌘K kbd chip right
-action links (×8): trailing right-arrow
+action links (×8): trailing arrow-right
 ```
 
 This enumerated list feeds the `spec.json` anatomy nodes — every icon location gets an OutSystems UI Icon widget node with its Icon property set (or, only if unavoidable, an inline `<svg>` with an explicit `fill`, per [`svg-icon-baking.md`](svg-icon-baking.md)).
@@ -45,10 +45,10 @@ When the source is HTML or front-end code, search it for icon markup and count t
 
 If the rendered HTML has Lucide classes, also see [`icon-translation-figma.md`](icon-translation-figma.md) for the Lucide → Phosphor translation table.
 
-## Pre-publish self-check
+## Self-check before firing Mentor
 
 Before firing Mentor, count icons in the enumerated list vs icons in the spec.json. If the count doesn't match, you missed some.
 
 ## Verify after publish
 
-Open the published app in a browser. Walk the visual checklist above against the live screen. Any location that was supposed to have an icon and doesn't → patch in a follow-up Mentor turn.
+Open the published app in a browser (SKILL.md Step 6b). Walk the visual checklist above against the live screen. Any location that was supposed to have an icon and doesn't → add it to the Step 6b defect list for the user.

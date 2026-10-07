@@ -4,10 +4,12 @@
   "primary_color": "#HEX",
 
   "app_chrome": {
-    "_comment": "Shared layout chrome — defined ONCE, applied to all screens using the layout_block. Mentor places the app's existing Common/Menu block in the layout and fills it from this. Login/LayoutBlank screens set layout_override and skip app_chrome.",
+    "_comment": "Shared layout chrome — defined ONCE, applied to all screens using the layout_block. Mentor places the app's existing Common/Menu block ONCE in the layout (the Navigation placeholder of LayoutSideMenu, the Header of LayoutTopMenu) and fills it from navigation.nav_groups; screen anatomies never repeat the Menu. Login/LayoutBlank screens set layout_override and skip app_chrome.",
     "layout_block": "LayoutSideMenu | LayoutTopMenu",
-    "sidebar": {
-      "width": "280px",
+    "navigation": {
+      "_comment": "position matches layout_block: side = LayoutSideMenu (left menu; width, background, logo, app_title, app_subtitle describe the side panel), top = LayoutTopMenu (links across the top bar; keep only the styling fields the design shows). A top menu usually has one nav group with no label.",
+      "position": "side | top",
+      "width": "280px (side only)",
       "background": "#hex",
       "logo": {
         "text": "App logo text or image reference",
@@ -19,7 +21,7 @@
         {
           "label": "Group Name (e.g., Main, Collections, Operations)",
           "items": [
-            { "label": "Nav Item Label", "icon": "outsystems icon name", "screen": "TargetScreenName" }
+            { "label": "Nav Item Label", "icon": "bare Phosphor icon name (e.g. house)", "screen": "TargetScreenName" }
           ]
         }
       ],
@@ -42,12 +44,23 @@
   "blocks": [
     {
       "_comment": "Reusable Web Blocks — defined once, built by Mentor as the app's own Web Blocks, referenced by name in screen anatomies. Identify repeating UI patterns across screens (info rows, badges, timeline items, card headers) and extract them here instead of describing inline each time.",
-      "name": "BlockName (e.g., InfoRow, StatusBadge, TimelineRow, CardHeader)",
+      "name": "BlockName (e.g., StatRow, InfoRow, StatusBadge, TimelineRow, CardHeader)",
       "description": "What this block renders and where it's reused",
       "inputs": [
-        { "name": "InputParamName", "type": "text | integer | boolean | EntityName Identifier", "description": "what this input controls" }
+        { "name": "InputParamName", "type": "text | integer | decimal | boolean | date | datetime | EntityName Identifier | Text List | Decimal List | <Structure> List", "description": "what this input controls" }
       ],
       "layout": "Layout description — direction, spacing, alignment, key dimensions",
+      "anatomy": [
+        "{/* The block's own widget tree, same format as screens[].anatomy; inputs are bound by name. Example: StatRow (inputs Label, Value, Delta, Trend, LineColor) */}",
+        "<Container class=\"display-flex align-items-center justify-content-space-between gap-base padding-y-s\">",
+        "  <Container>",
+        "    <Text class=\"console-eyebrow font-semi-bold\" bind=\"Label\"/>",
+        "    <Expression class=\"console-num font-bold\" bind=\"Value\"/>",
+        "  </Container>",
+        "  <Tag IsLight Shape=Rounded bind=\"Delta\"/>",
+        "  <LineChart class=\"console-spark\" Height=40px spacing=0 series=\"Trend\" seriesColor=\"LineColor\" axes=hidden legend=hidden/>",
+        "</Container>"
+      ],
       "placeholders": ["ContentSlot — named placeholder if the block accepts child widgets"],
       "extended_class": "Space-separated class names ONLY (OS UI utilities + classes declared in design_system.theme_extensions.classes[].name). No inline CSS rules — declare them in theme_extensions.",
       "usage_example": "Short description of how screens reference this block (e.g., 'Each info row in AssetDetail uses InfoRow with Label and Value inputs')"
@@ -55,7 +68,7 @@
   ],
 
   "design_system": {
-    "_comment": "Complete visual design system. Tokens override the existing OML theme.",
+    "_comment": "Complete visual design system. colors, typography, spacing, border_radius, shadows (and the top-level primary_color) are DESCRIPTIVE: they tell Mentor the design's intent, and none of them is emitted as CSS. Only theme_extensions reaches the theme, so every variable a class or node uses (including --page-bg) must be declared in theme_extensions.css_variables. New app: theme_extensions re-themes the app. Existing app: the app's theme wins (see theme_extensions).",
 
     "colors": {
       "page_bg": { "var": "--page-bg", "value": "#hex", "usage": "primary page canvas" },
@@ -106,26 +119,47 @@
     ],
 
     "theme_extensions": {
-      "_comment": "SINGLE SOURCE OF TRUTH for ALL custom CSS the app needs. Both the :root variable overrides AND every custom class go here, ONCE. The agent emits this entire block onto the THEME's StyleSheet — theme-wide by default. Anatomy node class= attributes (and blocks[].extended_class) reference these classes by name only — they NEVER inline CSS rules.\n\nUTILITIES FIRST. Before declaring a custom class here, check if a combination of OS UI utility classes already covers the visual — see styles-and-utilities.md for the full catalog. Common properties expressible via utilities (do NOT re-declare in classes[]):\n- display: display-flex / display-grid / display-block / display-inline-flex / etc.\n- flex layout: align-items-center, justify-content-space-between, flex-direction-column, gap-base / row-gap-s / column-gap-l, flex1\n- spacing: padding-base / margin-top-l / padding-x-m / margin-y-base (full scale: none/xs/s/base/m/l/xl/xxl)\n- color: background-primary / text-success / background-neutral-1 (semantic + 12 color families x 7 shades + 11 neutrals)\n- typography: font-bold / font-semi-bold / heading2 / font-size-display / text-align-center\n- border: border-radius-soft (4px), border-radius-rounded (100px pill), border-radius-circle (50%), border-size-s/m/l\n- shadow: shadow-xs through shadow-xl (6 levels)\n- positioning: position-relative / position-absolute / absolute-top-right / sticky / fixed\n- sizing: full-width / full-height / half-width / auto-height\n\nA custom class in classes[] is JUSTIFIED only when (a) the property has NO utility equivalent (custom gradient, animation, clip-path, transform, non-standard background tint that doesn't map to neutral/semantic), OR (b) the value falls OUTSIDE the utility scale (e.g., border-radius: 16px doesn't match soft=4px / rounded=100px / circle=50%; width: 56px isn't a standard size). Even when justified, the class body should be THIN — push every property that COULD be a utility out to the widget's ExtendedClass alongside the custom class name. Example: for a 56x56 navy flag circle, ExtendedClass='display-flex align-items-center justify-content-center border-radius-circle flag-gbp' + a thin .flag-gbp { background: #002470; border: 2px solid var(--color-neutral-3); width: 56px; height: 56px; } — NOT a single .flag-gbp that re-declares display/align/justify/radius properties that utilities already provide.\n\nRule for class bodies: use var(--...) references to css_variables below; hardcoded hex/px in class rules is the smell that you forgot to declare the underlying token as a variable.\n\nRule for !important: avoid; only use when overriding a known OS UI block default that genuinely won't budge via block arguments + ExtendedClass alone. If you're writing !important on >2 properties in a class, you're fighting the wrong battle — pick the block-level arg or a different block.",
+      "_comment": "SINGLE SOURCE OF TRUTH for ALL custom CSS the app needs, and the ONLY CSS that reaches the theme. Both the :root variables AND every custom class go here, ONCE. The agent emits this entire block onto the THEME's StyleSheet — theme-wide. Anatomy node class= attributes (and blocks[].extended_class) reference these classes by name only — they NEVER inline CSS rules. Every class an anatomy node or block references is either a stock OS UI utility or defined in classes[]; every var(--...) a class or node uses is declared in css_variables.\n\nEXISTING APP: the app's theme wins. Add only NEW classes (prefixed with the new screen's name) and new variables; do NOT override existing OS UI variables (--color-primary, --color-neutral-*, etc.) or existing :root values unless the user asks to restyle. CLASS PREFIX: greenfield = a short app-name prefix (console- in this example, for an app named Console); existing app = the new screen's name.\n\nUTILITIES FIRST. Before declaring a custom class here, check if a combination of OS UI utility classes already covers the visual — see styles-and-utilities.md for the full catalog. Common properties expressible via utilities (do NOT re-declare in classes[]):\n- display: display-flex / display-grid / display-block / display-inline-flex / etc.\n- flex layout: align-items-center, justify-content-space-between, flex-direction-column, gap-base / row-gap-s / column-gap-l, flex1\n- spacing: padding-base / margin-top-l / padding-x-m / margin-y-base (full scale: none/xs/s/base/m/l/xl/xxl)\n- color: background-primary / text-success / background-neutral-1 (semantic + 12 color families x 7 shades + 11 neutrals)\n- typography: font-bold / font-semi-bold / heading2 / font-size-display / text-align-center\n- border: border-radius-soft (4px), border-radius-rounded (100px pill), border-radius-circle (50%), border-size-s/m/l\n- shadow: shadow-xs through shadow-xl (6 levels)\n- positioning: position-relative / position-absolute / absolute-top-right / sticky / fixed\n- sizing: full-width / full-height / half-width / auto-height\n\nA custom class in classes[] is JUSTIFIED only when (a) the property has NO utility equivalent (custom gradient, animation, clip-path, transform, non-standard background tint that doesn't map to neutral/semantic), OR (b) the value falls OUTSIDE the utility scale (e.g., border-radius: 16px doesn't match soft=4px / rounded=100px / circle=50%; width: 56px isn't a standard size). Even when justified, the class body should be THIN — push every property that COULD be a utility out to the widget's ExtendedClass alongside the custom class name. Example: for a 56x56 navy flag circle, ExtendedClass='display-flex align-items-center justify-content-center border-radius-circle console-flag-gbp' + a thin .console-flag-gbp { background: var(--console-flag-gbp-bg); border: 2px solid var(--console-divider); width: 56px; height: 56px; } (declare both variables in css_variables) — NOT a single .console-flag-gbp that re-declares display/align/justify/radius properties that utilities already provide.\n\nRule for class bodies: use var(--...) references to css_variables below; hardcoded hex/px in class rules is the smell that you forgot to declare the underlying token as a variable.\n\nRule for !important: avoid; only use when overriding a known OS UI block default that genuinely won't budge via block arguments + ExtendedClass alone. If you're writing !important on >2 properties in a class, you're fighting the wrong battle — pick the block-level arg or a different block.",
       "css_variables": {
-        "_comment": "Two flavors mixed in one map: (1) overrides of EXISTING OS UI variables (--color-primary, --color-neutral-0 through -10, --color-background-body, --shadow-s/m/l, etc. — re-themes the framework everywhere) and (2) NEW app-specific variables (--card-bg-currency, --status-paused, --banner-spend-anywhere, --shadow-card, etc. — for tokens that don't map to an existing OS UI variable). Every color/shadow/size used in classes[] below should be a variable here — not a hardcoded value inline.",
+        "_comment": "Two flavors mixed in one map: (1) overrides of EXISTING OS UI variables (--color-primary, --color-neutral-0 through -10, --color-background-body, --shadow-s/m/l, etc. — re-themes the framework everywhere; greenfield only, or when the user asks to restyle an existing app) and (2) NEW app-specific variables (--page-bg, --console-divider, --console-brand-bg, etc. — for tokens that don't map to an existing OS UI variable). Every color/shadow/size used in classes[] below should be a variable here — not a hardcoded value inline. Only what is declared here is emitted: a var listed in design_system.colors but not here does not exist at runtime.",
         "--color-primary": "#9FE870",
         "--color-neutral-0": "#FFFFFF",
         "--color-neutral-7": "#6B7885",
         "--color-neutral-10": "#1A1A1A",
-        "--card-bg-currency": "#EDF0ED",
-        "--shadow-card": "0px 2px 8px 0px rgba(0,0,0,0.06)",
-        "--flag-gbp-bg": "#002470"
+        "--page-bg": "#F4F5F7",
+        "--console-muted": "#6B7885",
+        "--console-divider": "#E3E6EA",
+        "--console-brand-bg": "#1A1A1A"
       },
       "classes": [
         {
-          "_comment": "Each class is defined ONCE here. Apply by referencing the name from any anatomy node's class= (or a block's extended_class), space-separated alongside OS UI utility classes. Rule body uses var(--...) references — every color/shadow/size already declared in css_variables.",
-          "name": "card-currency",
-          "rule": "background: var(--card-bg-currency); border-radius: 16px; box-shadow: var(--shadow-card);"
+          "_comment": "Each class is defined ONCE here. Apply by referencing the name from any anatomy node's class= (or a block's extended_class), space-separated alongside OS UI utility classes. Rule body uses var(--...) references — every color/shadow/size already declared in css_variables. These are exactly the custom classes the example anatomies (blocks[] and screens[]) use.",
+          "name": "console-canvas",
+          "rule": "background: var(--page-bg);"
         },
         {
-          "name": "flag-gbp",
-          "rule": "background: var(--flag-gbp-bg); border: 2px solid var(--color-neutral-3); width: 56px; height: 56px;"
+          "name": "console-eyebrow",
+          "rule": "font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--console-muted); white-space: nowrap;"
+        },
+        {
+          "name": "console-metric-xl",
+          "rule": "font-size: 48px; line-height: 1.1; white-space: nowrap; min-width: 3ch;"
+        },
+        {
+          "name": "console-num",
+          "rule": "font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 3ch;"
+        },
+        {
+          "name": "console-spark",
+          "rule": "width: 96px; height: 40px;"
+        },
+        {
+          "name": "console-stat-column",
+          "rule": "border-left: 1px solid var(--console-divider);"
+        },
+        {
+          "name": "console-login-brand",
+          "rule": "background: var(--console-brand-bg); min-height: 100vh;"
         }
       ]
     }
@@ -133,51 +167,92 @@
 
   "entities": [
     {
-      "_comment": "REFERENCE model: Mentor reuses existing entities by name, adds what's missing, creates only what's new.",
-      "name": "EntityName",
-      "type": "master | transaction | static",
+      "_comment": "REFERENCE model: Mentor reuses existing entities by name, adds what's missing, creates only what's new. type is master | transaction | static. The entities below match the example sample_data and anatomies: Status is static (its sample_data rows become the static entity's records, not seeded), DashboardMetric is the single-row KPI store.",
+      "name": "Status",
+      "type": "static",
+      "attributes": [
+        { "name": "Id", "data_type": "integer", "is_primary_key": true, "is_foreign_key": false, "enum_values": null },
+        { "name": "Label", "data_type": "text", "is_primary_key": false, "is_foreign_key": false, "enum_values": ["On track", "In review", "Closed"] },
+        { "name": "ColorHex", "data_type": "text", "is_primary_key": false, "is_foreign_key": false, "enum_values": null }
+      ]
+    },
+    {
+      "name": "Category",
+      "type": "master",
       "attributes": [
         { "name": "Id", "data_type": "longIntegerIdentifier", "is_primary_key": true, "is_foreign_key": false, "enum_values": null },
         { "name": "Name", "data_type": "text", "is_primary_key": false, "is_foreign_key": false, "enum_values": null },
-        { "name": "StatusId", "data_type": "Status Identifier", "is_primary_key": false, "is_foreign_key": true, "enum_values": ["Active", "Inactive"] }
+        { "name": "SharePct", "data_type": "integer", "is_primary_key": false, "is_foreign_key": false, "enum_values": null }
+      ]
+    },
+    {
+      "name": "Record",
+      "type": "transaction",
+      "attributes": [
+        { "name": "Id", "data_type": "longIntegerIdentifier", "is_primary_key": true, "is_foreign_key": false, "enum_values": null },
+        { "name": "Code", "data_type": "text", "is_primary_key": false, "is_foreign_key": false, "enum_values": null },
+        { "name": "Title", "data_type": "text", "is_primary_key": false, "is_foreign_key": false, "enum_values": null },
+        { "name": "CategoryId", "data_type": "Category Identifier", "is_primary_key": false, "is_foreign_key": true, "enum_values": null },
+        { "name": "OwnerName", "data_type": "text", "is_primary_key": false, "is_foreign_key": false, "enum_values": null },
+        { "name": "StatusId", "data_type": "Status Identifier", "is_primary_key": false, "is_foreign_key": true, "enum_values": null },
+        { "name": "Amount", "data_type": "decimal", "is_primary_key": false, "is_foreign_key": false, "enum_values": null },
+        { "name": "CreatedOn", "data_type": "date", "is_primary_key": false, "is_foreign_key": false, "enum_values": null }
+      ]
+    },
+    {
+      "name": "DashboardMetric",
+      "type": "master",
+      "attributes": [
+        { "name": "Id", "data_type": "longIntegerIdentifier", "is_primary_key": true, "is_foreign_key": false, "enum_values": null },
+        { "name": "RecordsProcessed", "data_type": "integer", "is_primary_key": false, "is_foreign_key": false, "enum_values": null },
+        { "name": "ActiveCount", "data_type": "integer", "is_primary_key": false, "is_foreign_key": false, "enum_values": null }
       ]
     }
   ],
 
   "sample_data": {
-    "_comment": "The seed set: the design's REAL visible values, transcribed verbatim (never 'User 1'/'TBD'), one array of rows per entity, literal values only (dates included). How it is seeded is SKILL.md Step 5 / rule R3. Headline KPIs that are not a count over these rows go in a single-row metric entity (e.g. DashboardMetric).",
-    "Status": [ { "Label": "On track", "ColorHex": "#0F9D63" }, { "Label": "In review", "ColorHex": "#6D3BEB" } ],
+    "_comment": "The seed set: the design's REAL visible values, transcribed verbatim (never 'User 1'/'TBD'), one array of rows per entity, literal values only (dates included). How it is seeded is SKILL.md Step 5 / rule R3. Seed only non-static entities: a static entity (Status here) carries its records in the entity itself and has no Create action. Each seed action is named Seed<Entity> and the When-Published timer SeedData, so app_logs search 'Seed' finds them. FOREIGN KEYS: a FK value is the parent row's label, its first Text attribute (\"StatusId\": \"Closed\" is the Status row whose Label is \"Closed\"); every referenced label exists in the parent's rows. Seed parents before children and resolve the Id from the label. Headline KPIs that are not a count over these rows go in a single-row metric entity with ONE ATTRIBUTE PER METRIC (DashboardMetric { RecordsProcessed, ActiveCount }), never key/value rows.",
+    "Status": [ { "Label": "On track", "ColorHex": "#0F9D63" }, { "Label": "In review", "ColorHex": "#6D3BEB" }, { "Label": "Closed", "ColorHex": "#8B95A4" } ],
     "Category": [ { "Name": "Onboarding", "SharePct": 41 }, { "Name": "Renewals", "SharePct": 29 } ],
     "Record": [ { "Code": "R-111", "Title": "Renew Acme support contract", "CategoryId": "Renewals", "OwnerName": "Maria Silva", "StatusId": "Closed", "Amount": 550, "CreatedOn": "2026-08-17" } ],
-    "DashboardMetric": [ { "MetricKey": "records_processed", "MetricValue": 135, "DeltaLabel": "+42.5%", "DeltaKind": "pos" } ]
+    "DashboardMetric": [ { "RecordsProcessed": 135, "ActiveCount": 92 } ]
   },
 
   "screens": [
     {
-      "_comment_authenticated": "Screen using the shared app_chrome layout. Title/subtitle are screen-level properties (go in Title placeholder). The `anatomy` field holds the full screen widget tree (there is no main_content[]).",
+      "_comment_authenticated": "Screen using the shared app_chrome layout (the Menu comes from app_chrome.navigation, placed once in the layout, never in the anatomy). Title/subtitle are screen-level properties (go in Title placeholder). The `anatomy` field holds the full screen widget tree (there is no main_content[]).",
       "name": "ScreenName",
-      "type": "dashboard | list | detail | gallery | wizard | settings",
+      "type": "dashboard | list | detail | gallery | wizard | settings | login",
       "description": "One sentence purpose.",
-      "entities": ["Entity1", "Entity2"],
+      "entities": ["Record", "Status", "DashboardMetric"],
       "title": "Page Title (goes in Title placeholder as AdvancedHtml h1)",
       "subtitle": "Optional subtitle below the title",
 
-      "_anatomy_comment": "PRIMARY structural contract — a widget-tree ANATOMY of the WHOLE screen as pseudo-JSX: real OutSystems UI block names (consult the OS UI Blocks/Theme references first) correctly NESTED, with visual styles inline as REAL classes (layout/sizing/colors/backgrounds/typography), data `bind`/`source`, and explicit chart `series`. Captures the screen as-is so Mentor realizes an explicit structure instead of improvising from prose. Custom classes referenced here MUST be defined once in design_system.theme_extensions (the app.css). See references/design-capture.md for the format + a worked Overview anatomy. The anatomy is the ONLY per-screen structure (there is no separate main_content[]); it carries block + inline classes + bind/source + chart series + inline behavior annotations for every region. FORMAT: an ARRAY OF STRINGS, one line of the tree per entry (indentation kept), so the file stays readable at the Step 4 review; never one escaped string with \\n.",
+      "_anatomy_comment": "PRIMARY structural contract — a widget-tree ANATOMY of the WHOLE screen as pseudo-JSX: real OutSystems UI block names (consult the OS UI Blocks/Theme references first) correctly NESTED, with visual styles inline as REAL classes (layout/sizing/colors/backgrounds/typography), data `bind`/`source`, and explicit chart `series`. Captures the screen as-is so Mentor realizes an explicit structure instead of improvising from prose. Every class is a stock OS UI utility or defined once in design_system.theme_extensions.classes; the page background is applied on the screen root (the Layout's ExtendedClass). HEADINGS: the screen title is AdvancedHtml Tag=\"h1\" in the Layout's Title placeholder, section headings AdvancedHtml h2, card titles h3; heading1..heading6 classes only size text. Column proportions come from Columns*/Gallery blocks (no custom grid); card surfaces are Card/CardItem/CardSectioned and chips Tag/Badge, never a styled Container. StatRow below is this app's own block from blocks[]. See references/design-capture.md for the format + a worked Overview anatomy. The anatomy is the ONLY per-screen structure (there is no separate main_content[]); it carries block + inline classes + bind/source + chart series + inline behavior annotations for every region. FORMAT: an ARRAY OF STRINGS, one line of the tree per entry (indentation kept), so the file stays readable at the Step 4 review; never one escaped string with \\n.",
       "anatomy": [
-        "<LayoutTopMenu>",
-        "  <Header><Menu ActiveItem=0 brand=\"AppName\" links=[...] login=right class=\"app-topnav\"/></Header>",
+        "<LayoutTopMenu ExtendedClass=\"console-canvas\">  {/* page background applied on the screen root; Header holds the app_chrome Menu, not repeated here */}",
+        "  <Title><AdvancedHtml Tag=\"h1\">Page Title</AdvancedHtml></Title>",
         "  <MainContent>",
         "    <Card UsePadding=false class=\"margin-bottom-base\">",
-        "      <Container class=\"hero-grid\"> {/* custom: display:grid; grid-template-columns:62% 38% */}",
-        "        <Container class=\"padding-m\">",
-        "          <Text class=\"eyebrow\">RECORDS PROCESSED</Text>",
-        "          <Container class=\"metric-xl\" bind=\"DashboardMetric.RecordsProcessed\">135</Container>",
-        "          <AreaChart Height=128px Spline series=[8,10,...,22] seriesColor=\"#6D3BEB\" axes=hidden legend=hidden/>",
-        "        </Container>",
-        "        <Container class=\"stack\"> {/* custom: divided right column */}",
-        "          <StatRow Label=\"ACTIVE\" bind=\"DashboardMetric.ActiveCount\" value=92 Delta=\"+43.2%\" trend=[...] LineColor=\"#0F9D63\"/>",
-        "        </Container>",
-        "      </Container>",
+        "      <ColumnsMediumLeft GutterSize=None PhoneBehavior=All",
+        "        Column1={<Container class=\"padding-m\">",
+        "          <Text class=\"console-eyebrow font-semi-bold\">RECORDS PROCESSED</Text>",
+        "          <Expression class=\"console-metric-xl font-bold\" bind=\"DashboardMetric.RecordsProcessed\"/>",
+        "          <AreaChart Height=128px Spline series=[8,10,9,12,11,14,13,16,15,18,17,22] seriesColor=\"#6D3BEB\" axes=hidden legend=hidden spacing=0/>",
+        "        </Container>}",
+        "        Column2={<Container class=\"console-stat-column padding-m\">",
+        "          <StatRow Label=\"ACTIVE\" Value=\"DashboardMetric.ActiveCount\" Delta=\"+43.2%\" Trend=[70,74,79,83,88,92] LineColor=\"#0F9D63\"/>",
+        "        </Container>}",
+        "      />",
+        "    </Card>",
+        "    <AdvancedHtml Tag=\"h2\" class=\"margin-bottom-s\">Records</AdvancedHtml>",
+        "    <Card class=\"margin-bottom-base\">",
+        "      <AdvancedHtml Tag=\"h3\" class=\"margin-bottom-s\">Recent records</AdvancedHtml>",
+        "      <Table source=\"Record⋈Status sort=CreatedOn desc\">",
+        "        <Column head=\"CODE\"><Expression class=\"console-num\" bind=\"Record.Code\"/></Column>",
+        "        <Column head=\"STATUS\"><Tag IsLight Shape=Rounded color=\"Status.ColorHex\" bind=\"Status.Label\"/></Column>",
+        "        <Column head=\"AMOUNT\" class=\"text-align-right\"><Expression class=\"console-num font-bold\" bind=\"FormatCurrency(Record.Amount, '$', 2, '.', ',')\"/></Column>",
+        "      </Table>",
         "    </Card>",
         "    <!-- ...every other region as nested real blocks with inline classes... -->",
         "  </MainContent>",
@@ -203,9 +278,9 @@
       }
     },
     {
-      "_comment_unauthenticated": "Screen with layout_override that skips app_chrome (e.g., Login).",
+      "_comment_unauthenticated": "ONLY for designs that include a login screen. Sets layout_override and skips app_chrome. It is the one screen that is anonymous by design; every other screen requires login unless the user asks for a public screen.",
       "name": "LoginScreen",
-      "type": "landing",
+      "type": "login",
       "description": "Login screen.",
       "entities": [],
       "layout_override": "LayoutBlank",
@@ -214,9 +289,9 @@
 
       "anatomy": [
         "<LayoutBlank>",
-        "  <ColumnsMediumLeft GutterSize=None",
-        "    Column1={<Container class=\"login-brand-panel padding-xl\">...</Container>}",
-        "    Column2={<Container class=\"login-form padding-xl\"><Input .../><Button class=\"btn btn-primary\">Sign in</Button></Container>}",
+        "  <ColumnsMediumLeft GutterSize=None PhoneBehavior=All",
+        "    Column1={<Container class=\"console-login-brand text-neutral-0 padding-xl\"><AdvancedHtml Tag=\"h1\">AppName</AdvancedHtml><Text>Tagline from the design</Text></Container>}",
+        "    Column2={<Container class=\"padding-xl\"><Input Label=\"Email\"/><Input Label=\"Password\" InputType=Password/><Button class=\"btn btn-primary\">Sign in</Button></Container>}",
         "  />",
         "</LayoutBlank>"
       ],
@@ -228,7 +303,7 @@
   ],
 
   "icon_mapping": [
-    { "role": "visual role (e.g., navigation-home, action-send)", "outsystems_icon": "OutSystems icon name" }
+    { "role": "visual role (e.g., navigation-home, action-send)", "icon": "bare Phosphor icon name (e.g. house, user-plus, bell)" }
   ],
 
   "roles": [
@@ -236,28 +311,39 @@
     { "name": "Viewer", "description": "Read-only access." }
   ],
 
+  "_comment_acceptance_checklist": "Every item starts with [data] (sent with batch 1: entities, roles, seed actions, timer) or [screen] (sent with batch 2: screens, theme, charts, chrome, Menu); each batch receives ONLY its tagged items. Every item is checkable by Mentor inside the session BEFORE any publish: no row counts, no app_logs, no rendered output. Those go in post_publish_checks, the agent's own checks after a publish, never sent to Mentor.",
   "acceptance_checklist": [
-    "Entity X created with N attributes",
-    "Screen Y exists with correct layout and data bindings",
-    "ProgressCircle/ProgressBar/Chart implemented using OS blocks, not raw containers",
-    "Menu block has sidebar navigation with ALL nav items from app_chrome.sidebar.nav_groups",
-    "Theme StyleSheet contains a :root with EVERY entry from design_system.theme_extensions.css_variables (each as `--name: value;`) AND a `.<name> { <rule> }` selector for EVERY entry in design_system.theme_extensions.classes[]. The agent emits theme_extensions ONCE onto the theme — no per-screen or per-block duplication.",
-    "Every widget's ExtendedClass value across the entire app traces to either (a) a known OS UI utility class OR (b) an entry in design_system.theme_extensions.classes[].name. Undefined class refs are silent no-ops. No widget declares CSS rules inline.",
-    "Class rule bodies in theme_extensions.classes[] use var(--...) references for every color/shadow/size — no hardcoded hex/px duplicated across rules. Tokens that don't already exist as OS UI variables (e.g., --card-bg-currency, --shadow-card) are declared in theme_extensions.css_variables in the same single :root block.",
-    "Every region in the anatomy has its spacing applied (e.g. margin-bottom-* between sections)",
-    "SIZING — no dangling class: EVERY custom class referenced in any anatomy node is defined in theme_extensions.classes[] (list the anatomy's class tokens and confirm each resolves). An undefined class (e.g. a sparkline width) is a silent no-op that lets the element grow and squeeze siblings (wraps metrics like 92).",
-    "SIZING — page background APPLIED: the screen root / MainContent uses background: var(--page-bg) (light canvas). A defined-but-unused --page-bg leaves the page dark. Verify a node actually applies it.",
-    "SIZING — charts render at a real height: every chart widget >=28px (sparklines ~40px; a thin segmented/stacked bar keeps a >=28px widget and gets its thin look from the bar thickness, ~14px) WITH zeroed Highcharts spacing (spacingTop/Bottom/Left/Right=0). No collapsed/missing chart (a 12px bar draws nothing).",
-    "SIZING — metrics never wrap: number/label nodes have white-space:nowrap + min-width; stat grids use explicit column sizes (e.g. 1fr 96px auto), not three autos; sparklines have a fixed defined width so they don't eat the row.",
-    "SEED — via generated Create<Entity> actions: each seed action guards on Count/aggregate = 0 (idempotent) then calls the generated Create<Entity> once per row, wired to a When-Published timer (reliable, dialect-safe). Verify post-publish via app_logs (search 'Seed') that each seed timer logged 'finished successfully' (not an error) — an unseeded table ships empty.",
-    "CHARTS — bound to a populated source: every chart's DataPointList / series resolves to a populated aggregate over a seeded entity (or a parsed metric field), never a declared-but-unpopulated list variable (an empty DataPointList renders nothing). Verify each chart's source is a real aggregate/populated list.",
-    "Authentication set (no RegisteredRole)",
-    "Exactly one Layout block at each screen root.",
-    "No raw binding path (e.g. GetX.List.Current.Entity.Attr) appears as visible text; every data node renders its value.",
-    "Each seeded entity has exactly the intended row count after deploy (no duplicates); KPI values equal the design.",
-    "Counts, amounts and dates render with the design's formatting (thousands separators, currency, date format).",
-    "Block default children are replaced (Breadcrumbs items, Tabs, Accordion, etc. match the design).",
-    "Do NOT publish the app; publishing is done separately after the user confirms.",
-    "VERIFICATION GATE: after implementation, read back the app state (the screen list, the Menu block, each screen's widget tree, the theme StyleSheet with its :root block and classes, entity row counts) and verify every item above; fix any failure before finishing."
+    "[data] Entity X created with N attributes",
+    "[data] SEED — via generated Create<Entity> actions, non-static entities only (a static entity carries its records in the entity itself): each seed action Seed<Entity> guards on Count = 0 (idempotent) then calls the generated Create<Entity> once per sample_data row with its literal values; parents are seeded before children, each FK Id resolved from the parent row's label; the timer SeedData is scheduled When-Published and runs every Seed<Entity> action. No SQL INSERTs.",
+    "[data] Do NOT publish the app in this turn; publishing is done separately after the user confirms.",
+    "[data] VERIFICATION GATE: after implementation, read back the app state (entities and their attributes, static entity records, roles, each Seed<Entity> action and the SeedData timer) and verify every item of this batch; fix any failure before finishing.",
+    "[screen] Screen Y exists with correct layout and data bindings",
+    "[screen] ProgressCircle/ProgressBar/Chart implemented using OS blocks, not raw containers",
+    "[screen] Navigation: the Menu block is placed ONCE in the layout chrome (the Navigation placeholder for LayoutSideMenu, the Header for LayoutTopMenu) with ALL nav items from app_chrome.navigation.nav_groups, each with its Phosphor icon and target screen; no screen adds its own Menu.",
+    "[screen] Theme StyleSheet contains a :root with EVERY entry from design_system.theme_extensions.css_variables (each as `--name: value;`) AND a `.<name> { <rule> }` selector for EVERY entry in design_system.theme_extensions.classes[]. The agent emits theme_extensions ONCE onto the theme — no per-screen or per-block duplication. Existing app: only new prefixed classes and new variables; no existing OS UI variable or :root value is overridden unless the user asked to restyle.",
+    "[screen] Every widget's ExtendedClass value across the entire app traces to either (a) a known OS UI utility class OR (b) an entry in design_system.theme_extensions.classes[].name. Undefined class refs are silent no-ops. No widget declares CSS rules inline.",
+    "[screen] Class rule bodies in theme_extensions.classes[] use var(--...) references for every color/shadow/size — no hardcoded hex/px duplicated across rules. Tokens that don't already exist as OS UI variables (e.g., --page-bg, --console-divider) are declared in theme_extensions.css_variables in the same single :root block.",
+    "[screen] Every region in the anatomy has its spacing applied (e.g. margin-bottom-* between sections)",
+    "[screen] SIZING — no dangling class: EVERY custom class referenced in any anatomy node is defined in theme_extensions.classes[] (list the anatomy's class tokens and confirm each resolves). An undefined class (e.g. a sparkline width) is a silent no-op that lets the element grow and squeeze siblings (wraps metrics like 92).",
+    "[screen] SIZING — page background APPLIED: the screen root (the Layout block's ExtendedClass) carries a class with background: var(--page-bg) (light canvas). A defined-but-unused --page-bg leaves the page dark. Verify a node actually applies it.",
+    "[screen] SIZING — charts render at a real height: every chart widget >=28px (sparklines ~40px; a thin segmented/stacked bar keeps a >=28px widget and gets its thin look from the bar thickness, ~14px) WITH zeroed Highcharts spacing (spacingTop/Bottom/Left/Right=0). No collapsed/missing chart (a 12px bar draws nothing).",
+    "[screen] SIZING — metrics never wrap: number/label nodes have white-space:nowrap + min-width; column proportions come from the Columns*/Gallery block (no custom grid-template-columns, never three autos), and a fixed-width cell inside ONE block placeholder (e.g. a 96px sparkline) is a named class defined in theme_extensions; sparklines have a fixed defined width so they don't eat the row.",
+    "[screen] CHARTS — bound to a populated source: every chart's DataPointList / series resolves to a populated aggregate over a seeded entity, a parsed metric field, or the anatomy's explicit literal values, never a declared-but-unpopulated list variable (an empty DataPointList renders nothing). Verify each chart's source is a real aggregate/populated list.",
+    "[screen] Authentication set (no RegisteredRole)",
+    "[screen] Exactly one Layout block at each screen root.",
+    "[screen] No raw binding path (e.g. GetX.List.Current.Entity.Attr) appears as visible text; every data node renders its value.",
+    "[screen] KPI nodes bind to the metric entity's attributes (e.g. DashboardMetric.RecordsProcessed) or a count over seeded rows, never a literal number.",
+    "[screen] Counts, amounts and dates are bound through FormatDecimal / FormatCurrency / FormatDateTime (or a ready-formatted text field) with the design's formatting (thousands separators, currency, date format).",
+    "[screen] Block default children are replaced (Breadcrumbs items, Tabs, Accordion, etc. match the design).",
+    "[screen] Do NOT publish the app in this turn; publishing is done separately after the user confirms.",
+    "[screen] VERIFICATION GATE: after implementation, read back the app state (the screen list, the Menu block, each screen's widget tree, the theme StyleSheet with its :root block and classes) and verify every item of this batch; fix any failure before finishing."
+  ],
+
+  "post_publish_checks": [
+    "Seeding ran: app_logs search 'Seed' shows the SeedData timer and each Seed<Entity> action logged 'finished successfully' (not an error); an unseeded table ships empty.",
+    "Each seeded entity has exactly its sample_data row count (no duplicates after a re-publish).",
+    "KPI values on the rendered screen equal the design (e.g. 135 / 92).",
+    "Counts, amounts and dates render with the design's formatting on the live screen (thousands separators, currency, date format).",
+    "Every chart draws its series on the live screen (no empty or collapsed chart)."
   ]
 }

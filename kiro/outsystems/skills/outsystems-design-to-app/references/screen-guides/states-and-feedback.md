@@ -49,8 +49,8 @@ Every list, table, card grid, and data widget needs a designed empty state — n
 
 ## Destructive Actions
 
-- **Preferred**: Undo pattern — execute immediately, show a Notification block with an "Undo" link (5-10 second window). Fastest and least disruptive
-- **Acceptable**: Confirmation in a Popup widget — "Are you sure you want to delete [item name]?" with clear explanation of consequences. "Delete" button in error style, "Cancel" in secondary style
+- **Follow the design**: build the pattern it shows (a confirmation Popup, or an Undo link in a Notification block)
+- **If the design shows none**: Confirmation in a Popup widget — "Are you sure you want to delete [item name]?" with clear explanation of consequences. "Delete" button in error style, "Cancel" in secondary style
 - **Never**: Silent deletion with no feedback, or browser's native window.confirm()
 
 ## Task Completion

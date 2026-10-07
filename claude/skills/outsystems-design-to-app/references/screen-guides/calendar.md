@@ -18,17 +18,17 @@ A calendar display for time-based data (events, appointments, deadlines, tasks).
 
 ## Layout
 
-- Build the month grid from Columns/Gallery blocks or a List, not a custom section-level CSS grid
+- Build the month grid as a `Gallery` with `RowItemsDesktop = 7` (one item per day), not a custom section-level CSS grid
 
 - Calendar: full-width grid with fixed header
 - Month view: equal-width columns, flexible row heights based on content
 - Week/Day view: time axis on left (~60px), event columns fill remaining width
-- Sidebar: right panel (~250px desktop), hidden on tablet/phone or collapsible
+- Sidebar: the narrow right column of a `ColumnsSmallRight` block, hidden on tablet/phone or collapsible
 - Responsive: month view on desktop/tablet; agenda list (chronological) on phone
 
 ## Styling
 
-- Day cells: border-neutral-3 borders, padding-xs internally. Today highlighted with primary background accent or border
+- Day cells: `border-size-s` plus a border-colour class defined in `theme_extensions` (e.g. `border-color: var(--color-neutral-3)`), padding-xs internally. Today highlighted with primary background accent or border
 - Weekend columns: subtle background-neutral-1
 - Event cards: border-radius-soft, padding-xs, font-size-xs. Color-coded by category using extended palette (not semantic colors — reserve those for status)
 - Current time indicator: horizontal line in primary color across the time grid (week/day views)

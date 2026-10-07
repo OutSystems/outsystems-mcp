@@ -4,7 +4,7 @@
 
 An interactive map displaying location-based data with markers, clusters, and an associated list. Used for store locators, asset tracking, property listings, delivery tracking, and facility management.
 
-1. **Map header**: Title (heading3) + search/filter bar (address search input, category filter, radius selector)
+1. **Map header**: Title (`AdvancedHtml Tag="h1"` in the Layout's `Title` placeholder) + search/filter bar (address search input, category filter, radius selector)
 2. **Map area** (`Map` block, or `LeafletMap`, with `Marker` / `MarkerPopup` blocks in its `AddOns_Placeholder`; see `../outsystems-ui/maps.md`):
    - Interactive map filling the main content area
    - Markers/pins at data point locations, color-coded by category or status
@@ -23,7 +23,7 @@ An interactive map displaying location-based data with markers, clusters, and an
 
 ## Layout
 
-- Desktop: map takes ~65% width (left), location list panel takes ~35% (right). Or full-width map with collapsible bottom drawer for the list
+- Desktop: a `ColumnsSmallRight` block, map in the wide left column and location list in the narrow right one (see `../outsystems-ui/maps.md`). Or full-width map with collapsible bottom drawer for the list
 - Tablet: full-width map with bottom sheet list (swipe up to expand)
 - Phone: full-width map with bottom sheet list or toggle between map and list views
 

@@ -9,8 +9,8 @@ A configuration screen for user, account, or application settings. Organized by 
    - Active category highlighted
    - Badge indicators for categories needing attention (e.g., unverified email)
 2. **Settings content** (right panel): Form for the selected category:
-   - **Section heading** (heading4) for the category name
-   - **Setting groups**: Related settings grouped under heading5 subheadings with description text
+   - **Section heading** (`AdvancedHtml Tag="h2"`) for the category name
+   - **Setting groups**: Related settings grouped under `h3` subheadings with description text
    - **Setting rows**: Each setting as a labeled control:
      - Toggle switches (Switch widget) for on/off settings
      - Dropdowns for selection settings (language, timezone, theme)

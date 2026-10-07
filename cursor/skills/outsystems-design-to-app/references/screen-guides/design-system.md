@@ -1,14 +1,14 @@
 # Design System Setup Guide
 
-All theme customisation in this skill lives once in `design_system.theme_extensions` of `spec.json`: `:root` variable overrides plus any custom classes. There are no per-screen or per-block stylesheets.
+All theme customisation in this skill lives once in `design_system.theme_extensions` of `spec.json`: `css_variables` (`:root` variable overrides and new tokens) plus `classes` (`{ name, rule }` entries). There are no per-screen or per-block stylesheets.
 
-## Step 1: Discover Existing Themes
+## Existing app: read its theme first
 
-Before changing anything, look at the app's existing theme to see which variables and classes it already defines.
+When adding a screen to an existing app, read its theme with `context_themes` (SKILL.md Step 1, "Adding a screen to an existing app") to see which variables and classes it already defines. The app's theme wins: add only new classes, prefixed with the new screen's name, and don't override existing OutSystems UI variables or `:root` values unless the user asks to restyle. A new app skips this.
 
-## Step 2: Brand via `:root` variable overrides
+## Brand a new app via `css_variables`
 
-Override OutSystems UI CSS variables in `:root` inside `design_system.theme_extensions` — this is the correct way to brand an app. Common overrides:
+Override OutSystems UI CSS variables in `design_system.theme_extensions.css_variables` (emitted into the theme's `:root`) — this is the correct way to brand a new app. Common overrides:
 
 | Variable | Purpose | Example |
 |---|---|---|
@@ -18,32 +18,25 @@ Override OutSystems UI CSS variables in `:root` inside `design_system.theme_exte
 | `--space-base` | Base spacing unit | `16px` |
 | `--font-size-base` | Base font size | `14px` |
 
-## Step 3: Define custom classes in `theme_extensions`
+## Custom classes in `theme_extensions.classes`
 
-For patterns not covered by utility classes, define custom classes in the same `theme_extensions` block. Always use CSS variables — never hardcode values:
+For what utility classes and block inputs don't cover, define custom classes in the same `theme_extensions` block. A custom class is an add-on on a real block (via its `ExtendedClass`), never a replacement for the `Tag`, `Badge` or `Card` itself. Declare each value extracted from the design as a variable in `css_variables` and reference it with `var(--…)` in the rule, so `#EDF0ED` stays `#EDF0ED` but lives in one place:
 
-```css
-/* Good — uses CSS variables from the theme */
-.status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-s);
-    border-radius: var(--border-radius-rounded);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-semi-bold);
-}
-.status-pill--active { background: var(--color-success); color: var(--color-neutral-0); }
-.status-pill--pending { background: var(--color-warning); color: var(--color-neutral-10); }
-.status-pill--closed { background: var(--color-neutral-4); color: var(--color-neutral-8); }
-
-.kpi-card {
-    padding: var(--space-m);
-    border-radius: var(--border-radius-soft);
-    background: var(--color-neutral-0);
-    box-shadow: var(--shadow-s);
+```json
+"theme_extensions": {
+  "css_variables": {
+    "--crm-status-active-bg": "#DCFCE7",
+    "--crm-kpi-bg": "#EDF0ED",
+    "--crm-kpi-radius": "12px"
+  },
+  "classes": [
+    { "name": "crm-status-active", "rule": "background: var(--crm-status-active-bg);" },
+    { "name": "crm-kpi-card", "rule": "background: var(--crm-kpi-bg); border-radius: var(--crm-kpi-radius);" }
+  ]
 }
 ```
+
+Applied on the anatomy's real blocks (a node's `class=` is its `ExtendedClass`): `<Tag Color=Green Shape=Rounded class="crm-status-active">Active</Tag>` and `<Card class="crm-kpi-card padding-m shadow-s">`. The block supplies the chip or surface; the class carries only what the design adds, and spacing/shadow stay utilities.
 
 ## Anti-Patterns
 
@@ -51,7 +44,8 @@ For patterns not covered by utility classes, define custom classes in the same `
 |---|---|---|
 | Inline style on a widget (`color: #1068eb`) | Utility class (`text-primary`) on the anatomy node | Use utility classes, not inline CSS |
 | Raw padding/margin values on a widget | Spacing utilities (`padding-base`, `margin-bottom-base`) | Spacing utilities are responsive and consistent |
-| Hardcoded hex in `theme_extensions`: `color: #1068eb` | `color: var(--color-primary)` | Theme changes propagate via variables |
+| Hardcoded hex in a class rule: `color: #1068eb` | Reference a variable declared in `css_variables` (e.g. `color: var(--color-primary)`) | Theme changes propagate via variables |
 | Same class defined in several places | Define it once in `theme_extensions` | DRY — define once, use everywhere |
 | Inline width/height for layout | OutSystems UI columns + spacing classes | Responsive and consistent |
-| Reserved class names (`sidebar`, `header`, …) | App-prefixed names | See [`../gotchas/theme-collisions.md`](../gotchas/theme-collisions.md) |
+| A custom surface or chip class standing in for a block | `Card` / `Tag` / `Badge` with the class as `ExtendedClass` | The block carries structure and accessibility |
+| Reserved class names (`sidebar`, `header`, …) | Prefixed names (app name on a new app, screen name on an existing app) | See [`../gotchas/theme-collisions.md`](../gotchas/theme-collisions.md) |

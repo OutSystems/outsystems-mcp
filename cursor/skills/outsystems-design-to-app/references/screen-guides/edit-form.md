@@ -6,7 +6,7 @@ A form screen for creating new records or editing existing ones. Expected sectio
 
 1. **Page header**: Conditional title — "New [Entity]" in create mode, "Edit [Entity]" in edit mode. Optional breadcrumb trail
 2. **Form container** (Form widget with card styling): Groups all input fields. Structure:
-   - **Section headings** (heading5 or heading6): Group related fields under logical sections (e.g., "Basic Info", "Contact Details", "Address")
+   - **Section headings** (`AdvancedHtml Tag="h2"`; a `heading5`/`heading6` class only to size them): Group related fields under logical sections (e.g., "Basic Info", "Contact Details", "Address")
    - **Field rows**: Each field is a vertical group: Label above + Input below + validation message below input. Wrapped in a container with margin-bottom-base
    - **Foreign key fields**: Dropdown (Dropdown or DropdownSearch block) bound to related entity data source
    - **Boolean fields**: Toggle switch (Switch widget) or checkbox
@@ -26,9 +26,9 @@ A form screen for creating new records or editing existing ones. Expected sectio
 
 ## Layout
 
-- Form: card container with padding-base or padding-m, centered with max-width on desktop (avoid full-width stretched forms)
+- Form: `Card` block with padding-base or padding-m, centered with max-width on desktop (avoid full-width stretched forms)
 - Field rows: label above input (never placeholder-only labels). Margin-bottom-base between fields
-- Two-column: equal columns with gutter-base. Stack on phone (phone-break-all)
+- Two-column: `Columns2` with `GutterSize = Base` and `PhoneBehavior = All` (stacks on phone)
 - Button group: margin-top-l above buttons, right-aligned. Cancel on left, Primary on right
 
 ## Styling
@@ -45,7 +45,7 @@ A form screen for creating new records or editing existing ones. Expected sectio
 - Edit mode: aggregate to fetch existing record by Id (from input parameter). Pre-populate form fields with current values
 - Create mode: empty local variable record. Set sensible defaults (current date, logged-in user as owner)
 - Dropdown data sources: separate aggregates for each foreign key relationship
-- On save: validate form, call server action (CreateOrUpdate), navigate to detail view on success, show error feedback on failure
+- On save: validate form, save the record, navigate to detail view on success, show error feedback on failure
 
 ## Responsive Behavior
 

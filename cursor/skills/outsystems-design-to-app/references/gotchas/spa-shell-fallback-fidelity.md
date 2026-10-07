@@ -1,6 +1,6 @@
 # Fidelity details the runtime won't infer
 
-**The trap:** three specific patterns look right in the source but ship wrong, because the source encodes them in JavaScript that ODC's runtime doesn't execute. The build passes and the publish succeeds, but the rendered surface falls back to a static default that's wrong on every screen except the first. Mentor won't infer these, so the anatomy must state each one explicitly.
+**The trap:** three specific patterns look right in the source but ship wrong, because the source sets them with JavaScript ODC's runtime doesn't execute (a title updated on navigation) or with page CSS that doesn't carry into the app (a header tint, a styled drop-zone). The build passes and the publish succeeds, but the rendered surface falls back to a static default. Mentor won't infer these, so the anatomy must state each one explicitly.
 
 ## Pattern 1 — Header/breadcrumb title stuck on the default
 
@@ -10,9 +10,9 @@
 
 ## Pattern 2 — Table header colour stuck on a default
 
-**Defect:** a data grid header renders a fixed colour (often navy) regardless of the source. The real source header might be dark (solid brand colour) or light (a faint `rgba(...,0.05)` tint + bottom border).
+**Defect:** a data grid header renders in a default colour regardless of the source. The real source header might be dark (solid brand colour) or light (a faint `rgba(...,0.05)` tint + bottom border).
 
-**Fix:** in the anatomy, put the source's ACTUAL header background and text color on the table-header node's `class=`. A faint-alpha background is a deliberately LIGHT header; honour it, don't default to navy. **Contrast:** a light header needs dark text, a dark header needs white text. A faint-alpha bg reads as near-white over the grid, so it needs dark text even though the raw rgba has low luminance.
+**Fix:** state the source's header colour explicitly: in the anatomy, put the source's ACTUAL header background and text color on the table-header node's `class=`. A faint-alpha background is a deliberately LIGHT header; honour it. **Contrast:** a light header needs dark text, a dark header needs white text. A faint-alpha bg reads as near-white over the grid, so it needs dark text even though the raw rgba has low luminance.
 
 ## Pattern 3 — Upload widget loses its styled drop-zone
 
@@ -28,4 +28,4 @@ Before composing the anatomy, scan the source for: (1) a `.current` / `#breadcru
 
 ## Why this is your job (not the theme's)
 
-All three are cases of "the design is a contract" that the source expresses in JS/CSS the ODC runtime doesn't execute. The value has to be baked into the anatomy at authoring time; Mentor handles the common shapes but not these novel ones.
+All three are cases of "the design is a contract" that the source expresses in JS or page CSS that doesn't reach the ODC app. The value has to be baked into the anatomy at authoring time; Mentor handles the common shapes but not these novel ones.

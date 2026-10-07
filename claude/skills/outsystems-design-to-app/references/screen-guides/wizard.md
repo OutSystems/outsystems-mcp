@@ -8,7 +8,7 @@ A guided flow that breaks a complex task into sequential steps. Used for onboard
    - Progress bar (ProgressBar block) showing percentage complete, OR
    - Numbered steps with labels (Wizard block) — active step highlighted, completed steps with checkmark, future steps dimmed
 2. **Step content area**: One form section per step, showing only the fields relevant to this step:
-   - Step title (heading4) + optional description text
+   - Step title (`AdvancedHtml Tag="h2"`) + optional description text
    - Input fields for this step only (progressive disclosure — don't show all fields at once)
    - Inline validation feedback for current step fields
 3. **Navigation buttons**: Bottom of step content:
@@ -29,7 +29,7 @@ A guided flow that breaks a complex task into sequential steps. Used for onboard
 
 - Step indicator: active step in primary color, completed steps in success color with checkmark icon, future steps in neutral-4
 - Step transitions: content area transitions smoothly between steps (fade or slide)
-- Current step content: card container or plain background with clear section boundaries
+- Current step content: `Card` block or plain background with clear section boundaries
 - Progress text: "Step 2 of 4" displayed near the step indicator
 - Button group: margin-top-l above buttons
 

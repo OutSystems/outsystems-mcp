@@ -6,7 +6,7 @@
 
 ## What this means for the anatomy
 
-- **One primary action per screen = one widget = one wired event.** When you author the anatomy, model each action ONCE. If the source shows a "Sign In" button, put a single Button node for it (wired to the login action); don't also add a separate "Login/Submit" Button.
+- **One widget per distinct action = one wired event.** When you author the anatomy, model each action ONCE. If the source shows a "Sign In" button, put a single Button node for it (wired to the login action); don't also add a separate "Login/Submit" Button.
 - Common duplicate spots: login screens (Sign In + Submit), forms (Submit + Save), search bars (search + Apply filter), card actions ("View details" link + "Open" button).
 - If the source renders an action as a link but it behaves like a primary action, model it as one Button, not both a Link and a Button.
 
@@ -20,4 +20,4 @@ grep -nE '<button[^>]*>(Sign In|Login|Submit|Save|Continue|Next|Apply|Search)' s
 
 ## How to prevent (what the anatomy states)
 
-> *"One primary action per screen. Model each action as a single Button node wired to its screen action; do not author a second Button (or a Link + Button) for the same label/target."*
+> *"One widget per distinct action. Model each action as a single Button node wired to its screen action; do not author a second Button (or a Link + Button) for the same label/target."*

@@ -4,8 +4,8 @@
 
 A dashboard presents a high-level overview of key metrics and recent activity. Expected sections, top to bottom:
 
-1. **Page header**: Title (heading3) + optional date range or period selector
-2. **KPI counter row**: 3-5 counter tiles in a responsive grid (columns layout, 3-4 columns desktop). Each tile contains:
+1. **Page header**: Title (`AdvancedHtml Tag="h1"` in the Layout's `Title` placeholder) + optional date range or period selector
+2. **KPI counter row**: 3-5 counter tiles in a `Columns3`–`Columns5` block (one tile per column). Each tile contains:
    - Icon or small graphic representing the metric
    - Large numeric value (heading2 or heading3 weight)
    - Label describing the metric
@@ -23,11 +23,11 @@ A dashboard presents a high-level overview of key metrics and recent activity. E
 
 ## Styling
 
-- Counter tiles: card container with soft shadow, border-radius, and internal padding. Background neutral-0 or neutral-1. Icon on the left or top, value prominently sized
-- Charts: card container with title heading and padding. Ensure minimum height for readability (~300px)
+- Counter tiles: `Card` block with soft shadow, border-radius, and internal padding. Background neutral-0 or neutral-1. Icon on the left or top, value prominently sized
+- Charts: `Card` block with an `h3` title and padding. Ensure minimum height for readability (~300px)
 - Summary list: compact table with striping for readability, or card-based list items
 - Trend indicators: semantic colors — green/success for positive, red/error for negative, neutral for flat
-- Grid: use gutter-m or gutter-base between columns. Add phone-break-all for responsive stacking
+- Grid: set the Columns block's `GutterSize` input (`Medium` or `Base`) and `PhoneBehavior = All` for phone stacking (block inputs, not classes)
 
 ## Data Patterns
 

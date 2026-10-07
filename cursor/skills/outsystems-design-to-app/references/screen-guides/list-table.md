@@ -4,9 +4,9 @@
 
 A list screen displays a collection of records with search, filtering, sorting, and pagination. Expected sections:
 
-1. **Page header**: Title (heading3) + optional "Add New" button (primary action, top-right)
+1. **Page header**: Title (`AdvancedHtml Tag="h1"` in the Layout's `Title` placeholder) + optional "Add New" button (primary action, top-right)
 2. **Filter bar**: Responsive row containing:
-   - Search input with search icon (input-with-icon pattern)
+   - Search input with search icon (`Search` block, or `InputWithIcon` with a search icon)
    - Status dropdown filter
    - Category or type dropdown filter
    - Optional: date range picker, additional filters in a collapsible "Advanced Filters" section
@@ -22,11 +22,11 @@ A list screen displays a collection of records with search, filtering, sorting, 
 
 ## Variant: Card Grid / Gallery
 
-For image-heavy content (products, assets, team members), replace the table with a responsive card grid (Gallery block or List widget with card items). Each card: thumbnail/image + title + key metadata + action button. Use 3-4 columns desktop, 2 tablet, 1 phone.
+For image-heavy content (products, assets, team members), replace the table with a `Gallery` block (a `Card` per item). Each card: thumbnail/image + title + key metadata + action button. Set `RowItemsDesktop` 3-4, `RowItemsTablet` 2, `RowItemsPhone` 1.
 
 ## Layout
 
-- Filter bar: responsive columns (ColumnsSmallLeft, 33/67, or Columns2) — search on left, dropdowns on right. Stack on phone
+- Filter bar: responsive columns (ColumnsSmallLeft, 33/67, or Columns2) — search on left, dropdowns on right. Stack on phone (`PhoneBehavior = All`)
 - Table: full-width with horizontal scroll on narrow screens if many columns
 - Pagination: centered below table with margin-top-base
 - Empty state: centered in the table area with generous padding

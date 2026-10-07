@@ -55,8 +55,8 @@ In the `spec.json`'s top-level `icon_mapping` field, record translations so Ment
 
 ```json
 "icon_mapping": [
-  { "role": "navigation-dashboard", "outsystems_icon": "squares-four" },
-  { "role": "navigation-clients", "outsystems_icon": "users" },
-  { "role": "kpi-delta-positive", "outsystems_icon": "trend-up" }
+  { "role": "navigation-dashboard", "icon": "squares-four" },
+  { "role": "navigation-clients", "icon": "users" },
+  { "role": "kpi-delta-positive", "icon": "trend-up" }
 ]
 ```

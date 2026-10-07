@@ -4,14 +4,15 @@
 
 A chronological stream of events, actions, or updates. Used for activity logs, audit trails, notification feeds, and social-style feeds.
 
-1. **Feed header**: Title (heading3) + optional filter controls (date range, actor, action type) + optional "Mark all read" action
+1. **Feed header**: Title (`AdvancedHtml Tag="h1"` in the Layout's `Title` placeholder) + optional filter controls (date range, actor, action type) + optional "Mark all read" action
 2. **Timeline stream**: stacked `TimelineItem` blocks (one per entry; there is no Timeline container block), ordered by timestamp (newest first or oldest first depending on context):
    - **Date separator**: When entries span multiple days, insert a date heading between day groups ("Today", "Yesterday", "April 28, 2026")
    - **Entry anatomy**:
      - `Icon` placeholder: actor photo (UserAvatar block, small) or action-type Icon
      - `Title` placeholder: Actor name (font-semi-bold) + action description + target entity link
-     - `Content` placeholder: timestamp (text-neutral-7, font-size-xs), optional preview snippet, attachment thumbnail, or comment text
-     - `Right` placeholder (optional): timestamp or status tag aligned right
+     - `Content` placeholder: optional preview snippet, attachment thumbnail, or comment text
+     - `Left` placeholder: the entry's date/time (text-neutral-7, font-size-xs)
+     - `Right` placeholder (optional): an action icon or button for the entry
    - The TimelineItem draws its own connector line; don't hand-build one
 3. **Load more / pagination**: "Load older" button at bottom, or infinite scroll for casual feeds
 4. **Empty state**: BlankSlate block — "No activity yet" with icon + description
@@ -33,7 +34,7 @@ A chronological stream of events, actions, or updates. Used for activity logs, a
 - Entries: padding-s vertically between entries. No card wrapper needed (the TimelineItem line provides structure)
 - Avatars: UserAvatar block, small
 - Action text: "**John Smith** updated the status of **Order #1234** to Shipped" — actor and entity names in font-semi-bold or as clickable links
-- Timestamps: text-neutral-7, font-size-xs, positioned right of action text or below
+- Timestamps: text-neutral-7, font-size-xs, in the TimelineItem's `Left` placeholder
 - Unread items (notification variant): background-neutral-1 or left border in primary color
 
 ## Data Patterns

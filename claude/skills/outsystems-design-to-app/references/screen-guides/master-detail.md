@@ -28,8 +28,8 @@ A split-panel layout showing a selectable list on one side and the selected reco
 - List items: padding-s vertically, border-bottom divider between items
 - Selected item: background-primary with text-neutral-0, or background-neutral-2 for subtle highlight
 - List hover: background-neutral-1 on hover
-- Detail panel: card container or plain background with padding
-- Split gutter: minimal (gutter-s or gutter-none with a vertical border separator)
+- Detail panel: `Card` block or plain background with padding
+- Split gap: minimal (on the `ColumnsSmallLeft` fallback, `GutterSize = Small` or `None`), with a vertical border separator
 
 ## Data Patterns
 

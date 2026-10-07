@@ -14,7 +14,7 @@ Don't wrap an OutSystems UI block or platform widget that already does the job (
 - User card: UserAvatar + name + role — used in headers, activity feeds, team lists
 - Filter bar: search input + dropdown filters + date range + Apply/Clear buttons — used on every list screen
 - KPI tile: icon + metric value + label + trend indicator — used on dashboards
-- Delete confirmation: Popup with title + message + destructive button + cancel — used for all delete operations
+- Delete confirmation (when the design shows none of its own): Popup with title + message + destructive button + cancel — used for all delete operations
 
 ## Block Design Principles
 
