@@ -41,7 +41,7 @@ The **engine-level traps apply regardless of how the app is being built**.
 
 | File | When it bites |
 |---|---|
-| [`publish-validator-rejections.md`](publish-validator-rejections.md) | A publish fails with an `OS-*` build-engine code (e.g. OS-APPS-40028) even after Mentor reports success. Read `publish_logs`, report the code and cause, don't blindly re-publish; ask the user, then let Mentor fix the construct in one fix turn (Step 6b) |
+| [`publish-validator-rejections.md`](publish-validator-rejections.md) | A publish fails with an `OS-*` build-engine code (e.g. OS-APPS-40028) even after Mentor reports success. Read the publication's logs, report the code and cause, don't blindly re-publish; ask the user, then let Mentor fix the construct in one fix turn (Step 6b) |
 | [`iterative-deployments.md`](iterative-deployments.md) | Keep updating the SAME ODC asset across iterations (same `app_key`, stable URL) instead of spawning `App_v1`, `App_v2`...; follow-up prompts describe only what changes |
 
 ---

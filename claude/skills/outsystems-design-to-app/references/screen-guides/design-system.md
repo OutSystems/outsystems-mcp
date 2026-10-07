@@ -4,7 +4,7 @@ All theme customisation in this skill lives once in `design_system.theme_extensi
 
 ## Existing app: read its theme first
 
-When adding a screen to an existing app, read its theme with `context_themes` (SKILL.md Step 1, "Adding a screen to an existing app") to see which variables and classes it already defines. The app's theme wins: add only new classes, prefixed with the new screen's name, and don't override existing OutSystems UI variables or `:root` values unless the user asks to restyle. A new app skips this.
+When adding a screen to an existing app, read its theme with the theme context lookup (SKILL.md Step 1, "Adding a screen to an existing app") to see which variables and classes it already defines. The app's theme wins: add only new classes, prefixed with the new screen's name, and don't override existing OutSystems UI variables or `:root` values unless the user asks to restyle. A new app skips this.
 
 ## Brand a new app via `css_variables`
 

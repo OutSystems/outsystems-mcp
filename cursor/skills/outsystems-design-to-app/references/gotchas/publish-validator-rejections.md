@@ -6,7 +6,7 @@
 
 ## What to do when a publish fails
 
-1. Read `publish_logs` for the publication and find the `OS-*` code and its reason text.
+1. Read the publication's logs and find the `OS-*` code and its reason text.
 2. Report the code and its likely cause to the user in plain terms (which screen, widget or construct the reason names), and ask whether to fix it.
 3. Do NOT blindly re-publish. On a yes, send Mentor one fix turn on the same session that names the failing construct and asks it to fix it (and not to publish), then confirm the publish with the user and publish once that turn is complete (the SKILL.md Step 6b fix pass).
 

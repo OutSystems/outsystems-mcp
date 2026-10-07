@@ -211,7 +211,7 @@
   ],
 
   "sample_data": {
-    "_comment": "The seed set: the design's REAL visible values, transcribed verbatim (never 'User 1'/'TBD'), one array of rows per entity, literal values only (dates included). How it is seeded is SKILL.md Step 5 / rule R3. Seed only non-static entities: a static entity (Status here) carries its records in the entity itself and has no Create action. Each seed action is named Seed<Entity> and the When-Published timer SeedData, so app_logs search 'Seed' finds them. FOREIGN KEYS: a FK value is the parent row's label, its first Text attribute (\"StatusId\": \"Closed\" is the Status row whose Label is \"Closed\"); every referenced label exists in the parent's rows. Seed parents before children and resolve the Id from the label. Headline KPIs that are not a count over these rows go in a single-row metric entity with ONE ATTRIBUTE PER METRIC (DashboardMetric { RecordsProcessed, ActiveCount }), never key/value rows.",
+    "_comment": "The seed set: the design's REAL visible values, transcribed verbatim (never 'User 1'/'TBD'), one array of rows per entity, literal values only (dates included). How it is seeded is SKILL.md Step 5 / rule R3. Seed only non-static entities: a static entity (Status here) carries its records in the entity itself and has no Create action. Each seed action is named Seed<Entity> and the When-Published timer SeedData, so a search of the app's logs for 'Seed' finds them. FOREIGN KEYS: a FK value is the parent row's label, its first Text attribute (\"StatusId\": \"Closed\" is the Status row whose Label is \"Closed\"); every referenced label exists in the parent's rows. Seed parents before children and resolve the Id from the label. Headline KPIs that are not a count over these rows go in a single-row metric entity with ONE ATTRIBUTE PER METRIC (DashboardMetric { RecordsProcessed, ActiveCount }), never key/value rows.",
     "Status": [ { "Label": "On track", "ColorHex": "#0F9D63" }, { "Label": "In review", "ColorHex": "#6D3BEB" }, { "Label": "Closed", "ColorHex": "#8B95A4" } ],
     "Category": [ { "Name": "Onboarding", "SharePct": 41 }, { "Name": "Renewals", "SharePct": 29 } ],
     "Record": [ { "Code": "R-111", "Title": "Renew Acme support contract", "CategoryId": "Renewals", "OwnerName": "Maria Silva", "StatusId": "Closed", "Amount": 550, "CreatedOn": "2026-08-17" } ],
@@ -311,7 +311,7 @@
     { "name": "Viewer", "description": "Read-only access." }
   ],
 
-  "_comment_acceptance_checklist": "Every item starts with [data] (sent with batch 1: entities, roles, seed actions, timer) or [screen] (sent with batch 2: screens, theme, charts, chrome, Menu); each batch receives ONLY its tagged items. Every item is checkable by Mentor inside the session BEFORE any publish: no row counts, no app_logs, no rendered output. Those go in post_publish_checks, the agent's own checks after a publish, never sent to Mentor.",
+  "_comment_acceptance_checklist": "Every item starts with [data] (sent with batch 1: entities, roles, seed actions, timer) or [screen] (sent with batch 2: screens, theme, charts, chrome, Menu); each batch receives ONLY its tagged items. Every item is checkable by Mentor inside the session BEFORE any publish: no row counts, no runtime logs, no rendered output. Those go in post_publish_checks, the agent's own checks after a publish, never sent to Mentor.",
   "acceptance_checklist": [
     "[data] Entity X created with N attributes",
     "[data] SEED — via generated Create<Entity> actions, non-static entities only (a static entity carries its records in the entity itself): each seed action Seed<Entity> guards on Count = 0 (idempotent) then calls the generated Create<Entity> once per sample_data row with its literal values; parents are seeded before children, each FK Id resolved from the parent row's label; the timer SeedData is scheduled When-Published and runs every Seed<Entity> action. No SQL INSERTs.",
@@ -340,7 +340,7 @@
   ],
 
   "post_publish_checks": [
-    "Seeding ran: app_logs search 'Seed' shows the SeedData timer and each Seed<Entity> action logged 'finished successfully' (not an error); an unseeded table ships empty.",
+    "Seeding ran: the app's runtime logs, searched for 'Seed', show the SeedData timer and each Seed<Entity> action logged 'finished successfully' (not an error); an unseeded table ships empty.",
     "Each seeded entity has exactly its sample_data row count (no duplicates after a re-publish).",
     "KPI values on the rendered screen equal the design (e.g. 135 / 92).",
     "Counts, amounts and dates render with the design's formatting on the live screen (thousands separators, currency, date format).",

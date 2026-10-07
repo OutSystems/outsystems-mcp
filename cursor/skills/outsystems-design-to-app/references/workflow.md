@@ -8,9 +8,7 @@ Launch the design extraction and the reference loading together in a single mess
 
 ```
 Parallel group A (design extraction — start immediately):
-  get_screenshot(nodeId)          # Figma
-  get_variable_defs(nodeId)       # Figma
-  get_design_context(nodeId)      # Figma
+  Figma: the node's screenshot, its variables (tokens) and its design context
   # OR: Read the HTML/image file directly for non-Figma sources
 
 Parallel group B (reference loading — runs at the same time):
@@ -35,9 +33,9 @@ There is no separate capture file. Extract per source, then author the richness 
 
 **Code source — TSX / React / HTML (highest fidelity; recipe B):** Read the file. Transcribe, don't infer: imports/component names → block map; Tailwind/inline styles/constants → tokens; data hooks/actions/entity refs → data model; literal data arrays → sample data; source comments → block intent. This is the highest-fidelity input — a code source already states the tree, tokens, data model, and sample data.
 
-**Figma** (the Figma MCP server's `get_design_context`, `get_variable_defs` and `get_screenshot` tools, under whatever prefix your toolset shows):
-- Phase 1 calls launched above. If root `get_design_context` returns metadata XML, parse child node IDs and batch `get_design_context` on children (pairs of 2, skip failures).
-- If `get_variable_defs` returns empty, extract colors from the design context code.
+**Figma** (the Figma MCP server's design-context, variables and screenshot tools, whatever your toolset calls them):
+- Phase 1 calls launched above. If the root node's design context comes back as an outline only, fetch each child node's design context, at most two at a time (skip failures).
+- If the design's variables come back empty, take colours from the design-context code.
 - Then author styling-complete `spec.json` sections (recipe A).
 
 **HTML file**: Read the file, extract CSS (`:root` variables, class definitions) and structure (routes, components), then author styling-complete `spec.json` sections.
@@ -50,20 +48,20 @@ Follow SKILL.md Step 3 in order (3.0 anatomy → 3.1 layout + skeleton → 3a bl
 
 ## Stage 2: Invoke Mentor (MCP)
 
-Follow SKILL.md Steps 4 to 6, which hold the batch prompt (the only prompt block), the confirmations and the publish; `mcp-flow.md` has the call sequence. Session, polling and publish rules come from the main `outsystems` skill. In short:
+Follow SKILL.md Steps 4 to 6, which hold the batch prompt (the only prompt block), the confirmations and the publish. Session, polling and publish rules come from the main `outsystems` skill. In short:
 
-1. **Step 4 go/no-go**, then **get the app into one session**: existing app, `mentor_start_session` → `mentor_load_asset`; new app, restate the creation the user confirmed in Step 1 and clone the tenant's "Template Web App" with `mentor_start_session` → `mentor_create_asset`. Keep that session.
-2. **Batch 1: entities + roles + seed**, as one `mentor_prompt` (the batch prompt plus the batch 1 slice of the spec). Poll to terminal, check whether Mentor published on its own, then **confirm and publish** so the data model is durable.
+1. **Step 4 go/no-go**, then **get the app into one session**: load the existing app by its key, or restate the creation the user confirmed in Step 1 and create the new app in that session from the tenant's "Template Web App". Keep that session.
+2. **Batch 1: entities + roles + seed**, as one Mentor turn (the batch prompt plus the batch 1 slice of the spec). Poll to terminal, check whether Mentor published on its own, then **confirm and publish** so the data model is durable.
 3. **Batch 2: screens + theme CSS + charts + chrome**, as another prompt on the same session (the batch prompt, the SHARED CHROME paragraph when it applies, and the batch 2 slice; do NOT split chrome into its own turn). Poll to terminal, check for a self-publish, **confirm and publish** again.
 
 Use **2 batches** (field-tested: more turns means unacceptable latency; do NOT decompose section-by-section).
 
 ## Stage 3: Verify and report
 
-- `env_app` for the runtime URL, then the spec's `post_publish_checks`: `app_logs` (search "Seed") to confirm seeding ran, and the context lookups to spot-check screens and entities. The rendered app and the logs are the real check; Mentor's self-check is not.
+- The environment's app info for the runtime URL, then the spec's `post_publish_checks`: the app's runtime logs (searched for "Seed") to confirm seeding ran, and the context lookups to spot-check screens and entities. The rendered app and the logs are the real check; Mentor's self-check is not.
 - **Visual check and fix pass** (SKILL.md Step 6b): screenshot the live screen, compare with the design region by region, list the defects, and with the user's yes send one targeted fix turn (no publish in it), confirm, publish and re-check. At most two passes.
 - Report to the user as SKILL.md Step 7 describes (including the Step 6b result).
 
 ## Follow-up
 
-For refinements, send another `mentor_prompt` on the same session if it's still open. If it has ended (idle limit, about 30 minutes), open a new session on the same `app_key`: it starts from the app as last published, so anything unpublished is gone.
+For refinements, send another Mentor turn on the same session if it's still open. If it has ended (idle limit, about 30 minutes), open a new session on the same `app_key`: it starts from the app as last published, so anything unpublished is gone.
