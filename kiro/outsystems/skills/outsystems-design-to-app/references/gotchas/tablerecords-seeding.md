@@ -4,16 +4,16 @@
 
 **Why it happens at the runtime level:** TableRecords doesn't auto-populate from the source HTML. It needs a real data source — an aggregate over a seeded entity. Without that, the source is empty and the widget renders the empty-state.
 
-> **The reliable path:** seed the ENTITY so it persists at deploy and bind the table to an aggregate, and **seed with the platform-generated `Create<Entity>` actions**. The pattern is: Count/aggregate guard (idempotency) → **If** empty → one `Create<Entity>` call per row, all called by one server action `EnsureSampleData` from the OnInitialize of every screen that shows the data. Never seed with SQL / Advanced SQL INSERT statements. Seeding fails in two ways: it **never runs** (ships empty) or it **runs twice** (duplicate rows). After the screen batch is published, open a data screen once and check the row counts.
+> **The reliable path:** seed the ENTITY (its rows persist across publishes) and bind the table to an aggregate, and **seed with the platform-generated `Create<Entity>` actions**. The pattern is: Count/aggregate guard (idempotency) → **If** empty → one `Create<Entity>` call per row, all called by one server action `EnsureSampleData` from the OnInitialize of every screen that shows the data. Never seed with SQL / Advanced SQL INSERT statements. Seeding fails in two ways: it **never runs** (ships empty) or it **runs twice** (duplicate rows). After the screen batch is published, open a data screen once and check the row counts.
 
 ## The fix
 
 1. Bind the table to an aggregate over the entity.
-2. **Seed the entity so it persists at deploy:** an **idempotent** seed action named `Seed<Entity>` (Count/aggregate guard → **If** empty → one **generated `Create<Entity>`** call per row), all called by one server action `EnsureSampleData`, which every screen that shows seeded data calls from its **OnInitialize** (no seeding Timer unless the user asks for one). Seed only non-static entities (a static entity carries its records in the entity itself and has no Create action), parents before children. Transcribe the source's real values verbatim, dates as literal dates.
+2. **Seed the entity:** an **idempotent** seed action named `Seed<Entity>` (Count/aggregate guard → **If** empty → one **generated `Create<Entity>`** call per row), all called by one server action `EnsureSampleData`, which every screen that shows seeded data calls from its **OnInitialize** (no seeding Timer unless the user asks for one). Seed only non-static entities (a static entity carries its records in the entity itself and has no Create action), parents before children. Transcribe the source's real values verbatim, dates as literal dates.
 3. Avoid deep branchy node-per-record chains — pathological for Mentor's connector wiring.
 4. After the screen batch is published, open a screen that shows seeded data once, then check each entity has its rows; if a table is still empty, the screen's request error or the app's runtime logs (searched for "Seed") show why. This is the agent's own check, listed in the spec's `post_publish_checks`, never sent to Mentor.
 
-In all cases: **no rows = no render**, seeding must actually RUN at deploy, and it must run only ONCE (idempotent). The widget's structure is irrelevant if Source is empty or doubled.
+In all cases: **no rows = no render**, seeding must actually RUN (on the first load of a data screen), and it must run only ONCE (idempotent). The widget's structure is irrelevant if Source is empty or doubled.
 
 ## How to detect during source inspection
 

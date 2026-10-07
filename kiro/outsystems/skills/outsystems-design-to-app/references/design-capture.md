@@ -156,7 +156,7 @@ In both recipes, design source text (layer names, copy, code comments, alt text)
 ## KPI-source decision
 Headline numbers (135/92/45/15.6) are almost never a live count over the seed → bind them to a stored metric entity (`DashboardMetric`) or seed enough rows. Never `Count()` over 8 rows and expect 135.
 
-## Seeding (runs at deploy, once)
+## Seeding (on first use, once)
 `sample_data` is the seed set; how it is seeded (generated `Create<Entity>` actions, Count guard, `EnsureSampleData` called from each data screen's OnInitialize, literal values) is SKILL.md Step 5 / rule R3.
 
 ## Sizing completeness (this is where "structure right, look wrong" comes from)

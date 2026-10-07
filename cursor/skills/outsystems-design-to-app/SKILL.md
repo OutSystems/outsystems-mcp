@@ -271,7 +271,7 @@ ENGINE-LEVEL HARD RULES, for every screen in the spec:
      it does not render in ODC. On dark or coloured surfaces give the icon an
      explicit light colour class. If an inline SVG is unavoidable, set
      fill="#fff" (and stroke) on the <svg> element itself.
-(R3) SEEDED DATA THAT SURVIVES DEPLOY. Every table, list and chart is bound to
+(R3) SEEDED DATA ON FIRST USE. Every table, list and chart is bound to
      an aggregate over a seeded entity, never to an empty or unset source. Seed
      each non-static entity with an idempotent action named Seed<Entity> (Count
      guard, If empty, one generated Create<Entity> call per row), all called by
@@ -386,7 +386,7 @@ Handle errors as the main `outsystems` skill describes, including the `tenant_no
 | Agent prescribes aggregate names | anatomy uses implementation terms | Name entity/attribute only; do NOT prescribe aggregate / action / variable names |
 | Cards Carousel rendered as Columns3 | Source-name to block check skipped | Re-spec the region as `Carousel` block |
 | Charts render blank | bound to an empty/unpopulated DataPoint list | Bind each chart to a populated aggregate over a seeded entity (see Step 3d chart gate) |
-| Table / charts empty after a "successful" build | seed didn't run / errored at deploy | Seed via generated `Create<Entity>` actions called by `EnsureSampleData` from each data screen's OnInitialize (Step 5); open the screen once, then check row counts and the app's runtime logs (Step 6) |
+| Table / charts empty after a "successful" build | seed didn't run / errored on the first load of a data screen | Seed via generated `Create<Entity>` actions called by `EnsureSampleData` from each data screen's OnInitialize (Step 5); open the screen once, then check row counts and the app's runtime logs (Step 6) |
 | Chrome (search / theme toggle / notification badge) missing after publish | Chrome edits only implied in the screen batch | Include the SHARED CHROME paragraph of the batch prompt (Step 5); chrome gets skipped when not named |
 | Mentor replies with a plan and asks for approval instead of applying it | Mentor treated the batch as a planning request | The batch prompt already says to apply now; if it still asks, answer on the same session: "Yes, apply all changes now, do not ask again, and do NOT publish" |
 
