@@ -4,14 +4,14 @@
 
 **Why it happens at the runtime level:** TableRecords doesn't auto-populate from the source HTML. It needs a real data source — an aggregate over a seeded entity. Without that, the source is empty and the widget renders the empty-state.
 
-> **The reliable path:** seed the ENTITY so it persists at deploy and bind the table to an aggregate, and **seed with the platform-generated `Create<Entity>` actions**. The pattern is: Count/aggregate guard (idempotency) → **If** empty → one `Create<Entity>` call per row, wired to a When-Published timer. Never seed with SQL / Advanced SQL INSERT statements. Seeding fails in two ways: it **never runs** at deploy (ships empty) or it **runs twice** (duplicate rows). After each publish, check the app's runtime logs to confirm the seed timer finished successfully.
+> **The reliable path:** seed the ENTITY so it persists at deploy and bind the table to an aggregate, and **seed with the platform-generated `Create<Entity>` actions**. The pattern is: Count/aggregate guard (idempotency) → **If** empty → one `Create<Entity>` call per row, all called by one server action `EnsureSampleData` from the OnInitialize of every screen that shows the data. Never seed with SQL / Advanced SQL INSERT statements. Seeding fails in two ways: it **never runs** (ships empty) or it **runs twice** (duplicate rows). After the screen batch is published, open a data screen once and check the row counts.
 
 ## The fix
 
 1. Bind the table to an aggregate over the entity.
-2. **Seed the entity so it persists at deploy:** an **idempotent** seed action named `Seed<Entity>` (Count/aggregate guard → **If** empty → one **generated `Create<Entity>`** call per row), called by a **Timer scheduled When-Published** named `SeedData`. Seed only non-static entities (a static entity carries its records in the entity itself and has no Create action), parents before children. Transcribe the source's real values verbatim, dates as literal dates.
+2. **Seed the entity so it persists at deploy:** an **idempotent** seed action named `Seed<Entity>` (Count/aggregate guard → **If** empty → one **generated `Create<Entity>`** call per row), all called by one server action `EnsureSampleData`, which every screen that shows seeded data calls from its **OnInitialize** (no seeding Timer unless the user asks for one). Seed only non-static entities (a static entity carries its records in the entity itself and has no Create action), parents before children. Transcribe the source's real values verbatim, dates as literal dates.
 3. Avoid deep branchy node-per-record chains — pathological for Mentor's connector wiring.
-4. After each publish, search the app's runtime logs for "Seed" and check that `SeedData` logged "finished successfully" (not an error). This is the agent's own check, listed in the spec's `post_publish_checks`, never sent to Mentor.
+4. After the screen batch is published, open a screen that shows seeded data once, then check each entity has its rows; if a table is still empty, the screen's request error or the app's runtime logs (searched for "Seed") show why. This is the agent's own check, listed in the spec's `post_publish_checks`, never sent to Mentor.
 
 In all cases: **no rows = no render**, seeding must actually RUN at deploy, and it must run only ONCE (idempotent). The widget's structure is irrelevant if Source is empty or doubled.
 
@@ -44,10 +44,11 @@ Enforced by R3 (SKILL.md Step 5).
 
 In the design-to-app's Step 3d acceptance items (each one checkable by Mentor before any publish), add:
 
-- *"[data] Each non-static entity in sample_data has a Seed<Entity> action (Count guard, If empty, one Create<Entity> call per row) called by the When-Published timer SeedData."*
+- *"[data] Each non-static entity in sample_data has a Seed<Entity> action (Count guard, If empty, one Create<Entity> call per row), all called by the server action EnsureSampleData."*
+- *"[screen] Every screen that shows seeded data calls EnsureSampleData from its OnInitialize."*
 - *"[screen] Every TableRecords' Source is bound to an aggregate over a seeded entity, never an empty or unset list."*
 
-And in `post_publish_checks` (the agent's own checks after the publish): each entity's row count equals its `sample_data` rows, and the app's runtime logs (searched for "Seed") show `SeedData` finished.
+And in `post_publish_checks` (the agent's own checks after the publish): after opening a data screen once, each entity's row count equals its `sample_data` rows.
 
 ## One seeded row per source `<tr>`
 

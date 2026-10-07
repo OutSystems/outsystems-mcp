@@ -44,7 +44,7 @@ Every list, table, card grid, and data widget needs a designed empty state — n
 
 - **When to validate**: On blur (when user leaves a field) — not on every keystroke. Exception: password strength can update live
 - **Success state**: Show subtle success indicator (checkmark icon, green border) after field passes validation — gives positive reinforcement
-- **Mandatory fields**: Mark with asterisk (*) or "(required)" next to label. Don't rely on error-after-submit to communicate which fields are required
+- **Mandatory fields**: set the input's Mandatory property and leave the label text bare; the platform draws the asterisk (never a literal `*` in the label). Don't rely on error-after-submit to communicate which fields are required
 - **Cross-field validation**: Validate on form submit. Highlight all invalid fields simultaneously with scroll-to-first-error
 
 ## Destructive Actions

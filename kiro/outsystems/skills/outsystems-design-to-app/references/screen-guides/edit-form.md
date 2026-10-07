@@ -35,7 +35,7 @@ A form screen for creating new records or editing existing ones. Expected sectio
 
 - Form container: card styling with soft shadow, border-radius
 - Labels: font-semi-bold, font-size smaller than input text. Linked to input via TargetWidget
-- Mandatory indicator: asterisk or "(required)" text next to label
+- Mandatory indicator: set the input's Mandatory property and leave the label text bare; the platform draws the asterisk (never a literal `*` in the label)
 - Input fields: full-width within column, consistent sizing (form-control class)
 - Validation errors: text-error color, font-size-xs, displayed below the input with margin-top-xs
 - Disabled fields: visually distinct (reduced opacity, different background)
