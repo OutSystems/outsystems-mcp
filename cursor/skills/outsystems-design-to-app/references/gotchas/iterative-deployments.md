@@ -6,7 +6,7 @@
 
 ## Reuse the same app_key
 
-- The skill has three paths to the target app, chosen in Step 1 and acted on at the start of Step 5: an existing app the user names (loaded into the Mentor session by its key), a new app created in the Mentor session from the tenant's "Template Web App" (after confirmation), or an app the user creates in ODC Studio.
+- The skill has three paths to the target app, chosen in Step 1 and acted on at the start of Step 5: an existing app the user names (loaded into the Mentor session by its key), a new app created in the Mentor session from the standard template (after confirmation), or an app the user creates in ODC Studio.
 - For **iterative builds**, the FIRST run creates the app (or uses an existing one). Every subsequent run on "the same app" loads the **same `app_key`** into its Mentor session — that's the identity pin.
 
 - ✅ Right: note the `app_key` from the first build in the working folder (`design-to-app/<APP_NAME>/build-notes.md`) and load that same app for every subsequent build against `APP_NAME`.
