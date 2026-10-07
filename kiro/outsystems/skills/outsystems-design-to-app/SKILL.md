@@ -389,7 +389,6 @@ Handle errors as the main `outsystems` skill describes, including the `tenant_no
 | Table / charts empty after a "successful" build | seed didn't run / errored at deploy | Seed via generated `Create<Entity>` actions called by `EnsureSampleData` from each data screen's OnInitialize (Step 5); open the screen once, then check row counts and the app's runtime logs (Step 6) |
 | Chrome (search / theme toggle / notification badge) missing after publish | Chrome edits only implied in the screen batch | Include the SHARED CHROME paragraph of the batch prompt (Step 5); chrome gets skipped when not named |
 | Mentor replies with a plan and asks for approval instead of applying it | Mentor treated the batch as a planning request | The batch prompt already says to apply now; if it still asks, answer on the same session: "Yes, apply all changes now, do not ask again, and do NOT publish" |
-| Mentor says a block, input or class from the spec doesn't exist | The app references an older OutSystems UI than the one the references describe | Use the closest block the app's OutSystems UI has, or ask the user to update the OutSystems UI reference in ODC Studio |
 
 ### Figma extraction
 - If the root node's design context comes back as an outline only (common on complex screens), fetch each child node's design context, at most two at a time (four or more concurrent requests time out).
