@@ -100,7 +100,7 @@ None — fully self-contained for v1.
 ## 10. Notes for Mentor
 
 - Use `Long Integer` for all entity Id columns (not `Integer`, not the `Identifier` shortcut — be explicit).
-- Add at least 2 example engineers + 10 example tasks via a `BootstrapData` server action, run by a Timer when the app is published.
+- Seed at least 2 example engineers and 10 example tasks as sample data.
 - Find the signed-in engineer with `Engineer.UserId = GetUserId()`. When no engineer has that UserId yet, match on `Engineer.Email` and set `UserId`. "My open tasks" and the creator-or-manager edit check use this engineer.
 - For TaskList screen, default sort = `CreatedAt DESC` (newest first).
 - For the Dashboard, do not include an "all tasks ever" widget — keep it scoped to actionable items.

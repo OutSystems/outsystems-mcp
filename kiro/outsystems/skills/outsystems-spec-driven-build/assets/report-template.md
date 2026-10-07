@@ -4,15 +4,22 @@
 > the actual report Markdown directly. This file is documentation
 > only; it isn't read at runtime.
 
-- **Run ID:** `{{run_id}}`
 - **App:** `{{app_key}}`
-- **Status:** `{{status}}`
 - **Generated:** {{timestamp}}
 - **Spec file:** `{{spec_path}}`
 
-## Mentor's build summary
+## Mentor turn: data
+
+- **Run ID:** `{{run_id}}`
+- **Status:** `{{status}}`
+- **Landed:** {{yes_or_no}} ({{reason}})
+- **Result file:** `{{result_path}}`
 
 {{mentor_summary}}
+
+## Mentor turn: screens
+
+(same fields as above)
 
 ## Spec used (for reference)
 

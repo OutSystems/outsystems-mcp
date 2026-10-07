@@ -2,9 +2,9 @@
 
 > Fill in every section. Empty sections cause Mentor to confabulate.
 > The spec validator (`build.py validate-spec`) requires sections 1, 2,
-> 3, 4 and 8, no leftover placeholders, and a role defined in section 2
-> for every screen in section 4. It warns when relationships or
-> integrations are not stated.
+> 3 (with at least one entity), 4 and 8, no placeholder left from this
+> template, and a role defined in section 2 for every screen in section 4.
+> It warns when relationships or integrations are not stated.
 
 ## 1. Overview
 
@@ -114,4 +114,4 @@ Anything special Mentor should know. Examples:
 - "This app will integrate with FlightControl later — keep the data model compatible with their schema."
 - "Customer prefers green colors over blue."
 - "The OutSystemsUI defaults are fine."
-- "Skip the seed data action — we'll use BootstrapData manually."
+- "Skip the sample data — we'll load our own."

@@ -1,7 +1,8 @@
 """`outsystems-spec-driven-build/scripts/build.py`: the spec check, the interview
-assembly, the Mentor prompt and the build report. Runs offline: the script
-never calls the MCP."""
+assembly, the Mentor prompt and the build report. Runs offline: the
+script never calls the MCP."""
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -15,9 +16,9 @@ EXAMPLE = SKILL / "templates" / "example-spec.md"
 TEMPLATE = SKILL / "templates" / "spec-template.md"
 
 
-def run(*args):
+def run(*args, env=None):
     return subprocess.run([sys.executable, str(BUILD), *map(str, args)],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding="utf-8", env=env)
 
 
 def validate(path):
@@ -32,6 +33,12 @@ def write_spec(tmp_path, text, name="spec.md"):
 
 def example():
     return EXAMPLE.read_text(encoding="utf-8")
+
+
+def replace_section(text, num, body):
+    """Swap the body of `## num.` (up to the next `## `) for `body`."""
+    return re.sub(rf"(## {num}\.[^\n]*\n).*?(?=\n## )", lambda m: m.group(1) + body + "\n",
+                  text, count=1, flags=re.S)
 
 
 # ------------------------------------------------------------------ validate-spec
@@ -66,11 +73,6 @@ def test_screen_with_undefined_role_fails(tmp_path):
     assert "Admin" in p.stdout
 
 
-def test_builtin_roles_and_role_notes_are_accepted():
-    # The example uses Anonymous, All authenticated and "Engineer (own tasks edit, all view)".
-    assert validate(EXAMPLE).returncode == 0
-
-
 @pytest.mark.parametrize("num,title", [("1", "Overview"), ("2", "Roles"), ("3", "Data model"),
                                        ("4", "Screens + RBAC"), ("8", "Out of scope")])
 def test_missing_required_section_fails(tmp_path, num, title):
@@ -78,6 +80,34 @@ def test_missing_required_section_fails(tmp_path, num, title):
     p = validate(write_spec(tmp_path, text))
     assert p.returncode == 1
     assert f"## {num}. {title}: missing" in p.stdout
+
+
+def test_a_nearly_empty_required_section_fails(tmp_path):
+    p = validate(write_spec(tmp_path, replace_section(example(), 8, "- Nothing.")))
+    assert p.returncode == 1
+    assert "## 8. Out of scope: too short" in p.stdout
+
+
+def test_no_roles_fails(tmp_path):
+    text = replace_section(example(), 2, "Everyone who works on the team can use the app, there are no special roles.")
+    p = validate(write_spec(tmp_path, text))
+    assert p.returncode == 1
+    assert "## 2. Roles: no roles found" in p.stdout
+
+
+def test_no_entities_fails(tmp_path):
+    body = ("### Entities\n\nWe will decide the tables later with the team, nothing to list yet.\n\n"
+            "### Static enums\n\n- **TaskStatus**: Open, Done")
+    p = validate(write_spec(tmp_path, replace_section(example(), 3, body)))
+    assert p.returncode == 1
+    assert "## 3. Data model: no entities found" in p.stdout
+
+
+def test_no_screens_fails(tmp_path):
+    text = replace_section(example(), 4, "Screens will be designed later by the team, nothing decided yet.")
+    p = validate(write_spec(tmp_path, text))
+    assert p.returncode == 1
+    assert "## 4. Screens + RBAC: no screens found" in p.stdout
 
 
 def test_no_relationships_warns(tmp_path):
@@ -98,11 +128,39 @@ def test_missing_integrations_warns(tmp_path):
     assert "## 6. Integrations: missing or empty" in p.stdout
 
 
+def test_empty_integrations_warns(tmp_path):
+    p = validate(write_spec(tmp_path, replace_section(example(), 6, "")))
+    assert p.returncode == 0
+    assert "## 6. Integrations: missing or empty" in p.stdout
+
+
 def test_missing_target_app_warns(tmp_path):
     text = example().replace("**Target app:** TaskTracker (new)", "")
     p = validate(write_spec(tmp_path, text))
     assert p.returncode == 0
     assert "no `**Target app:**` line" in p.stdout
+
+
+def test_non_ascii_role_names_are_accepted(tmp_path):
+    text = example().replace("EngineeringManager", "ÉquipeLead")
+    p = validate(write_spec(tmp_path, text))
+    assert p.returncode == 0, p.stdout
+
+
+def test_a_defined_role_with_and_in_its_name_is_not_split(tmp_path):
+    text = example().replace("- **EngineeringManager**:", "- **Sales and Marketing**:").replace(
+        "| EngineerList | View all team members + their workload | EngineeringManager |",
+        "| EngineerList | View all team members + their workload | Sales and Marketing |")
+    p = validate(write_spec(tmp_path, text))
+    assert "'EngineerList' names role(s) not defined" not in p.stdout, p.stdout
+
+
+def test_two_roles_joined_by_a_non_english_word_are_split(tmp_path):
+    text = example().replace(
+        "| EngineerList | View all team members + their workload | EngineeringManager |",
+        "| EngineerList | View all team members + their workload | Engineer e EngineeringManager |")
+    p = validate(write_spec(tmp_path, text))
+    assert p.returncode == 0, p.stdout
 
 
 # ------------------------------------------------------------------ assemble-spec
@@ -142,14 +200,14 @@ def test_assembled_spec_follows_the_template_and_passes(tmp_path):
     assert "OK: 0 warning(s)" in p.stdout
 
 
-def test_assembled_spec_with_missing_required_answer_fails(tmp_path):
+def test_a_missing_required_answer_is_reported_as_such(tmp_path):
     answers = dict(ANSWERS)
-    del answers["out_of_scope"]
+    del answers["app_shell"]
     out = assemble(tmp_path, answers)
     assert "(NOT PROVIDED — required)" in out.read_text(encoding="utf-8")
     p = validate(out)
     assert p.returncode == 1
-    assert "## 8. Out of scope" in p.stdout
+    assert "## 1. Overview: a required answer was not provided" in p.stdout
 
 
 def test_screen_line_without_roles_fails_after_assembly(tmp_path):
@@ -159,11 +217,37 @@ def test_screen_line_without_roles_fails_after_assembly(tmp_path):
     assert "screen 'MyRequests' has no role" in p.stdout
 
 
+def test_a_skipped_integrations_answer_still_warns(tmp_path):
+    answers = dict(ANSWERS)
+    del answers["integrations"]
+    p = validate(assemble(tmp_path, answers))
+    assert p.returncode == 0
+    assert "## 6. Integrations: missing or empty" in p.stdout
+
+
+def test_list_answers_become_lines_not_python_reprs(tmp_path):
+    answers = dict(ANSWERS, roles=["Admin: all", "Viewer: read"],
+                   screens_and_rbac=["Home | landing | Admin, Viewer"])
+    text = assemble(tmp_path, answers).read_text(encoding="utf-8")
+    assert "- **Admin**: all" in text and "- **Viewer**: read" in text
+    assert "['" not in text
+
+
 def test_title_comes_from_the_app_name_not_the_purpose(tmp_path):
     answers = dict(ANSWERS, app_shell="LeaveDesk (new)",
-                   purpose="LeaveDesk is a small app where employees request time off and managers approve it.")
+                   purpose="Employees request time off and managers approve it.")
     text = assemble(tmp_path, answers).read_text(encoding="utf-8")
     assert text.splitlines()[0] == "# App Spec: LeaveDesk"
+
+
+def test_non_ascii_names_in_the_interview_become_roles(tmp_path):
+    answers = dict(ANSWERS, roles="Técnico: cria e fecha as suas tarefas\nÉquipeLead: vê todas as tarefas",
+                   screens_and_rbac="Lista | todas as tarefas | Técnico, ÉquipeLead")
+    out = assemble(tmp_path, answers)
+    text = out.read_text(encoding="utf-8")
+    assert "- **ÉquipeLead**: vê todas as tarefas" in text
+    p = validate(out)
+    assert p.returncode == 0, p.stdout
 
 
 def test_a_sentence_in_the_roles_answer_is_not_a_role(tmp_path):
@@ -175,62 +259,146 @@ def test_a_sentence_in_the_roles_answer_is_not_a_role(tmp_path):
     assert validate(out).returncode == 0
 
 
+@pytest.mark.parametrize("content,message", [("{bad", "is not valid JSON"),
+                                             ('["a"]', "must hold one JSON object")])
+def test_a_bad_answers_file_gives_one_line_not_a_traceback(tmp_path, content, message):
+    a = tmp_path / "answers.json"
+    a.write_text(content, encoding="utf-8")
+    p = run("assemble-spec", "--answers", a, "--output", tmp_path / "spec.md")
+    assert p.returncode == 1
+    assert message in p.stderr
+    assert "Traceback" not in p.stderr
+
+
 # ------------------------------------------------------------------ build-prompt
 
-def test_prompt_carries_spec_and_guardrails():
+def prompt():
     p = run("build-prompt", "--spec", EXAMPLE)
     assert p.returncode == 0, p.stderr
-    out = p.stdout
-    assert "# App Spec: TaskTracker" in out
+    return p.stdout
+
+
+def test_the_prompt_carries_the_whole_spec_and_the_guardrails():
+    out = prompt()
+    assert "<spec>\n# App Spec: TaskTracker" in out and "</spec>" in out
+    for section in ("## 3. Data model", "## 4. Screens + RBAC", "## 8. Out of scope"):
+        assert section in out
     assert "Respect the role-per-screen assignments" in out
-    assert "Do NOT publish the app in this turn" in out
+    assert "do NOT reply with a plan" in out
     assert "At the end, summarize" in out
 
 
-def test_seed_guardrail_makes_the_seed_run():
-    out = run("build-prompt", "--spec", EXAMPLE).stdout
-    assert "make it run on its own" in out
-    assert "Timer that\n   runs when the app is published" in out
+def test_the_prompt_forbids_publishing():
+    out = prompt()
+    assert "Do NOT publish the app in this turn" in out
+    assert out.rstrip().endswith("Do NOT publish the app.")
 
 
-def test_example_links_engineer_to_the_signed_in_user():
-    text = example()
-    assert "UserId (User Identifier" in text
-    assert "GetUserId()" in text
+def test_the_prompt_bootstraps_sample_data_from_a_timer_on_publish():
+    out = " ".join(prompt().split())
+    for rule in ("Bootstrap the sample data with a Timer that runs when the app is published",
+                 "a server action named Bootstrap<Entity> that counts the entity's rows and inserts only when it is empty",
+                 "with one generated Create<Entity> call per row",
+                 "run BootstrapData from a Timer scheduled to run when the app is published",
+                 "Do NOT seed with SQL or Advanced SQL INSERT statements",
+                 "a date is a literal date, never CurrDate() or CurrDateTime()"):
+        assert rule in out, rule
+    assert "OnInitialize" not in out and "EnsureSampleData" not in out
 
 
-def test_prompt_has_no_design_to_app_rules():
-    out = run("build-prompt", "--spec", EXAMPLE).stdout
-    for gone in ("<svg", "svg-icon-baking", "theme-collisions", "tablerecords-seeding",
-                 "ListAppend", "main-content", "design-to-app/references"):
-        assert gone not in out
+def test_no_design_to_app_or_mentor_internal_rules():
+    out = prompt()
+    for gone in ("<svg", "svg-icon-baking", "theme-collisions", "ListAppend", "main-content",
+                 "design-to-app/references", "eSpace.AddDependency", "applyModelApiCode"):
+        assert gone not in out, gone
 
 
-def test_prompt_no_longer_takes_an_app_key():
-    p = run("build-prompt", "--spec", EXAMPLE, "--app-key", "a0000001")
-    assert p.returncode == 2
-    assert "unrecognized arguments" in p.stderr
+def test_the_prompt_is_one_turn_and_takes_no_app_key_or_part():
+    for extra in (["--app-key", "a0000001"], ["--part", "data"]):
+        p = run("build-prompt", "--spec", EXAMPLE, *extra)
+        assert p.returncode == 2 and "unrecognized arguments" in p.stderr
 
 
 # ------------------------------------------------------------------ render-report
 
-RESULT = {"status": "succeeded",
-          "result": {"summary": "Created 3 entities, 7 screens, 2 roles."},
-          "events": []}
+LANDED = {"runId": "run-1", "status": "succeeded",
+          "result": {"attemptedChange": True, "changeApplied": True,
+                     "validation": {"errorCount": 0, "warningCount": 3}},
+          "summary": "Created 3 entities, 2 roles."}
 
 
-def test_report_has_summary_and_spec_and_no_handoff(tmp_path):
-    res = tmp_path / "result.json"
-    res.write_text(json.dumps(RESULT), encoding="utf-8")
+def report(tmp_path, *results):
+    args = ["render-report", "--spec", EXAMPLE, "--output", tmp_path / "report.md", "--app-key", "a0000001"]
+    for i, r in enumerate(results):
+        f = tmp_path / f"result-{i}.json"
+        f.write_text(r if isinstance(r, str) else json.dumps(r), encoding="utf-8")
+        args += ["--result", f]
+    p = run(*args)
     out = tmp_path / "report.md"
-    p = run("render-report", "--spec", EXAMPLE, "--result", res, "--output", out,
-            "--app-key", "a0000001", "--run-id", "run-1")
+    return p, (out.read_text(encoding="utf-8") if out.exists() else "")
+
+
+def test_report_shows_the_build_and_fix_turns_and_their_summaries(tmp_path):
+    fix = dict(LANDED, runId="run-2", summary="Created 7 screens.")
+    p, text = report(tmp_path, LANDED, fix)
     assert p.returncode == 0, p.stderr
-    text = out.read_text(encoding="utf-8")
-    assert "Created 3 entities, 7 screens, 2 roles." in text
+    assert "## Mentor turn: build" in text and "## Mentor turn: fix 1" in text
+    assert "Created 3 entities, 2 roles." in text and "Created 7 screens." in text
+    assert "`run-1`" in text and "`run-2`" in text and "`a0000001`" in text
+    assert text.count("**Landed:** yes") == 2
     assert "# App Spec: TaskTracker" in text
-    assert "`a0000001`" in text and "`run-1`" in text
     assert "Next steps" not in text
+
+
+@pytest.mark.parametrize("result,reason", [
+    ({"error": {"message": "turn timed out"}, "validation": {"errorCount": 3}}, "status is unknown"),
+    (dict(LANDED, status="failed"), "status is failed"),
+    (dict(LANDED, result={"changeApplied": True, "validation": {"errorCount": 2}}), "2 validation error(s)"),
+    (dict(LANDED, result={"changeApplied": False, "validation": {"errorCount": 0}}), "the change was not applied"),
+    (dict(LANDED, error="Mentor stopped early"), "turn error: Mentor stopped early"),
+])
+def test_a_turn_that_did_not_land_is_reported_and_exits_1(tmp_path, result, reason):
+    p, text = report(tmp_path, result)
+    assert p.returncode == 1
+    assert "**Landed:** no" in text and reason in text
+
+
+def test_a_result_without_a_status_is_not_reported_as_succeeded(tmp_path):
+    p, text = report(tmp_path, {"error": {"message": "turn timed out"}})
+    assert "**Status:** `unknown`" in text and "`succeeded`" not in text
+
+
+def test_a_list_of_pages_is_read_as_one_run(tmp_path):
+    pages = [{"runId": "run-9", "status": "working",
+              "events": [json.dumps({"msgType": "text", "text": "Created the "})]},
+             {"runId": "run-9", "status": "succeeded",
+              "result": {"changeApplied": True, "validation": {"errorCount": 0}},
+              "events": [json.dumps({"msgType": "text", "text": "data model."})]}]
+    p, text = report(tmp_path, pages)
+    assert p.returncode == 0, p.stderr
+    assert "Created the data model." in text and "**Landed:** yes" in text
+
+
+@pytest.mark.parametrize("content,message", [("{bad", "is not valid JSON"),
+                                             ('"text"', "must hold a run result")])
+def test_a_bad_result_file_gives_one_line_not_a_traceback(tmp_path, content, message):
+    p, _ = report(tmp_path, content)
+    assert p.returncode == 1
+    assert message in p.stderr and "Traceback" not in p.stderr
+
+
+# ------------------------------------------------------------------ Windows pipes
+
+@pytest.mark.parametrize("args", [["list-questions"], ["show-spec", "--spec", EXAMPLE],
+                                  ["validate-spec", "--spec", TEMPLATE],
+                                  ["build-prompt", "--spec", EXAMPLE]])
+def test_output_survives_a_cp1252_pipe(args):
+    """On Windows a piped stdout uses the ANSI code page; the script must still write
+    the spec's arrows and the check marks."""
+    env = dict(os.environ, PYTHONIOENCODING="cp1252")
+    p = subprocess.run([sys.executable, str(BUILD), *map(str, args)], capture_output=True, env=env)
+    assert b"UnicodeEncodeError" not in p.stderr, p.stderr.decode("utf-8", "replace")
+    assert p.returncode in (0, 1)
 
 
 # ------------------------------------------------------------------ content of the shipped folder
@@ -239,7 +407,15 @@ FORBIDDEN = [
     r"app_create", r"allowed-tools", r"mentor-copilot", r"deploy-preview", r"app-documentation",
     r"mentor-polling-behavior", r"\bCONVENTIONS\b", r"~/", r"\.claude/cache", r"\$\d",
     r"portable-agent-skills", r"\bSFTDD\b", r"\b20\d\d-\d\d-\d\d\b", r"FIELD-FEEDBACK",
-    r"tenant_not_allowed", r"\bcancelling\b",
+    r"tenant_not_allowed", r"\bcancelling\b", r"Template Web App", r"EnsureSampleData",
+]
+
+# The skill describes behaviour, not tools: no tool names, and no harness- or
+# vendor-specific features in the copy that also ships to Cursor and Kiro.
+TOOL_NAMES = [
+    r"\bmentor_[a-z_]+", r"\bapp_(list|info|logs|refs)\b", r"\benv_(app|list|apps)\b",
+    r"\bpublish_status\b", r"\bcontext_[a-z]+\b", r"tools/list", r"status[- ]watcher",
+    r"\bCodex\b", r"Claude Code has",
 ]
 
 
@@ -253,6 +429,13 @@ def test_shipped_folder_has_no_forbidden_content(pattern):
             for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
             if re.search(pattern, line)]
     assert not hits, f"{pattern!r} found in {hits}"
+
+
+@pytest.mark.parametrize("pattern", TOOL_NAMES)
+def test_skill_doc_names_no_tools(pattern):
+    hits = [i for i, line in enumerate(SKILL.joinpath("SKILL.md").read_text(encoding="utf-8").splitlines(), 1)
+            if re.search(pattern, line)]
+    assert not hits, f"{pattern!r} on SKILL.md lines {hits}"
 
 
 def test_no_tests_ship_inside_the_skill():

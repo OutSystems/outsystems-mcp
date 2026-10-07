@@ -14,7 +14,7 @@
       "id": "app_shell",
       "section": "1. Overview",
       "kind": "open",
-      "prompt": "Is this a new app, or an empty app you already created in ODC Studio? Give the app name and say 'new' or 'existing'. A new app is created from your tenant's Template Web App, after you confirm.",
+      "prompt": "Is this a new app, or an empty app you already created in ODC Studio? Give the app name and say 'new' or 'existing'. A new app is created from the standard Web application template, after you confirm.",
       "required": true,
       "writes_to": "**Target app:**"
     },
