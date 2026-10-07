@@ -15,7 +15,7 @@ metadata:
 
 Turn a design source (Figma, screenshot, HTML mockup, or front-end code) into a working OutSystems app via the OutSystems MCP / Mentor. The skill bridges three things a vanilla LLM does poorly on its own: **design extraction**, **OutSystems UI domain knowledge**, and **Mentor invocation discipline**. It authors an anatomy-first spec (a per-screen widget-tree of real blocks with inline styles), gates every visual element through a real OutSystems UI block, and drives Mentor in tight batches.
 
-**Session, polling and publish rules come from the main `outsystems` skill** (read the live tool catalog, one Mentor session per task, cursor polling and waiting from a fresh context where your harness offers one, confirm before every tenant write). This skill adds only what is specific to building from a design; where the two seem to differ, the main skill wins.
+**Load the main `outsystems` skill before Step 1: session, polling and publish rules come from it** (read the live tool catalog, one Mentor session per task, cursor polling and waiting from a fresh context where your harness offers one, confirm before every tenant write). This skill adds only what is specific to building from a design; where the two seem to differ, the main skill wins.
 
 ## Prerequisites
 
