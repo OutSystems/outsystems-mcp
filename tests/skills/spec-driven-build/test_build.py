@@ -163,6 +163,19 @@ def test_two_roles_joined_by_a_non_english_word_are_split(tmp_path):
     assert p.returncode == 0, p.stdout
 
 
+def test_underscores_keep_role_names_distinct(tmp_path):
+    text = example().replace("**EngineeringManager**", "**Engineering_Manager**")
+    p = validate(write_spec(tmp_path, text))
+    assert p.returncode == 1
+    assert "names role(s) not defined in ## 2. Roles: EngineeringManager" in p.stdout
+
+
+def test_bold_and_plain_role_definitions_both_count(tmp_path):
+    text = example().replace("- **EngineeringManager**:", "- EngineeringManager:")
+    p = validate(write_spec(tmp_path, text))
+    assert p.returncode == 0, p.stdout
+
+
 # ------------------------------------------------------------------ assemble-spec
 
 ANSWERS = {
@@ -233,6 +246,14 @@ def test_list_answers_become_lines_not_python_reprs(tmp_path):
     assert "['" not in text
 
 
+def test_dash_prefixed_role_lines_become_bold_roles(tmp_path):
+    answers = dict(ANSWERS, roles="- Employee: requests leave\nManager: approves team requests")
+    out = assemble(tmp_path, answers)
+    text = out.read_text(encoding="utf-8")
+    assert "- **Employee**: requests leave" in text and "- **Manager**: approves team requests" in text
+    assert validate(out).returncode == 0
+
+
 def test_title_comes_from_the_app_name_not_the_purpose(tmp_path):
     answers = dict(ANSWERS, app_shell="LeaveDesk (new)",
                    purpose="Employees request time off and managers approve it.")
@@ -282,6 +303,21 @@ def test_a_broken_install_gives_one_line_not_a_traceback(tmp_path):
                            capture_output=True, text=True, encoding="utf-8")
         assert p.returncode == 1
         assert "questions file" in p.stderr and "Traceback" not in p.stderr
+
+
+def test_a_questions_file_with_the_wrong_structure_gives_one_line(tmp_path):
+    root = tmp_path / "skill"
+    (root / "scripts").mkdir(parents=True)
+    (root / "templates").mkdir()
+    (root / "scripts" / "build.py").write_bytes(BUILD.read_bytes())
+    (root / "templates" / "interview-questions.json").write_text("{}", encoding="utf-8")
+    a = tmp_path / "answers.json"
+    a.write_text(json.dumps(ANSWERS), encoding="utf-8")
+    p = subprocess.run([sys.executable, str(root / "scripts" / "build.py"), "assemble-spec",
+                        "--answers", str(a), "--output", str(tmp_path / "spec.md")],
+                       capture_output=True, text=True, encoding="utf-8")
+    assert p.returncode == 1
+    assert "unexpected structure" in p.stderr and "Traceback" not in p.stderr
 
 
 # ------------------------------------------------------------------ build-prompt
@@ -375,6 +411,29 @@ def test_a_turn_that_did_not_land_is_reported_and_exits_1(tmp_path, result, reas
     p, text = report(tmp_path, result)
     assert p.returncode == 1
     assert "**Landed:** no" in text and reason in text
+
+
+@pytest.mark.parametrize("result,reason", [
+    (dict(LANDED, result={"change_applied": True, "validation": {"error_count": 2}}), "2 validation error(s)"),
+    (dict(LANDED, result={"change_applied": False, "validation": {"error_count": 0}}), "the change was not applied"),
+])
+def test_snake_case_completion_fields_are_read(tmp_path, result, reason):
+    p, text = report(tmp_path, result)
+    assert p.returncode == 1
+    assert "**Landed:** no" in text and reason in text
+
+
+def test_a_fix_turn_that_landed_clears_an_earlier_failure(tmp_path):
+    failed = dict(LANDED, result={"changeApplied": True, "validation": {"errorCount": 2}})
+    p, text = report(tmp_path, failed, dict(LANDED, runId="run-2"))
+    assert p.returncode == 0, p.stderr
+    assert "**Landed:** no (2 validation error(s))" in text and "**Landed:** yes" in text
+
+
+def test_a_failed_fix_turn_still_blocks_after_a_landed_build(tmp_path):
+    failed = dict(LANDED, status="failed")
+    p, _ = report(tmp_path, LANDED, failed)
+    assert p.returncode == 1
 
 
 def test_a_result_without_a_status_is_not_reported_as_succeeded(tmp_path):

@@ -129,7 +129,7 @@ python3 "<skill>/scripts/build.py" render-report --spec "<work>/spec.md" \
   --app-key "<app_key>" --output "<work>/build-report.md"
 ```
 
-It accepts a saved terminal response or the list of pages read from the start of the run, and shows each turn's status, whether it **landed** (the main skill's completion signals: status, turn error, validation errors, whether the change was applied) and Mentor's summary. **Exit 1 means the turn didn't land:** don't publish it as built.
+It accepts a saved terminal response or the list of pages read from the start of the run, and shows each turn's status, whether it **landed** (the main skill's completion signals: status, turn error, validation errors, whether the change was applied) and Mentor's summary. **Exit 1 means the last turn didn't land:** don't publish it as built. Each turn keeps its own Landed line, so a fix turn that landed clears an earlier failure.
 
 **Check whether Mentor published on its own.** The prompt forbids it, but a build turn can still end in a publish. Look in the turn's result and events for a publication key or a "published" message. If it did publish, don't publish again: tell the user Mentor published without asking, follow that publication to terminal, and carry on from Step 7.
 

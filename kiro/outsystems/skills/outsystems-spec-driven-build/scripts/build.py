@@ -186,8 +186,7 @@ def _as_bullets(answer: str) -> list[str]:
         if not line:
             continue
         if line.startswith(("- ", "* ")):
-            out.append("- " + line[2:].strip())
-            continue
+            line = line[2:].strip()
         m = re.match(rf"^({NAME})\s*:\s*(.+)$", line)
         if not m:
             m = re.match(rf"^({NAME})\s*\((.+)\)\.?$", line)
@@ -223,6 +222,9 @@ def cmd_assemble_spec(args: argparse.Namespace) -> int:
         return 1
     questions = _read_json_object(QUESTIONS_PATH, "questions file")
     if questions is None:
+        return 1
+    if not isinstance(questions, dict) or not isinstance(questions.get("questions"), list):
+        print(f"questions file has an unexpected structure: {QUESTIONS_PATH}", file=sys.stderr)
         return 1
     required = {q["id"] for q in questions["questions"] if q.get("required")}
 
@@ -309,7 +311,9 @@ def _table_rows(body: str) -> list[list[str]]:
 
 
 def _norm(name: str) -> str:
-    return re.sub(r"[\W_]", "", name.lower())
+    """Case- and space-insensitive name; underscores stay, so Engineering_Manager
+    and EngineeringManager are different roles."""
+    return re.sub(r"\W", "", name.lower())
 
 
 def _template_placeholders() -> set[str]:
@@ -319,10 +323,10 @@ def _template_placeholders() -> set[str]:
 
 
 def _defined_roles(body: str) -> list[str]:
-    names = re.findall(r"^\s*[-*]\s+\*\*([^*]+)\*\*", body, re.M)
-    if not names:
-        names = re.findall(rf"^\s*[-*]\s+({NAME})\s*:", body, re.M)
-    return [n.strip() for n in names]
+    """Roles listed as `- **Name**: ...` or `- Name: ...`, in either format or both."""
+    bold = re.findall(r"^\s*[-*]\s+\*\*([^*]+)\*\*", body, re.M)
+    plain = re.findall(rf"^\s*[-*]\s+({NAME})\s*:", body, re.M)
+    return [n.strip() for n in bold + plain]
 
 
 def _entity_body(body: str) -> str:
@@ -556,10 +560,11 @@ def _landed(run: dict) -> tuple[bool, str]:
         return False, f"status is {run['status']}"
     if run["error"]:
         return False, f"turn error: {run['error']}"
-    errors = run["validation"].get("errorCount")
+    errors = run["validation"].get("errorCount", run["validation"].get("error_count"))
     if isinstance(errors, int) and errors > 0:
         return False, f"{errors} validation error(s)"
-    applied = run["result"].get("changeApplied", run["result"].get("applied"))
+    result = run["result"]
+    applied = result.get("changeApplied", result.get("change_applied", result.get("applied")))
     if applied is False:
         return False, "the change was not applied"
     return True, "succeeded, no validation errors"
@@ -567,7 +572,8 @@ def _landed(run: dict) -> tuple[bool, str]:
 
 def cmd_render_report(args: argparse.Namespace) -> int:
     """Render a Markdown build report from the terminal Mentor run results + the spec used.
-    Exit 1 when a turn didn't land (the report is still written)."""
+    Every turn gets a Landed line; exit 1 when the last turn didn't land (the
+    report is still written), so a fix turn that landed clears an earlier failure."""
     spec_path = Path(args.spec)
     if not spec_path.exists():
         print(f"spec not found: {spec_path}", file=sys.stderr)
@@ -594,10 +600,10 @@ def cmd_render_report(args: argparse.Namespace) -> int:
     md.append(f"- **Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
     md.append(f"- **Spec file:** `{spec_path}`")
     md.append("")
-    all_landed = True
+    last_landed = False
     for label, path, run in runs:
         landed, reason = _landed(run)
-        all_landed = all_landed and landed
+        last_landed = landed
         md.append(f"## Mentor turn: {label}")
         md.append("")
         md.append(f"- **Run ID:** `{run['run_id'] or '-'}`")
@@ -621,8 +627,8 @@ def cmd_render_report(args: argparse.Namespace) -> int:
 
     output_path.write_text("\n".join(md), encoding="utf-8")
     print(f"wrote {output_path} ({output_path.stat().st_size / 1024:.1f} KB)")
-    if not all_landed:
-        print("at least one Mentor turn did not land (see the Landed lines)", file=sys.stderr)
+    if not last_landed:
+        print("the last Mentor turn did not land (see its Landed line)", file=sys.stderr)
         return 1
     return 0
 
