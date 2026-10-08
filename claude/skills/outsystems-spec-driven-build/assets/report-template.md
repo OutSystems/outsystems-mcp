@@ -8,7 +8,7 @@
 - **Generated:** {{timestamp}}
 - **Spec file:** `{{spec_path}}`
 
-## Mentor turn: data
+## Mentor turn: build
 
 - **Run ID:** `{{run_id}}`
 - **Status:** `{{status}}`
@@ -17,9 +17,9 @@
 
 {{mentor_summary}}
 
-## Mentor turn: screens
+## Mentor turn: fix 1
 
-(same fields as above)
+(only when a fix turn was sent; same fields as above)
 
 ## Spec used (for reference)
 

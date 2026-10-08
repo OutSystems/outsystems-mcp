@@ -221,7 +221,9 @@ def cmd_assemble_spec(args: argparse.Namespace) -> int:
     if not isinstance(answers, dict):
         print("answers file must hold one JSON object, keyed by question id", file=sys.stderr)
         return 1
-    questions = json.loads(QUESTIONS_PATH.read_text("utf-8"))
+    questions = _read_json_object(QUESTIONS_PATH, "questions file")
+    if questions is None:
+        return 1
     required = {q["id"] for q in questions["questions"] if q.get("required")}
 
     def raw(qid: str) -> str:

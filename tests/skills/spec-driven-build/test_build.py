@@ -270,6 +270,20 @@ def test_a_bad_answers_file_gives_one_line_not_a_traceback(tmp_path, content, me
     assert "Traceback" not in p.stderr
 
 
+def test_a_broken_install_gives_one_line_not_a_traceback(tmp_path):
+    """assemble-spec without its bundled questions file fails cleanly, like list-questions."""
+    scripts = tmp_path / "skill" / "scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "build.py").write_bytes(BUILD.read_bytes())
+    a = tmp_path / "answers.json"
+    a.write_text(json.dumps(ANSWERS), encoding="utf-8")
+    for args in (["assemble-spec", "--answers", a, "--output", tmp_path / "spec.md"], ["list-questions"]):
+        p = subprocess.run([sys.executable, str(scripts / "build.py"), *map(str, args)],
+                           capture_output=True, text=True, encoding="utf-8")
+        assert p.returncode == 1
+        assert "questions file" in p.stderr and "Traceback" not in p.stderr
+
+
 # ------------------------------------------------------------------ build-prompt
 
 def prompt():
