@@ -211,7 +211,7 @@
   ],
 
   "sample_data": {
-    "_comment": "The seed set: the design's REAL visible values, transcribed verbatim (never 'User 1'/'TBD'), one array of rows per entity, literal values only (dates included). How it is seeded is SKILL.md Step 5 / rule R3. Seed only non-static entities: a static entity (Status here) carries its records in the entity itself and has no Create action. Each seed action is named Seed<Entity>, all called by one server action EnsureSampleData, which every screen showing seeded data calls from its OnInitialize (no timer unless the user asks for one). FOREIGN KEYS: a FK value is the parent row's label, its first Text attribute (\"StatusId\": \"Closed\" is the Status row whose Label is \"Closed\"); every referenced label exists in the parent's rows. Seed parents before children and resolve the Id from the label. Headline KPIs that are not a count over these rows go in a single-row metric entity with ONE ATTRIBUTE PER METRIC (DashboardMetric { RecordsProcessed, ActiveCount }), never key/value rows.",
+    "_comment": "The seed set: the design's REAL visible values, transcribed verbatim (never 'User 1'/'TBD'), one array of rows per entity, literal values only (dates included). How it is seeded is SKILL.md Step 5 / rule R3. Seed only non-static entities: a static entity (Status here) carries its records in the entity itself and has no Create action. Each seed action is named Bootstrap<Entity>, all called by one server action BootstrapData, which a Timer runs when the app is published. FOREIGN KEYS: a FK value is the parent row's label, its first Text attribute (\"StatusId\": \"Closed\" is the Status row whose Label is \"Closed\"); every referenced label exists in the parent's rows. Seed parents before children and resolve the Id from the label. Headline KPIs that are not a count over these rows go in a single-row metric entity with ONE ATTRIBUTE PER METRIC (DashboardMetric { RecordsProcessed, ActiveCount }), never key/value rows.",
     "Status": [ { "Label": "On track", "ColorHex": "#0F9D63" }, { "Label": "In review", "ColorHex": "#6D3BEB" }, { "Label": "Closed", "ColorHex": "#8B95A4" } ],
     "Category": [ { "Name": "Onboarding", "SharePct": 41 }, { "Name": "Renewals", "SharePct": 29 } ],
     "Record": [ { "Code": "R-111", "Title": "Renew Acme support contract", "CategoryId": "Renewals", "OwnerName": "Maria Silva", "StatusId": "Closed", "Amount": 550, "CreatedOn": "2026-08-17" } ],
@@ -311,12 +311,12 @@
     { "name": "Viewer", "description": "Read-only access." }
   ],
 
-  "_comment_acceptance_checklist": "Every item starts with [data] (sent with batch 1: entities, roles, seed actions, EnsureSampleData) or [screen] (sent with batch 2: screens, theme, charts, chrome, Menu); each batch receives ONLY its tagged items. Every item is checkable by Mentor inside the session BEFORE any publish: no row counts, no runtime logs, no rendered output. Those go in post_publish_checks, the agent's own checks after a publish, never sent to Mentor.",
+  "_comment_acceptance_checklist": "Every item starts with [data] (sent with batch 1: entities, roles, Bootstrap actions, BootstrapData and its timer) or [screen] (sent with batch 2: screens, theme, charts, chrome, Menu); each batch receives ONLY its tagged items. Every item is checkable by Mentor inside the session BEFORE any publish: no row counts, no runtime logs, no rendered output. Those go in post_publish_checks, the agent's own checks after a publish, never sent to Mentor.",
   "acceptance_checklist": [
     "[data] Entity X created with N attributes",
-    "[data] SEED — via generated Create<Entity> actions, non-static entities only (a static entity carries its records in the entity itself): each seed action Seed<Entity> guards on Count = 0 (idempotent) then calls the generated Create<Entity> once per sample_data row with its literal values; parents are seeded before children, each FK Id resolved from the parent row's label; one server action EnsureSampleData calls every Seed<Entity> action. No Timer for seeding. No SQL INSERTs.",
+    "[data] SEED — via generated Create<Entity> actions, non-static entities only (a static entity carries its records in the entity itself): each server action Bootstrap<Entity> counts the entity's rows and inserts only when it is empty (idempotent), with one generated Create<Entity> call per sample_data row and its literal values; parents are bootstrapped before children, each FK Id resolved from the parent row's label; one server action BootstrapData calls every Bootstrap<Entity> action, and a Timer scheduled to run when the app is published runs BootstrapData. No SQL INSERTs.",
     "[data] Do NOT publish the app in this turn; publishing is done separately after the user confirms.",
-    "[data] VERIFICATION GATE: after implementation, read back the app state (entities and their attributes, static entity records, roles, each Seed<Entity> action and EnsureSampleData) and verify every item of this batch; fix any failure before finishing.",
+    "[data] VERIFICATION GATE: after implementation, read back the app state (entities and their attributes, static entity records, roles, each Bootstrap<Entity> action, BootstrapData and its timer) and verify every item of this batch; fix any failure before finishing.",
     "[screen] Screen Y exists with correct layout and data bindings",
     "[screen] ProgressCircle/ProgressBar/Chart implemented using OS blocks, not raw containers",
     "[screen] Navigation: the Menu block is placed ONCE in the layout chrome (the Navigation placeholder for LayoutSideMenu, the Header for LayoutTopMenu) with ALL nav items from app_chrome.navigation.nav_groups, each with its Phosphor icon and target screen; no screen adds its own Menu.",
@@ -328,7 +328,6 @@
     "[screen] SIZING — page background APPLIED: the screen root (the Layout block's ExtendedClass) carries a class with background: var(--page-bg) (light canvas). A defined-but-unused --page-bg leaves the page dark. Verify a node actually applies it.",
     "[screen] SIZING — charts render at a real height: every chart widget >=28px (sparklines ~40px; a thin segmented/stacked bar keeps a >=28px widget and gets its thin look from the bar thickness, ~14px) WITH zeroed Highcharts spacing (spacingTop/Bottom/Left/Right=0). No collapsed/missing chart (a 12px bar draws nothing).",
     "[screen] SIZING — metrics never wrap: number/label nodes have white-space:nowrap + min-width; column proportions come from the Columns*/Gallery block (no custom grid-template-columns, never three autos), and a fixed-width cell inside ONE block placeholder (e.g. a 96px sparkline) is a named class defined in theme_extensions; sparklines have a fixed defined width so they don't eat the row.",
-    "[screen] SEED CALL — every screen that shows seeded data calls the server action EnsureSampleData from its OnInitialize, before its aggregates fetch.",
     "[screen] CHARTS — bound to a populated source: every chart's DataPointList / series resolves to a populated aggregate over a seeded entity, a parsed metric field, or the anatomy's explicit literal values, never a declared-but-unpopulated list variable (an empty DataPointList renders nothing). Verify each chart's source is a real aggregate/populated list.",
     "[screen] Authentication set (no RegisteredRole)",
     "[screen] Exactly one Layout block at each screen root.",
@@ -341,7 +340,7 @@
   ],
 
   "post_publish_checks": [
-    "Seeding ran: after the batch 2 publish, open a screen that shows seeded data once; then every non-static entity has rows. If a table is still empty, the screen's request error or the app's runtime logs (searched for 'Seed') show why; an unseeded table ships empty.",
+    "Seeding ran: after the batch 1 publish, the app's runtime logs, searched for 'Bootstrap', show the timer's 'executed successfully' line (not an error) and every non-static entity has rows; an unseeded table ships empty.",
     "Each seeded entity has exactly its sample_data row count (no duplicates after a re-publish).",
     "KPI values on the rendered screen equal the design (e.g. 135 / 92).",
     "Counts, amounts and dates render with the design's formatting on the live screen (thousands separators, currency, date format).",

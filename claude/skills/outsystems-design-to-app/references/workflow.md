@@ -51,14 +51,14 @@ Follow SKILL.md Step 3 in order (3.0 anatomy → 3.1 layout + skeleton → 3a bl
 Follow SKILL.md Steps 4 to 6, which hold the batch prompt (the only prompt block), the confirmations and the publish. Session, polling and publish rules come from the main `outsystems` skill. In short:
 
 1. **Step 4 go/no-go**, then **get the app into one session**: load the existing app by its key, or restate the creation the user confirmed in Step 1 and create the new app in that session from the standard template. Keep that session.
-2. **Batch 1: entities + roles + seed actions** (`EnsureSampleData`; the screens call it in batch 2), as one Mentor turn (the batch prompt plus the batch 1 slice of the spec). Poll to terminal, check whether Mentor published on its own, then **confirm and publish** so the data model is durable.
+2. **Batch 1: entities + roles + seed actions** (`Bootstrap<Entity>` actions, `BootstrapData` and its when-published Timer), as one Mentor turn (the batch prompt plus the batch 1 slice of the spec). Poll to terminal, check whether Mentor published on its own, then **confirm and publish** so the data model is durable; then check the app's runtime logs for "Bootstrap" and the row counts.
 3. **Batch 2: screens + theme CSS + charts + chrome**, as another prompt on the same session (the batch prompt, the SHARED CHROME paragraph when it applies, and the batch 2 slice; do NOT split chrome into its own turn). Poll to terminal, check for a self-publish, **confirm and publish** again.
 
 Use **2 batches** (field-tested: more turns means unacceptable latency; do NOT decompose section-by-section).
 
 ## Stage 3: Verify and report
 
-- The environment's app info for the runtime URL, then the spec's `post_publish_checks`: open a data screen once and check each entity has its rows (the app's runtime logs, searched for "Seed", show why if not), and the context lookups to spot-check screens and entities. The rendered app and the logs are the real check; Mentor's self-check is not.
+- The environment's app info for the runtime URL, then the spec's `post_publish_checks`: each entity has its rows (checked after the batch 1 publish), and the context lookups to spot-check screens and entities. The rendered app and the logs are the real check; Mentor's self-check is not.
 - **Visual check and fix pass** (SKILL.md Step 6b): screenshot the live screen, compare with the design region by region, list the defects, and with the user's yes send one targeted fix turn (no publish in it), confirm, publish and re-check. At most two passes.
 - Report to the user as SKILL.md Step 7 describes (including the Step 6b result).
 
