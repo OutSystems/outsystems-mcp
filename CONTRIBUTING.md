@@ -53,6 +53,7 @@ claude/                   # The Claude plugin folder: what `claude plugin instal
     outsystems-app-architecture/      # Beta skill, same layout
     outsystems-dependency-impact/     # Beta skill, same layout (source for the Cursor and Kiro copies)
     outsystems-design-to-app/         # Beta skill: SKILL.md, references/, assets/enriched-blueprint.json, agents/openai.yaml (no script)
+    outsystems-spec-driven-build/     # Beta skill: SKILL.md, scripts/build.py, templates/, assets/report-template.md, agents/openai.yaml
 copilot/
   mcp.json                # Copilot MCP server configuration
   skill.md                # Agent guidance for Copilot
@@ -64,7 +65,7 @@ cursor/
   skills/
     outsystems/
       SKILL.md            # Agent guidance loaded by Cursor plugin
-    outsystems-*/         # Byte-identical copies of the four Beta skills under claude/skills/
+    outsystems-*/         # Byte-identical copies of the five Beta skills under claude/skills/
 kiro/
   agents/
     status-watcher.json   # Kiro status-watcher agent; the README's Kiro recipe copies it into a workspace's .kiro/agents/
@@ -73,7 +74,7 @@ kiro/
     skills/
       outsystems/
         SKILL.md          # Agent-facing skill loaded into Kiro Chat
-      outsystems-*/       # Byte-identical copies of the four Beta skills under claude/skills/
+      outsystems-*/       # Byte-identical copies of the five Beta skills under claude/skills/
 tests/
   skills/                 # Offline pytest suites for the Beta skills' scripts, with anonymised fixtures
 SKILL.md                  # Generic skill content for other harnesses
