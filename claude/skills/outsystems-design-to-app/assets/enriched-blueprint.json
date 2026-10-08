@@ -211,7 +211,7 @@
   ],
 
   "sample_data": {
-    "_comment": "The seed set: the design's REAL visible values, transcribed verbatim (never 'User 1'/'TBD'), one array of rows per entity, literal values only (dates included). How it is seeded is SKILL.md Step 5 / rule R3. Seed only non-static entities: a static entity (Status here) carries its records in the entity itself and has no Create action. Each seed action is named Bootstrap<Entity>, all called by one server action BootstrapData, which a Timer runs when the app is published. FOREIGN KEYS: a FK value is the parent row's label, its first Text attribute (\"StatusId\": \"Closed\" is the Status row whose Label is \"Closed\"); every referenced label exists in the parent's rows. Seed parents before children and resolve the Id from the label. Headline KPIs that are not a count over these rows go in a single-row metric entity with ONE ATTRIBUTE PER METRIC (DashboardMetric { RecordsProcessed, ActiveCount }), never key/value rows.",
+    "_comment": "The seed set: the design's REAL visible values, transcribed verbatim (never 'User 1'/'TBD'), one array of rows per entity, literal values only (dates included). How it is seeded is SKILL.md Step 5 / rule R3. Seed only non-static entities: a static entity (Status here) carries its records in the entity itself and has no Create action. Each seed action is named Bootstrap<Entity>, all called by one server action BootstrapData, which a Timer named BootstrapTimer runs when the app is published. FOREIGN KEYS: a FK value is the parent row's label, its first Text attribute (\"StatusId\": \"Closed\" is the Status row whose Label is \"Closed\"); every referenced label exists in the parent's rows. Seed parents before children and resolve the Id from the label. Headline KPIs that are not a count over these rows go in a single-row metric entity with ONE ATTRIBUTE PER METRIC (DashboardMetric { RecordsProcessed, ActiveCount }), never key/value rows.",
     "Status": [ { "Label": "On track", "ColorHex": "#0F9D63" }, { "Label": "In review", "ColorHex": "#6D3BEB" }, { "Label": "Closed", "ColorHex": "#8B95A4" } ],
     "Category": [ { "Name": "Onboarding", "SharePct": 41 }, { "Name": "Renewals", "SharePct": 29 } ],
     "Record": [ { "Code": "R-111", "Title": "Renew Acme support contract", "CategoryId": "Renewals", "OwnerName": "Maria Silva", "StatusId": "Closed", "Amount": 550, "CreatedOn": "2026-08-17" } ],
@@ -311,12 +311,12 @@
     { "name": "Viewer", "description": "Read-only access." }
   ],
 
-  "_comment_acceptance_checklist": "Every item starts with [data] (sent with batch 1: entities, roles, Bootstrap actions, BootstrapData and its timer) or [screen] (sent with batch 2: screens, theme, charts, chrome, Menu); each batch receives ONLY its tagged items. Every item is checkable by Mentor inside the session BEFORE any publish: no row counts, no runtime logs, no rendered output. Those go in post_publish_checks, the agent's own checks after a publish, never sent to Mentor.",
+  "_comment_acceptance_checklist": "Every item starts with [data] (sent with batch 1: entities, roles, Bootstrap actions, BootstrapData and BootstrapTimer) or [screen] (sent with batch 2: screens, theme, charts, chrome, Menu); each batch receives ONLY its tagged items. Every item is checkable by Mentor inside the session BEFORE any publish: no row counts, no runtime logs, no rendered output. Those go in post_publish_checks, the agent's own checks after a publish, never sent to Mentor.",
   "acceptance_checklist": [
     "[data] Entity X created with N attributes",
-    "[data] SEED — via generated Create<Entity> actions, non-static entities only (a static entity carries its records in the entity itself): each server action Bootstrap<Entity> counts the entity's rows and inserts only when it is empty (idempotent), with one generated Create<Entity> call per sample_data row and its literal values; parents are bootstrapped before children, each FK Id resolved from the parent row's label; one server action BootstrapData calls every Bootstrap<Entity> action, and a Timer scheduled to run when the app is published runs BootstrapData. No SQL INSERTs.",
+    "[data] SEED — via generated Create<Entity> actions, non-static entities only (a static entity carries its records in the entity itself): each server action Bootstrap<Entity> counts the entity's rows and inserts only when it is empty (idempotent), with one generated Create<Entity> call per sample_data row and its literal values; parents are bootstrapped before children, each FK Id resolved from the parent row's label; one server action BootstrapData calls every Bootstrap<Entity> action, and a Timer named BootstrapTimer, scheduled to run when the app is published, runs BootstrapData (if both already exist, the new calls are added to them). Each Bootstrap<Entity> logs one line: 'Bootstrap<Entity>: inserted N rows' or 'Bootstrap<Entity>: skipped, N present'. No SQL INSERTs.",
     "[data] Do NOT publish the app in this turn; publishing is done separately after the user confirms.",
-    "[data] VERIFICATION GATE: after implementation, read back the app state (entities and their attributes, static entity records, roles, each Bootstrap<Entity> action, BootstrapData and its timer) and verify every item of this batch; fix any failure before finishing.",
+    "[data] VERIFICATION GATE: after implementation, read back the app state (entities and their attributes, static entity records, roles, each Bootstrap<Entity> action and its log line, BootstrapData and BootstrapTimer) and verify every item of this batch; fix any failure before finishing.",
     "[screen] Screen Y exists with correct layout and data bindings",
     "[screen] ProgressCircle/ProgressBar/Chart implemented using OS blocks, not raw containers",
     "[screen] Navigation: the Menu block is placed ONCE in the layout chrome (the Navigation placeholder for LayoutSideMenu, the Header for LayoutTopMenu) with ALL nav items from app_chrome.navigation.nav_groups, each with its Phosphor icon and target screen; no screen adds its own Menu.",
@@ -340,8 +340,8 @@
   ],
 
   "post_publish_checks": [
-    "Seeding ran: after the batch 1 publish, the app's runtime logs, searched for 'Bootstrap', show the timer's 'executed successfully' line (not an error) and every non-static entity has rows; an unseeded table ships empty.",
-    "Each seeded entity has exactly its sample_data row count (no duplicates after a re-publish).",
+    "Seeding ran: after the batch 1 publish, the app's runtime logs, searched for 'Bootstrap', show one 'Bootstrap<Entity>: inserted N rows' line per non-static entity (none an error); if nothing shows yet, wait briefly and check once more; an unseeded table ships empty.",
+    "Each 'inserted N rows' count equals that entity's sample_data row count; a later re-publish logs 'skipped, N present' (no duplicates).",
     "KPI values on the rendered screen equal the design (e.g. 135 / 92).",
     "Counts, amounts and dates render with the design's formatting on the live screen (thousands separators, currency, date format).",
     "Every chart draws its series on the live screen (no empty or collapsed chart)."
