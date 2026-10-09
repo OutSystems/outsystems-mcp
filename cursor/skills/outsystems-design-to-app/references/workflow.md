@@ -58,7 +58,7 @@ Use **2 batches** (field-tested: more turns means unacceptable latency; do NOT d
 
 ## Stage 3: Verify and report
 
-- The environment's app info for the runtime URL, then the spec's `post_publish_checks`: seeding ran (checked after the batch 1 publish: the app's runtime logs, searched for "Bootstrap", show one `Bootstrap<Entity>: inserted N rows` line per non-static entity), and the context lookups to spot-check screens and entities. The rendered app and the logs are the real check; Mentor's self-check is not.
+- The environment's app info for the runtime URL, then the spec's `post_publish_checks`: seeding ran (checked after the batch 1 publish: the app's runtime logs, searched for "Bootstrap", show one `Bootstrap<Entity>` line per seeded entity, `inserted N rows` or `skipped, N present`, with N its `sample_data` row count), and the context lookups to spot-check screens and entities. The rendered app and the logs are the real check; Mentor's self-check is not.
 - **Visual check and fix pass** (SKILL.md Step 6b): screenshot the live screen, compare with the design region by region, list the defects, and with the user's yes send one targeted fix turn (no publish in it), confirm, publish and re-check. At most two passes.
 - Report to the user as SKILL.md Step 7 describes (including the Step 6b result).
 

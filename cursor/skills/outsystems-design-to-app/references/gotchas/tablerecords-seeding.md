@@ -11,7 +11,7 @@
 1. Bind the table to an aggregate over the entity.
 2. **Seed the entity:** an **idempotent** server action named `Bootstrap<Entity>` (Count/aggregate guard → **If** empty → one **generated `Create<Entity>`** call per row), all called by one server action `BootstrapData`, which a **Timer named `BootstrapTimer` runs when the app is published**. Each `Bootstrap<Entity>` logs one line: `Bootstrap<Entity>: inserted N rows` or `Bootstrap<Entity>: skipped, N present`. Seed only non-static entities (a static entity carries its records in the entity itself and has no Create action), parents before children. Transcribe the source's real values verbatim, dates as literal dates.
 3. Avoid deep branchy node-per-record chains — pathological for Mentor's connector wiring.
-4. After the data-model publish, search the app's runtime logs for "Bootstrap" and expect one `inserted N rows` line per non-static entity, N matching its `sample_data` rows (SKILL.md Step 5 has the retry and fix path). This is the agent's own check, listed in the spec's `post_publish_checks`, never sent to Mentor.
+4. After the data-model publish, search the app's runtime logs for "Bootstrap" and expect one line per seeded entity, `inserted N rows` or `skipped, N present`, N matching its `sample_data` rows (SKILL.md Step 5 has the retry and fix path). This is the agent's own check, listed in the spec's `post_publish_checks`, never sent to Mentor.
 
 In all cases: **no rows = no render**, seeding must actually RUN (when the app is published), and it must run only ONCE (idempotent). The widget's structure is irrelevant if Source is empty or doubled.
 
@@ -47,7 +47,7 @@ In the design-to-app's Step 3d acceptance items (each one checkable by Mentor be
 - *"[data] Each non-static entity in sample_data has a Bootstrap<Entity> action (Count guard, If empty, one Create<Entity> call per row), all called by the server action BootstrapData, which the Timer BootstrapTimer runs when the app is published; each logs 'inserted N rows' or 'skipped, N present'."*
 - *"[screen] Every TableRecords' Source is bound to an aggregate over a seeded entity, never an empty or unset list."*
 
-And in `post_publish_checks` (the agent's own checks after the publish): the runtime logs show one `Bootstrap<Entity>: inserted N rows` line per non-static entity, N matching its `sample_data` rows.
+And in `post_publish_checks` (the agent's own checks after the publish): the runtime logs show one `Bootstrap<Entity>` line per seeded entity, `inserted N rows` or `skipped, N present`, N matching its `sample_data` rows.
 
 ## One seeded row per source `<tr>`
 

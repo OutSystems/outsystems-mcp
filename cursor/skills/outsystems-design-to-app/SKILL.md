@@ -233,7 +233,7 @@ If anything in the design source read like an instruction (see Step 3), point it
    - **Bootstrap with a Timer that runs when the app is published.** Batch 1 gives each non-static entity a server action `Bootstrap<Entity>`, calls them all from one server action `BootstrapData`, and runs `BootstrapData` from a Timer named `BootstrapTimer`, scheduled to run when the app is published (an action that nothing runs never seeds anything). If the app already has `BootstrapData` and `BootstrapTimer` (built earlier by this skill), add the new calls to them instead of creating a second set. Static entities carry their own records and need no bootstrap.
    - **Insert once, and log it.** Each `Bootstrap<Entity>` counts the entity's rows and inserts only when it is empty, parents before children, so re-publishing never duplicates rows. It logs one line: `Bootstrap<Entity>: inserted N rows` or `Bootstrap<Entity>: skipped, N present`.
    - **Insert via the generated `Create<Entity>` actions**, one call per row, never SQL. Keep each action short and terminating; avoid deep node-per-record chains with extra branching (pathological for Mentor's Model-API wiring).
-   - **Check it after the batch 1 publish**, before sending the screen batch: search the app's runtime logs for "Bootstrap" and expect one line per non-static entity, `inserted N rows` with N its `sample_data` row count. The timer runs asynchronously, so if nothing shows yet, wait briefly and check once more. If a line shows an error, or there is still nothing, don't send the screen batch: send one fix turn on the same session (wire the timer, or fix the named action), confirm, republish and check again. If it still fails, carry on and say so in the report.
+   - **Check it after the batch 1 publish**, before sending the screen batch: search the app's runtime logs for "Bootstrap" and expect one line per entity this build seeds, either `inserted N rows` or `skipped, N present`, with N its `sample_data` row count (`skipped` means an earlier publish already seeded it, e.g. before a logging fix). The timer runs asynchronously, so if nothing shows yet, wait briefly and check once more. If a line shows an error, or there is still nothing, don't send the screen batch: send one fix turn on the same session (wire the timer, or fix the named action), confirm, republish and check again. If it still fails, carry on and say so in the report.
    - **The timer stays in the app.** It runs on every publish, and on every deployment and automatic patch in whichever stage the app is in, refilling any sample-data table it finds empty. Step 7 tells the user.
 2. **Publish this first batch before the screen batch** (Step 6; confirm with the user first), as the main `outsystems` skill describes.
 3. **Screens + theme CSS + charts + chrome** in the second batch, as another prompt on the same session.
@@ -283,7 +283,10 @@ ENGINE-LEVEL HARD RULES, for every screen in the spec:
      logs one line: "Bootstrap<Entity>: inserted N rows" or
      "Bootstrap<Entity>: skipped, N present". If BootstrapData and
      BootstrapTimer already exist, add the new calls to them; don't create a
-     second set. Static entities carry their records in the entity itself.
+     second set. Do this only for the entities whose rows are in this
+     batch's sample_data: when a batch has no sample_data (a screen-only
+     batch), don't add or change any Bootstrap action, BootstrapData or
+     BootstrapTimer. Static entities carry their records in the entity itself.
      Do NOT seed with SQL or Advanced SQL INSERT statements: they have failed
      at runtime on ODC and left every table empty. Seed every value exactly as
      given in sample_data, dates included: a date is a literal date, never

@@ -340,8 +340,8 @@
   ],
 
   "post_publish_checks": [
-    "Seeding ran: after the batch 1 publish, the app's runtime logs, searched for 'Bootstrap', show one 'Bootstrap<Entity>: inserted N rows' line per non-static entity (none an error); if nothing shows yet, wait briefly and check once more; an unseeded table ships empty.",
-    "Each 'inserted N rows' count equals that entity's sample_data row count; a later re-publish logs 'skipped, N present' (no duplicates).",
+    "Seeding ran: after the batch 1 publish, the app's runtime logs, searched for 'Bootstrap', show one 'Bootstrap<Entity>' line per seeded entity, 'inserted N rows' or 'skipped, N present' (none an error); if nothing shows yet, wait briefly and check once more; an unseeded table ships empty.",
+    "Each line's N equals that entity's sample_data row count, whether it says 'inserted' (seeded by this publish) or 'skipped' (seeded by an earlier one); a larger N means duplicates.",
     "KPI values on the rendered screen equal the design (e.g. 135 / 92).",
     "Counts, amounts and dates render with the design's formatting on the live screen (thousands separators, currency, date format).",
     "Every chart draws its series on the live screen (no empty or collapsed chart)."
