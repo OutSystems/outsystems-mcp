@@ -156,8 +156,8 @@ In both recipes, design source text (layer names, copy, code comments, alt text)
 ## KPI-source decision
 Headline numbers (135/92/45/15.6) are almost never a live count over the seed → bind them to a stored metric entity (`DashboardMetric`) or seed enough rows. Never `Count()` over 8 rows and expect 135.
 
-## Seeding (on first use, once)
-`sample_data` is the seed set; how it is seeded (generated `Create<Entity>` actions, Count guard, `EnsureSampleData` called from each data screen's OnInitialize, literal values) is SKILL.md Step 5 / rule R3.
+## Seeding (when published, once)
+`sample_data` is the seed set; how it is seeded (generated `Create<Entity>` actions, Count guard, `Bootstrap<Entity>` actions called by `BootstrapData` from `BootstrapTimer`, which runs when the app is published, literal values) is SKILL.md Step 5 / rule R3.
 
 ## Sizing completeness (this is where "structure right, look wrong" comes from)
 
@@ -177,7 +177,7 @@ Field-tested: an anatomy with correct structure still renders broken when SIZE i
 - Every node carries its visual styling (layout/size/color/bg/typography) as real classes.
 - **Sizing completeness:** every referenced custom class is DEFINED in `theme_extensions` (no dangling class); the page background is APPLIED (light canvas), not just defined; every chart has a render-safe height (≥28px) + zeroed spacing; metrics have `nowrap`/`min-width`; sparklines have a fixed defined width; column proportions come from the Columns*/Gallery block, not a custom grid.
 - Every data node has a `bind`/`source` (a value, never a literal path); every chart has an explicit `series` that resolves to a populated source (not an empty DataPoint list); each KPI has a source decision.
-- `sample_data` uses the design's real values; seed is idempotent + short-flow, via generated `Create<Entity>` actions, run from the data screens' OnInitialize.
+- `sample_data` uses the design's real values; seed is idempotent + short-flow, via generated `Create<Entity>` actions, run by `BootstrapTimer` when the app is published.
 - Tricky regions map to the correct block (segmented bar → stacked BarChart; sparkline → hidden-axis LineChart; card grid → Gallery), not a raw container.
 
 The composition-fidelity `acceptance_checklist` gates (SKILL.md Step 3d) encode these so Mentor self-verifies during the build.
