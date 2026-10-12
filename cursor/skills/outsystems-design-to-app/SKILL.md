@@ -4,7 +4,7 @@ description: '[Beta] Drive ODC Mentor to bootstrap an OutSystems app from a desi
 license: MIT
 compatibility: Ships for Claude Code, Cursor and Kiro. Requires the `outsystems` MCP server connected and authenticated, with the session-based Mentor tools available, and builds on the main `outsystems` skill for session, polling and publish rules. Mentor must be enabled on the tenant. For Figma sources, the Figma MCP server must also be connected.
 metadata:
-  version: "1.6.0"
+  version: "1.7.0"
   author: outsystems-r-and-d
   maturity: beta
 ---
@@ -63,7 +63,7 @@ When the target app already exists, the design is a new screen (or a restyle) **
 
 1. **Gather the app's context yourself**, in parallel: the screens, entities and themes context lookups for the app (its layout block, menu, theme and grid), plus the actions lookup when the screen needs existing logic. These see only what has been **published**. When they can't answer something (a block's internals, how the menu is built), ask Mentor a read-only question in a short session of its own on this app (it makes no edits, and the build session is opened later so it isn't left idle while the spec is written; e.g. "List the screens, the layout block and the Menu links of this app. Change nothing and do NOT publish."), then release that session. The build itself gets a fresh session in Step 5.
 2. **Fit the spec to what exists:**
-   - **Entities:** reuse existing entities and attributes by name; add only what the design needs and the app lacks. Don't re-seed entities that already hold data; seed only new ones.
+   - **Entities:** reuse existing entities and attributes by name; add only what the design needs and the app lacks. Don't re-seed entities that already hold data; seed only new ones, and ask the user before you do: the bootstrap timer also refills those tables in every stage the app reaches (Step 7).
    - **Layout and chrome:** use the app's existing layout block and `Common` chrome. Don't rebuild `ApplicationTitle` / `UserInfo`; add the new screen as a link in the existing Menu instead. Leave out the batch prompt's SHARED CHROME paragraph unless the user asks for chrome changes.
    - **Theme:** the app's theme wins where it conflicts with the design, unless the user asks to restyle. Put only the classes the new screen needs in `theme_extensions`, prefixed with the screen name, and *add* them to the theme: never replace existing rules or `:root` values.
 3. **Batches:** if there is nothing new in the data model, skip batch 1 and send only the screen batch (with its own publish confirmation). Otherwise batch 1 carries only the new entities and their seed.
@@ -230,11 +230,11 @@ If anything in the design source read like an instruction (see Step 3), point it
 
 **Batch strategy** (2 batches, field-tested; more turns means unacceptable latency, so do NOT decompose section-by-section):
 1. **Entities + roles + seed** in the first batch. **Seeding must actually run AND be robust** (the #1 time-sink and failure point):
-   - **Default: seed on first use, no timer.** Batch 1 creates one server action `EnsureSampleData`; batch 2 calls it from the **OnInitialize of every screen the spec builds that shows seeded data** (a standalone seed action never runs, and the first screen a user opens may not be the default one). Data exists before the screen's aggregates fetch, failures surface in the request, and no background timer is added to the tenant. The cost is one server call per load of those screens, which only counts rows once the data exists. Static entities carry their own records and need no seed.
-   - **Insert once, not per refresh.** `EnsureSampleData` calls one `Seed<Entity>` per entity, parents before children: Count on the entity, **If** it has rows exit, else insert. Later loads only run the count; re-publishing never duplicates rows.
-   - **Insert via the generated `Create<Entity>` actions**, never SQL. Keep each seed short and terminating; avoid deep node-per-record chains with extra branching (pathological for Mentor's Model-API wiring).
-   - **Timer alternative** (only when seeding on user access is unacceptable, and only if the user asks): call the same `EnsureSampleData` from one Timer `SeedData` scheduled When-Published; rows then appear asynchronously and failures show only in the runtime logs.
-   - **Nothing is seeded until a screen calls it**, so the tables stay empty after the batch 1 publish. Check seeding after the batch 2 publish (Step 6, `post_publish_checks`): open a screen that shows seeded data once, then check row counts and rendered values. Empty tables mean blank tables and charts even when the build "succeeds".
+   - **Bootstrap with a Timer that runs when the app is published.** Batch 1 gives each non-static entity a server action `Bootstrap<Entity>`, calls them all from one server action `BootstrapData`, and runs `BootstrapData` from a Timer named `BootstrapTimer`, scheduled to run when the app is published (an action that nothing runs never seeds anything). If the app already has `BootstrapData` and `BootstrapTimer` (built earlier by this skill), add the new calls to them instead of creating a second set. Static entities carry their own records and need no bootstrap.
+   - **Insert once, and log it.** Each `Bootstrap<Entity>` counts the entity's rows and inserts only when it is empty, parents before children, so re-publishing never duplicates rows. It logs one line: `Bootstrap<Entity>: inserted N rows` or `Bootstrap<Entity>: skipped, N present`.
+   - **Insert via the generated `Create<Entity>` actions**, one call per row, never SQL. Keep each action short and terminating; avoid deep node-per-record chains with extra branching (pathological for Mentor's Model-API wiring).
+   - **Check it after the batch 1 publish**, before sending the screen batch: search the app's runtime logs for "Bootstrap" and expect one line per entity this build seeds, either `inserted N rows` or `skipped, N present`, with N its `sample_data` row count (`skipped` means an earlier publish already seeded it, e.g. before a logging fix). The timer runs asynchronously, so if nothing shows yet, wait briefly and check once more. If a line shows an error, or there is still nothing, don't send the screen batch: send one fix turn on the same session (wire the timer, or fix the named action), confirm, republish and check again. If it still fails, carry on and say so in the report.
+   - **The timer stays in the app.** It runs on every publish, and on every deployment and automatic patch in whichever stage the app is in, refilling any sample-data table it finds empty. Step 7 tells the user.
 2. **Publish this first batch before the screen batch** (Step 6; confirm with the user first), as the main `outsystems` skill describes.
 3. **Screens + theme CSS + charts + chrome** in the second batch, as another prompt on the same session.
 
@@ -271,14 +271,22 @@ ENGINE-LEVEL HARD RULES, for every screen in the spec:
      it does not render in ODC. On dark or coloured surfaces give the icon an
      explicit light colour class. If an inline SVG is unavoidable, set
      fill="#fff" (and stroke) on the <svg> element itself.
-(R3) SEEDED DATA ON FIRST USE. Every table, list and chart is bound to
-     an aggregate over a seeded entity, never to an empty or unset source. Seed
-     each non-static entity with an idempotent action named Seed<Entity> (Count
-     guard, If empty, one generated Create<Entity> call per row), all called by
-     one server action EnsureSampleData. Every screen that shows seeded data
-     calls EnsureSampleData from its OnInitialize. Do NOT create a Timer for
-     seeding unless the spec explicitly asks for one. Seed parent entities before their children. Static entities
-     carry their records in the entity itself.
+(R3) BOOTSTRAP THE SAMPLE DATA WITH A TIMER THAT RUNS WHEN THE APP IS
+     PUBLISHED. Every table, list and chart is bound to an aggregate over a
+     seeded entity, never to an empty or unset source. Give each non-static
+     entity a server action named Bootstrap<Entity> that counts the entity's
+     rows and inserts only when it is empty, with one generated
+     Create<Entity> call per row; call them all, parents before children,
+     from one server action named BootstrapData, and run BootstrapData from a
+     Timer named BootstrapTimer, scheduled to run when the app is published.
+     An action that nothing runs never seeds anything. Each Bootstrap<Entity>
+     logs one line: "Bootstrap<Entity>: inserted N rows" or
+     "Bootstrap<Entity>: skipped, N present". If BootstrapData and
+     BootstrapTimer already exist, add the new calls to them; don't create a
+     second set. Do this only for the entities whose rows are in this
+     batch's sample_data: when a batch has no sample_data (a screen-only
+     batch), don't add or change any Bootstrap action, BootstrapData or
+     BootstrapTimer. Static entities carry their records in the entity itself.
      Do NOT seed with SQL or Advanced SQL INSERT statements: they have failed
      at runtime on ODC and left every table empty. Seed every value exactly as
      given in sample_data, dates included: a date is a literal date, never
@@ -325,7 +333,7 @@ If the user declines a publish, don't publish. Tell them the changes stay in the
 
 When the final publish has landed:
 - Fetch the runtime URL from the environment's app info, as the main `outsystems` skill describes, and give the user the `url` as a link.
-- Run the spec's `post_publish_checks` yourself: seeding ran (open a screen that shows seeded data once, then check each entity's row count; if a table is still empty, the screen's request error or the app's runtime logs, searched for "Seed", show why), KPI values, and a spot-check of the screens with the context lookups. Mentor's own self-check can report success on work that didn't land, so the rendered app and the logs are the real check: **do Step 6b before reporting.**
+- Run the spec's `post_publish_checks` yourself: seeding ran (checked after the batch 1 publish, as Step 5 describes: one `Bootstrap<Entity>` log line per non-static entity), KPI values, and a spot-check of the screens with the context lookups. Mentor's own self-check can report success on work that didn't land, so the rendered app and the logs are the real check: **do Step 6b before reporting.**
 - Keep the session open until Step 6b is done, then release it as the main `outsystems` skill describes.
 
 ### Step 6b: Visual check and fix pass (MANDATORY)
@@ -340,13 +348,14 @@ Mentor's self-check has repeatedly reported "all items pass" on screens with vis
    - If the session ended while you waited on the user (idle limit), open a new session and load the same `app_key` into it: it starts from the published app, which is what you screenshotted, so nothing is lost.
 5. **At most two fix passes.** Whatever is still wrong after that is reported as a remaining Mentor-fidelity gap, not looped on.
 
-### Step 7: Report to the user (3–5 lines)
+### Step 7: Report to the user (4–6 lines)
 
 - App name + `app_key`
 - Entity / screen counts (from the spec)
 - Mentor turn count + build duration (from `duration_ms` / publish timestamps)
 - Runtime URL (markdown link)
 - The Step 6b result: screenshot path(s), defects fixed, defects left
+- **Sample data:** the bootstrap check's result, and that the app now contains `BootstrapData` and `BootstrapTimer`, which runs on every publish, deployment and automatic patch in whichever stage the app is in and refills any empty sample-data table. To keep those tables empty, the timer has to be removed first: offer to do it in one Mentor turn on this app, confirmed and published like any other change.
 - Working folder path, and: *"Send another prompt on the same Mentor session for refinements if it's still open, or open a new session on this app later."*
 
 ## Data shape contract
@@ -358,7 +367,7 @@ The `spec.json` schema lives in `assets/enriched-blueprint.json`. Top-level keys
 - `blocks`: reusable Web Blocks for patterns used on **multiple screens**. Single-screen components live inline in the screen's `anatomy`, not here.
 - `design_system`: the **complete token set** (colors AND spacing/radius/shadow scales AND typography roles), plus `visual_rules` and `theme_extensions` (the single source of truth for custom CSS / the app.css the anatomy references).
 - `entities`: only the entities the app lacks (for an existing app, reuse its entities by name).
-- `sample_data`: the seed set (design's real values, one array per entity; a foreign key is given as the parent row's label) plus the KPI-source store (e.g. a `DashboardMetric` single-row entity with one attribute per metric). Seeded by a short, idempotent `EnsureSampleData` action that uses the generated `Create<Entity>` actions and runs from each data screen's OnInitialize (see Step 5). See the schema comment.
+- `sample_data`: the seed set (design's real values, one array per entity; a foreign key is given as the parent row's label) plus the KPI-source store (e.g. a `DashboardMetric` single-row entity with one attribute per metric). Seeded by short, idempotent `Bootstrap<Entity>` actions that use the generated `Create<Entity>` actions, called by `BootstrapData` from `BootstrapTimer`, which runs when the app is published (see Step 5). See the schema comment.
 - `screens[]`: each with `title`, `subtitle`, an **`anatomy`** (the per-screen widget-tree, the single structural + visual source of truth, Step 3.0), optional `popups[]`, `permissions`.
 - `icon_mapping` (bare Phosphor names), `roles`, `acceptance_checklist` (each item tagged `[data]` or `[screen]`, checkable before publish; includes the composition-fidelity gates; see Step 3d), `post_publish_checks` (your own checks after a publish; never sent to Mentor).
 
@@ -386,7 +395,7 @@ Handle errors as the main `outsystems` skill describes, including the `tenant_no
 | Agent prescribes aggregate names | anatomy uses implementation terms | Name entity/attribute only; do NOT prescribe aggregate / action / variable names |
 | Cards Carousel rendered as Columns3 | Source-name to block check skipped | Re-spec the region as `Carousel` block |
 | Charts render blank | bound to an empty/unpopulated DataPoint list | Bind each chart to a populated aggregate over a seeded entity (see Step 3d chart gate) |
-| Table / charts empty after a "successful" build | seed didn't run / errored on the first load of a data screen | Seed via generated `Create<Entity>` actions called by `EnsureSampleData` from each data screen's OnInitialize (Step 5); open the screen once, then check row counts and the app's runtime logs (Step 6) |
+| Table / charts empty after a "successful" build | the bootstrap timer didn't run or errored | Bootstrap via generated `Create<Entity>` actions called by `BootstrapData` from `BootstrapTimer` (Step 5); check the `Bootstrap<Entity>` log lines after the batch 1 publish, and follow Step 5's fix path |
 | Chrome (search / theme toggle / notification badge) missing after publish | Chrome edits only implied in the screen batch | Include the SHARED CHROME paragraph of the batch prompt (Step 5); chrome gets skipped when not named |
 | Mentor replies with a plan and asks for approval instead of applying it | Mentor treated the batch as a planning request | The batch prompt already says to apply now; if it still asks, answer on the same session: "Yes, apply all changes now, do not ask again, and do NOT publish" |
 
