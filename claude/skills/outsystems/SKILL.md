@@ -98,7 +98,7 @@ Discover the live catalog from the MCP server's `tools/list`; treat each tool's 
 - **Apps** — list and inspect applications, their references, and revision history; create new apps — by default cloned from the kind's standard application template (Web, Mobile, Agent; MobileUI on request), exactly like the ODC Studio new-app wizard, with a blank-shell opt-out (libraries are always created blank).
 - **Context Service** — seven typed, read-only lookups over a tenant's elements (entities, actions, screens, structures, roles, themes, connections).
 - **Mentor** — server-side OML editing as an async, multi-turn session. How the steps are split across tools varies by tenant, so read `tools/list` before the first mentor call.
-- **Publish** — compile and publish edited OML to an environment, by asking Mentor to publish inside a mentor turn. There is no separate publish tool; see Caveats.
+- **Publish** — compile edited OML into a new revision that lands in the tenant's Development environment, by asking Mentor to publish inside a mentor turn. There is no separate publish tool; see Caveats.
 - **Deployments** — promote builds across environments, roll back, run impact analyses.
 - **External libraries** — upload, publish, inspect, and fetch source for .NET libraries.
 - **Environments** — enumerate the tenant's environments.
