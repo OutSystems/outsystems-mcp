@@ -1,6 +1,6 @@
 ---
 description: Send feedback about your OutSystems agent experience
-argument-hint: [--dry-run] [--quiet] [<your feedback>] (leave empty for guided form)
+argument-hint: "[--dry-run] [--quiet] [<your feedback>] (leave empty for guided form)"
 ---
 
 The user typed `/outsystems-feedback $ARGUMENTS`. They want to report something about the OutSystems agent experience (a bug, a thumbs-up / thumbs-down, a comment about a tool that misbehaved, etc.).
