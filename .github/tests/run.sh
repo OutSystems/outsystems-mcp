@@ -5,6 +5,7 @@
 # skill doc, whose deployment-impact recipe two suites here check and whose
 # withheld-graph caveat one suite checks, or to the Claude plugin's hook,
 # which one suite runs the way Claude Code does.
+# `skills-tests.yml` runs one suite on its own: skill-platform-check.test.sh.
 #
 # Needs: bash, git, jq, python3 with PyYAML.
 

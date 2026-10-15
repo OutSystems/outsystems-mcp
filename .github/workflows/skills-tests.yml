@@ -1,8 +1,10 @@
 name: skills-tests
 
 # Offline tests for the bundled Beta skills' scripts (tests/skills), plus the
-# check that the Cursor and Kiro copies match the Claude source. Needs no
-# tenant and no secrets.
+# check that the Cursor and Kiro copies match the Claude source, and the
+# platform-check suite from .github/tests (the O11 exclusions in the skill
+# docs and the README recipes for an existing O11 instructions file). Needs
+# no tenant and no secrets.
 
 on:
   pull_request:
@@ -12,6 +14,14 @@ on:
       - "kiro/outsystems/skills/outsystems-*/**"
       - "tests/skills/**"
       - ".github/workflows/skills-tests.yml"
+      - "SKILL.md"
+      - "claude/skills/outsystems/SKILL.md"
+      - "cursor/skills/outsystems/SKILL.md"
+      - "kiro/outsystems/skills/outsystems/SKILL.md"
+      - "copilot/skill.md"
+      - "README.md"
+      - ".github/tests/lib.sh"
+      - ".github/tests/skill-platform-check.test.sh"
   push:
     branches: [main]
     paths:
@@ -20,6 +30,14 @@ on:
       - "kiro/outsystems/skills/outsystems-*/**"
       - "tests/skills/**"
       - ".github/workflows/skills-tests.yml"
+      - "SKILL.md"
+      - "claude/skills/outsystems/SKILL.md"
+      - "cursor/skills/outsystems/SKILL.md"
+      - "kiro/outsystems/skills/outsystems/SKILL.md"
+      - "copilot/skill.md"
+      - "README.md"
+      - ".github/tests/lib.sh"
+      - ".github/tests/skill-platform-check.test.sh"
 
 permissions:
   contents: read
@@ -46,3 +64,14 @@ jobs:
 
       - name: Run the skill suites
         run: python -m pytest -q -p no:cacheprovider tests/skills
+
+  platform-check:
+    # Bash and git only, so it runs once, outside the Python matrix.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Check the platform rule, the skill descriptions and the README recipes
+        run: bash .github/tests/skill-platform-check.test.sh

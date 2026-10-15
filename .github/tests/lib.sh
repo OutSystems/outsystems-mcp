@@ -59,14 +59,14 @@ actual:   $2"
 }
 
 check_match() { # name, text, extended regex
-  if printf '%s' "$2" | grep -qE -- "$3"; then _report 0 "$1"; else
+  if grep -qE -- "$3" <<<"$2"; then _report 0 "$1"; else
     _report 1 "$1" "expected a match for: $3
 in: $2"
   fi
 }
 
 check_no_match() { # name, text, extended regex
-  if printf '%s' "$2" | grep -qE -- "$3"; then
+  if grep -qE -- "$3" <<<"$2"; then
     _report 1 "$1" "expected no match for: $3
 in: $2"
   else _report 0 "$1"; fi
