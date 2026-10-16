@@ -4,8 +4,7 @@
 # with kind carried from the launch response, analyzedRevision and
 # sourceEnvironmentKey surfaced with the verdict, report gated on
 # impactKnown, the never-deployed precondition on delete=false, a bounded
-# consecutive Unknown retry and the truncation instruction; the five
-# manifests carry one version.
+# consecutive Unknown retry and the truncation instruction.
 
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -145,16 +144,5 @@ for pat in impactKnown analyzedRevision sourceEnvironmentKey; do
     check "$d: count of $pat equals root" "$(grep -c -- "$pat" "$REPO_ROOT/$d")" "$ref"
   done
 done
-
-section "manifests carry one version (R13)"
-v1=$(jq -r .version "$REPO_ROOT/claude/.claude-plugin/plugin.json")
-v2=$(jq -r '.plugins[0].version' "$REPO_ROOT/.claude-plugin/marketplace.json")
-v3=$(jq -r .version "$REPO_ROOT/cursor/.cursor-plugin/plugin.json")
-v4=$(jq -r '.plugins[0].version' "$REPO_ROOT/.cursor-plugin/marketplace.json")
-v5=$(jq -r .version "$REPO_ROOT/kiro/outsystems/plugin.json")
-check "claude marketplace version matches plugin" "$v2" "$v1"
-check "cursor plugin version matches" "$v3" "$v1"
-check "cursor marketplace version matches" "$v4" "$v1"
-check "kiro plugin version matches" "$v5" "$v1"
 
 finish

@@ -1,0 +1,24 @@
+name: plugin-version
+
+# Checks that every file that carries the plugin version agrees. It has no
+# path filter, so it also guards a file that starts to carry the version,
+# and it reports on every pull request, so it can be a required check.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  plugin-version-lockstep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Check the plugin version in every file that carries it
+        run: bash .github/tests/plugin-version-lockstep.test.sh
