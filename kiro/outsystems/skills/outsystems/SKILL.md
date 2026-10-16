@@ -36,9 +36,9 @@ Steps:
 3. **Construct the URL**: `https://<TENANT>/mcp`.
 4. **Patch `~/.kiro/settings/mcp.json`.** Use Read + Write: read first, preserve every other entry, write back. Never clobber siblings. If the file has comments (JSONC), preserve them. Set top-level `mcpServers.outsystems` to:
    ```
-   {"type": "http", "url": "<URL>", "timeout": 100000}
+   {"type": "http", "url": "<URL>", "timeout": 100000, "headers": {"X-OutSystems-Plugin-Version": "1.9.0"}}
    ```
-   ALWAYS keep top-level `mcpServers` as an object (Kiro's user-level loader rejects the file without it).
+   ALWAYS keep top-level `mcpServers` as an object (Kiro's user-level loader rejects the file without it). The `headers` entry carries the plugin version: write it as shown. When an `outsystems` entry already exists, keep its other keys and every other `headers` key, and set the version header to the value shown here.
 5. **Tell the user** Kiro's MCP file watcher will reload within a few seconds. Then proceed to the "Authenticating" section below; Kiro runs the OAuth sign-in on the first OutSystems tool call.
 6. **Retry the user's original request** once authentication completes.
 

@@ -36,7 +36,7 @@ There is nothing to install or build. The files under `claude/`, `.claude-plugin
 claude/                   # The Claude plugin folder: what `claude plugin install` and the Claude plugin directory ship
   .claude-plugin/         # plugin.json plus the listing icon image (see the note below the tree)
     plugin.json           # Claude Code / Desktop plugin manifest (name, version, skills dir, commands dir, userConfig, listing URLs)
-  .mcp.json               # MCP server the Claude plugin declares; URL built from the tenant_hostname plugin option
+  .mcp.json               # MCP server the Claude plugin declares; URL built from the tenant_hostname plugin option, plugin version header from the headersHelper
   LICENSE                 # Copy of the root LICENSE (the directory wants one inside the plugin folder)
   README.md               # Plugin-folder README (40+ words): the directory listing description
   agents/
@@ -46,6 +46,9 @@ claude/                   # The Claude plugin folder: what `claude plugin instal
   hooks/
     hooks.json            # PreToolUse hook limiting the status-watcher agent's Bash use to a single sleep
     limit-watcher-bash.sh # The plain shell script that hook runs
+  scripts/
+    plugin-version-header.sh   # The plain shell script the headersHelper of .mcp.json runs: prints the plugin version header from plugin.json
+    plugin-version-header.ps1  # The same output, run where sh fails
   skills/
     outsystems/
       SKILL.md            # Agent-facing skill loaded by the Claude Code plugin (and Claude Desktop via the same plugin)

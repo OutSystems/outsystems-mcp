@@ -35,12 +35,15 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
 
 **Setup Steps:**
 
-1. **Create or edit the MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project). Both files are merged; if the same server name appears in both, the project-level entry takes priority. Read it first if it exists and preserve your other entries:
+1. **Create or edit the MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project). Both files are merged; if the same server name appears in both, the project-level entry takes priority. Read it first if it exists and preserve your other entries. If an `outsystems` entry already exists, set its `url` to `https://<my-tenant>/mcp` for your tenant, keep its other keys and every other `headers` key, and set the version header to the value shown:
    ```json
    {
      "mcpServers": {
        "outsystems": {
-         "url": "https://<my-tenant>/mcp"
+         "url": "https://<my-tenant>/mcp",
+         "headers": {
+           "X-OutSystems-Plugin-Version": "1.9.0"
+         }
        }
      }
    }

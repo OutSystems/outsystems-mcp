@@ -3,7 +3,10 @@
   "//oauth": "OAuth happens via `agent mcp login outsystems` command. Server may need approval via `agent mcp enable outsystems` first.",
   "mcpServers": {
     "outsystems": {
-      "url": "https://<my-tenant>/mcp"
+      "url": "https://<my-tenant>/mcp",
+      "headers": {
+        "X-OutSystems-Plugin-Version": "1.9.0"
+      }
     }
   }
 }
