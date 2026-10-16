@@ -8,14 +8,14 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 
 | Harness | Skill doc | How the skill doc arrives | MCP config target | Server key |
 | :-- | :-- | :-- | :-- | :-- |
-| Claude Code | `claude/skills/outsystems/SKILL.md` | automatic, via `claude/.claude-plugin/plugin.json`'s `skills` key | declared by the plugin: `claude/.mcp.json`, URL built from the `tenant_hostname` plugin option; listed as `plugin:outsystems:outsystems` in `claude mcp list` (`claude mcp add` at user scope is the fallback) | `mcpServers` |
+| Claude Code | `claude/skills/outsystems/SKILL.md` | automatic, via `claude/.claude-plugin/plugin.json`'s `skills` key | declared by the plugin: `claude/.mcp.json`, URL built from the `tenant_hostname` plugin option; listed as `plugin:outsystems:outsystems` in `claude mcp list` (`claude mcp add` at user scope is the fallback); sends the plugin version header through its `headersHelper` (see CONTRIBUTING.md) | `mcpServers` |
 | Claude Desktop | `claude/skills/outsystems/SKILL.md` | same plugin as Claude Code, installed separately via Desktop's plugin-install flow (paid plan required) | `claude_desktop_config.json` for the Chat tab and the Code tab; whether the plugin's `.mcp.json` server also loads in either tab, and whether Desktop prompts for the option, are unverified (see CONTRIBUTING.md) | `mcpServers` |
-| Kiro Chat | `kiro/outsystems/skills/outsystems/SKILL.md` | automatic, via `kiro/outsystems/plugin.json` (Agent Plugins format): Kiro loads every `skills/*/SKILL.md` in the Power | `~/.kiro/settings/mcp.json` | `mcpServers` |
+| Kiro Chat | `kiro/outsystems/skills/outsystems/SKILL.md` | automatic, via `kiro/outsystems/plugin.json` (Agent Plugins format): Kiro loads every `skills/*/SKILL.md` in the Power | `~/.kiro/settings/mcp.json`; carries the plugin version header (see CONTRIBUTING.md) | `mcpServers` |
 | Copilot in VS Code | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `.vscode/mcp.json`, or the user config | `servers` |
 | Copilot in CLI | `copilot/skill.md` | manual copy to `.github/copilot-instructions.md` | `~/.copilot/mcp-config.json` | `mcpServers` |
 | Copilot in Visual Studio | `copilot/skill.md` | manual download to `.github/copilot-instructions.md` | `<SolutionDir>\.mcp.json`, or `%USERPROFILE%\.mcp.json` | `servers` |
-| Cursor App | `cursor/skills/outsystems/SKILL.md` | automatic, via `cursor/.cursor-plugin/plugin.json` | Team Marketplace install (Team/Enterprise plan required) | `mcpServers` |
-| Cursor CLI | `cursor/skills/outsystems/SKILL.md` | manual copy to `AGENTS.md` in the user's workspace root (Cursor's instructions file, not this repository's `AGENTS.md`) | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project) | `mcpServers` |
+| Cursor App | `cursor/skills/outsystems/SKILL.md` | automatic, via `cursor/.cursor-plugin/plugin.json` | Team Marketplace install (Team/Enterprise plan required); carries the plugin version header (see CONTRIBUTING.md) | `mcpServers` |
+| Cursor CLI | `cursor/skills/outsystems/SKILL.md` | manual copy to `AGENTS.md` in the user's workspace root (Cursor's instructions file, not this repository's `AGENTS.md`) | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project); carries the plugin version header (see CONTRIBUTING.md) | `mcpServers` |
 | M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
 | Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
 
@@ -135,20 +135,9 @@ Since 0.20.0 the plugin's `claude/.mcp.json` declares the `outsystems` HTTP serv
 
 ### Manifest version lockstep
 
-Three sets of files, five in total, declare plugin versions and they must stay in sync on every bump:
+The plugin version lives in the five manifests and in the `X-OutSystems-Plugin-Version` request header that the Cursor and Kiro setup configs send. The Claude plugin's header has no literal value, because its `headersHelper` reads `claude/.claude-plugin/plugin.json`. CONTRIBUTING.md "Versioning and Releases" lists every file that carries the version. The bump commit edits all of them. `.github/tests/plugin-version-lockstep.test.sh` fails on drift.
 
-**Claude:**
-- `claude/.claude-plugin/plugin.json` -> `version`
-- `.claude-plugin/marketplace.json` -> `plugins[0].version`
-
-**Cursor:**
-- `cursor/.cursor-plugin/plugin.json` -> `version`
-- `.cursor-plugin/marketplace.json` -> `plugins[0].version`
-
-**Kiro:**
-- `kiro/outsystems/plugin.json` -> `version`
-
-`claude plugin update outsystems@outsystems` compares the version in `claude/.claude-plugin/plugin.json`. Bumping only the root `.claude-plugin/marketplace.json` does not trigger an update: the user is told "already at the latest version" and never pulls the new content, even after `claude plugin marketplace update`. Cursor's resolution has not been verified, so treat both Cursor manifests as load-bearing. Always bump all five files (Claude + Cursor pairs, plus the Kiro manifest) in the same commit, keeping every version aligned. Whether Kiro compares this version on a Power update has not been verified; keep it aligned so the Powers panel and the catalog submission advertise the release that is actually shipped.
+`claude plugin update outsystems@outsystems` compares the version in `claude/.claude-plugin/plugin.json`. Bumping only the root `.claude-plugin/marketplace.json` does not trigger an update: the user is told "already at the latest version" and never pulls the new content, even after `claude plugin marketplace update`. Cursor's resolution has not been verified, so treat both Cursor manifests as load-bearing. Always bump every file CONTRIBUTING.md lists in the same commit, keeping every version aligned. Whether Kiro compares this version on a Power update has not been verified; keep it aligned so the Powers panel and the catalog submission advertise the release that is actually shipped.
 
 The version is not the only shared field. `description`, `author.name`, `keywords`, `license`, `homepage`, and `repository` carry the same value in all three plugin manifests, and `displayName` and `author.url` in the Claude and Kiro ones (Cursor's reference does not document them). The two `marketplace.json` entries repeat the description. Change one of these values everywhere in the same commit. The description is host-neutral on purpose, and the keywords are chosen for Kiro, where they trigger Power activation: keep them specific to OutSystems, because a generic word such as `mcp` or `deployment` activates the Power in unrelated conversations.
 

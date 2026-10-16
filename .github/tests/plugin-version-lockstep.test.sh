@@ -6,12 +6,12 @@
 # `claude/.mcp.json` runs a script that reads the version from
 # `plugin.json`. The suite runs that command the way Claude Code does, and
 # runs each script on copies of `plugin.json` in other layouts.
-# CONTRIBUTING.md "Versioning and Releases" lists those files. The source
-# value must be SemVer 2.0 and at most 64 bytes, because the MCP server
-# applies the same rule to the header it receives. A new manifest fails the
-# suite, and so does a file other than those and the two scripts where the
-# header name, in any letter case and optionally quoted, is followed by `:`
-# or `=`.
+# CONTRIBUTING.md "Versioning and Releases" lists those files, and the
+# suite holds that list to the files it checks. The source value must be
+# SemVer 2.0 and at most 64 bytes, because the MCP server applies the same
+# rule to the header it receives. A new manifest fails the suite, and so
+# does a file other than those and the two scripts where the header name,
+# in any letter case and optionally quoted, is followed by `:` or `=`.
 
 set -uo pipefail
 # A caller's environment must not point the git calls at another repository.
@@ -103,6 +103,13 @@ COMPLETE="the header appears only in the listed files and the two helper files"
 NO_LITERAL="$CLAUDE_MCP: no header key in any letter case"
 HELPER="$CLAUDE_MCP: headersHelper runs the sh helper, and the PowerShell helper where sh fails"
 MANIFESTS="the manifests are exactly the listed five"
+LISTED="CONTRIBUTING.md lists exactly the files that carry the version"
+
+# The paths at the start of the list items in "Versioning and Releases".
+contributing_list() { # file
+  awk '/^## / { f = ($0 == "## Versioning and Releases") } f && /^- `[^`]+`/' "$1" |
+    sed -E 's/^- `([^`]+)`.*/\1/' | sort
+}
 
 md_expected_hits() { # file
   case "$1" in
@@ -166,6 +173,8 @@ check_root() { # dir, command that lists the files of the dir NUL-separated
   section "completeness"
   check "$COMPLETE" "$("$list" "$dir" | header_files "$dir")" \
     "$(printf '%s\n' "$expected_headers" "${HELPERS[@]}" | sort)"
+  check "$LISTED" "$(contributing_list "$dir/CONTRIBUTING.md")" \
+    "$(printf '%s\n' "$expected_headers" "$expected_manifests" | sort)"
 }
 
 check_manifests() { # dir, a git work tree
@@ -241,7 +250,7 @@ ALL=("$SOURCE" "${PLUGINS[@]}" "${MARKETPLACES[@]}" "${HEADER_JSON[@]}" "${HEADE
   "$CLAUDE_MCP" "${HELPERS[@]}")
 MUT="$WORK/mut"
 PRISTINE="$WORK/pristine"
-for f in "${ALL[@]}"; do
+for f in "${ALL[@]}" CONTRIBUTING.md; do
   mkdir -p "$PRISTINE/$(dirname "$f")"
   cp "$REPO_ROOT/$f" "$PRISTINE/$f"
 done
@@ -399,6 +408,12 @@ for f in "${HEADER_MD[@]}"; do
   sed_edit "$f" 's/"outsystems":/"other":/g; s/mcpServers[.]outsystems/mcpServers.other/g'
   expect_failure "$f: header in another server entry" "$f: every header sits in the outsystems entry"
 done
+
+sed_edit CONTRIBUTING.md '/^- `cursor\/README.md`/d'
+expect_failure "CONTRIBUTING.md: a listed file removed" "$LISTED"
+awk '{ print } /^- `kiro\/outsystems\/plugin.json`/ { print "- `kiro/outsystems/extra.json` → `version`" }' \
+  "$MUT/CONTRIBUTING.md" > "$MUT/CONTRIBUTING.md.tmp" && mv "$MUT/CONTRIBUTING.md.tmp" "$MUT/CONTRIBUTING.md"
+expect_failure "CONTRIBUTING.md: an extra file listed" "$LISTED"
 
 # A new file that sets the header with the current value.
 lower=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
