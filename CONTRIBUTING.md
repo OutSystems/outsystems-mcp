@@ -283,7 +283,7 @@ The Claude plugin sends the header too, but carries no literal value. The `heade
 
 The Copilot recipes and the other copied-file recipes do not send the header. The value means a different thing on each harness:
 - Claude Code reports the installed plugin version.
-- Kiro reports the version of the last setup or refresh.
+- Kiro reports the version of the last setup or refresh. Its default engine sends the GET request on `/mcp` and the sign-in discovery requests without the header. Its POST requests carry it.
 - Cursor reports the version of the last Cursor setup or refresh, App or CLI. A project `.cursor/mcp.json` entry can hide the global one.
 
 Bump the five manifests and the six header values in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`). `.github/tests/plugin-version-lockstep.test.sh` fails on drift, and on a file that carries the header but is not on this list. The `plugin-version.yml` workflow runs it on every pull request.
@@ -302,7 +302,7 @@ Versioning follows [Semantic Versioning](https://semver.org/):
 - **MINOR** — new skill content, new workflows documented, new install path for an additional harness. An install-recipe change whose previous configuration keeps working is MINOR too (0.20.0 moved Claude Code from `claude mcp add` to the plugin's `tenant_hostname` option; entries written by the old recipe still load).
 - **PATCH** — fixes and clarifications that don't change how a user installs or invokes the integration.
 
-There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install` or Claude Code auto-update, Claude Desktop plugin install or reinstall, Cursor Team Marketplace refresh, or Kiro Power re-fetch.
+There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install` or Claude Code auto-update, Claude Desktop plugin install or reinstall, Cursor Team Marketplace refresh, or Kiro Power re-fetch. Cursor and Kiro users then also run the refresh prompt in README.md, so that the plugin version header in their MCP config matches the new version.
 
 ## License
 
