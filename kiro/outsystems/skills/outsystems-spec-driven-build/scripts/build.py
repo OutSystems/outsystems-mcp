@@ -702,7 +702,7 @@ def _read_run(raw) -> dict:
     pages = _pages(raw)
     if not pages:
         return {"run_id": "", "status": "unknown", "result": {}, "validation": {},
-                "summary": "", "error": ""}
+                "asset_facts": [], "summary": "", "error": ""}
     last = next((p for p in reversed(pages) if p.get("status")), pages[-1])
     events: list = []
     for p in pages:
@@ -714,11 +714,13 @@ def _read_run(raw) -> dict:
     if isinstance(error, dict):
         error = error.get("message") or json.dumps(error)
     validation = result.get("validation") or last.get("validation") or {}
+    asset_facts = result.get("assetFacts") or result.get("asset_facts") or []
     return {
         "run_id": str(last.get("runId") or ""),
         "status": str(last.get("status") or "unknown"),
         "result": result,
         "validation": validation if isinstance(validation, dict) else {},
+        "asset_facts": [f for f in asset_facts if isinstance(f, dict)] if isinstance(asset_facts, list) else [],
         "summary": str(summary or ""),
         "error": str(error),
     }
@@ -739,22 +741,40 @@ def _error_count(validation: dict):
     return len(errors) if isinstance(errors, list) else None
 
 
-def _landed(run: dict) -> tuple[bool, str]:
+def _facts_landed(validation: dict, facts: dict, suffix: str = "") -> tuple[bool, str]:
+    """Whether one set of completion signals says the change landed."""
+    errors = _error_count(validation)
+    if errors:
+        return False, f"{errors} validation error(s){suffix}"
+    applied = facts.get("changeApplied", facts.get("change_applied", facts.get("applied")))
+    if isinstance(applied, str):
+        applied = applied.strip().lower() not in ("false", "0", "no")
+    if applied is False:
+        return False, f"the change was not applied{suffix}"
+    return True, "succeeded, no validation errors"
+
+
+def _landed(run: dict, app_key: str | None = None) -> tuple[bool, str]:
     """Whether the turn's work landed, from the terminal completion signals,
-    as the main skill reads them: `succeeded` only means the turn ended."""
+    as the main skill reads them: `succeeded` only means the turn ended.
+    Signals come per asset in `assetFacts`: the app's own entry decides, and
+    without one every entry must have landed. A result without `assetFacts`
+    carries one flat set of signals (older servers)."""
     if run["status"] != "succeeded":
         return False, f"status is {run['status']}"
     if run["error"]:
         return False, f"turn error: {run['error']}"
-    errors = _error_count(run["validation"])
-    if errors:
-        return False, f"{errors} validation error(s)"
-    result = run["result"]
-    applied = result.get("changeApplied", result.get("change_applied", result.get("applied")))
-    if isinstance(applied, str):
-        applied = applied.strip().lower() not in ("false", "0", "no")
-    if applied is False:
-        return False, "the change was not applied"
+    facts = run["asset_facts"]
+    if not facts:
+        return _facts_landed(run["validation"], run["result"])
+    key = (app_key or "").strip().lower()
+    own = [f for f in facts if key and str(f.get("assetKey", f.get("asset_key", ""))).lower() == key]
+    for f in own or facts:
+        validation = f.get("validation") if isinstance(f.get("validation"), dict) else {}
+        suffix = "" if own else f" on asset {f.get('assetKey', f.get('asset_key', '?'))}"
+        landed, reason = _facts_landed(validation, f, suffix)
+        if not landed:
+            return landed, reason
     return True, "succeeded, no validation errors"
 
 
@@ -789,7 +809,7 @@ def cmd_render_report(args: argparse.Namespace) -> int:
     md.append("")
     last_landed = False
     for label, path, run in runs:
-        landed, reason = _landed(run)
+        landed, reason = _landed(run, args.app_key)
         last_landed = landed
         md.append(f"## Mentor turn: {label}")
         md.append("")

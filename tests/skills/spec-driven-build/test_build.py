@@ -954,3 +954,28 @@ def test_description_fits_the_import_limit():
     front = SKILL.joinpath("SKILL.md").read_text(encoding="utf-8").split("---")[1]
     desc = re.search(r"^description: (.*)$", front, re.M).group(1).strip("'\"")
     assert len(desc) <= 1024
+
+
+def _facts(*entries):
+    return dict(LANDED, result={"assetFacts": list(entries)})
+
+
+OWN_OK = {"assetKey": "A0000001", "attemptedChange": True, "changeApplied": True,
+          "validation": {"errorCount": 0, "warningCount": 1, "firstMessages": []}}
+OTHER_BAD = {"assetKey": "b0000002", "attemptedChange": True, "changeApplied": False}
+
+
+@pytest.mark.parametrize("result,landed,reason", [
+    (_facts(OWN_OK), True, "succeeded, no validation errors"),
+    (_facts(OWN_OK, OTHER_BAD), True, "succeeded, no validation errors"),
+    (_facts(dict(OWN_OK, changeApplied=False)), False, "the change was not applied"),
+    (_facts(dict(OWN_OK, validation={"errorCount": 2})), False, "2 validation error(s)"),
+    (_facts(dict(OWN_OK, assetKey="c0000003"), OTHER_BAD), False,
+     "the change was not applied on asset b0000002"),
+    (_facts(dict(OWN_OK, assetKey="c0000003")), True, "succeeded, no validation errors"),
+    (dict(LANDED, result={"assetFacts": []}), True, "succeeded, no validation errors"),
+])
+def test_per_asset_facts_are_read_for_the_app_key(tmp_path, result, landed, reason):
+    p, text = report(tmp_path, result)
+    assert p.returncode == (0 if landed else 1)
+    assert f"**Landed:** {'yes' if landed else 'no'} ({reason})" in text

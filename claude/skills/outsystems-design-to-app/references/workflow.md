@@ -50,7 +50,7 @@ Follow SKILL.md Step 3 in order (3.0 anatomy → 3.1 layout + skeleton → 3a bl
 
 Follow SKILL.md Steps 4 to 6, which hold the batch prompt (the only prompt block), the confirmations and the publish. Session, polling and publish rules come from the main `outsystems` skill. In short:
 
-1. **Step 4 go/no-go**, then **get the app into one session**: load the existing app by its key, or restate the creation the user confirmed in Step 1 and create the new app in that session from the standard template. Keep that session.
+1. **Step 4 go/no-go**, then **open one session**: reference the existing app by its key in every prompt, or restate the creation the user confirmed in Step 1 and send it as its own Mentor turn (a new Web application from the standard template), then reference the new app's key. Keep that session.
 2. **Batch 1: entities + roles + seed actions** (`Bootstrap<Entity>` actions, `BootstrapData` and `BootstrapTimer`, which runs when the app is published), as one Mentor turn (the batch prompt plus the batch 1 slice of the spec). Poll to terminal, check whether Mentor published on its own, then **confirm and publish** so the data model is durable; then check the `Bootstrap<Entity>` log lines (SKILL.md Step 5) before sending batch 2.
 3. **Batch 2: screens + theme CSS + charts + chrome**, as another prompt on the same session (the batch prompt, the SHARED CHROME paragraph when it applies, and the batch 2 slice; do NOT split chrome into its own turn). Poll to terminal, check for a self-publish, **confirm and publish** again.
 
@@ -64,4 +64,4 @@ Use **2 batches** (field-tested: more turns means unacceptable latency; do NOT d
 
 ## Follow-up
 
-For refinements, send another Mentor turn on the same session if it's still open. If it has ended, open a new session on the same `app_key` (main `outsystems` skill).
+For refinements, send another Mentor turn on the same session if it's still open. If it has ended, open a new session and reference the same `app_key` (main `outsystems` skill).
