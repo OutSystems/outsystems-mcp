@@ -52,7 +52,7 @@ Step 5: After restarting, if the server fails to connect: Claude Desktop launche
 
 Add the `OutSystems/outsystems-mcp` marketplace and install the `outsystems` plugin from Claude Desktop's plugin install flow, the same marketplace and plugin the Claude Code recipe above uses, then restart Claude Desktop.
 
-The plugin also declares the same server for Claude Code, built from a `tenant_hostname` plugin option. Desktop's Chat tab keeps using the local-proxy entry you just wrote, and the Code tab loads that same entry from `claude_desktop_config.json`, so both work with the option unset. We have not verified whether Desktop asks for the option when you install the plugin, nor whether it loads the plugin's server at all. Set the option only if you also want the plugin's own HTTP server; if the Code tab does load it, expect two `outsystems` servers there. Setting it needs the standalone `claude` CLI in a terminal: `claude plugin install outsystems@outsystems --config tenant_hostname=<my-tenant>` (bare hostname, no scheme prefix, no path).
+The plugin also declares the same server for Claude Code, built from a `tenant_hostname` plugin option. Desktop's Chat tab keeps using the local-proxy entry you just wrote, and the Code tab loads that same entry from `claude_desktop_config.json`, so both work with the option unset. With the option set, the Claude Code that Desktop bundles loads the plugin's server and sends the plugin version header through it. We have not verified whether Desktop asks for the option when you install the plugin. Set the option only if you also want the plugin's own HTTP server; if the Code tab does load it, expect two `outsystems` servers there. Setting it needs the standalone `claude` CLI in a terminal: `claude plugin install outsystems@outsystems --config tenant_hostname=<my-tenant>` (bare hostname, no scheme prefix, no path).
 
 <details>
 <summary>Native "Add custom connector" steps (not currently working, kept for reference)</summary>
@@ -70,7 +70,23 @@ If the flow starts working: on a Team or Enterprise plan you may not see "Add cu
 
 > **Note:** the plugin installed above delivers the same OutSystems skill Claude Code gets, including the confirm-before-destructive rule, once both the local proxy and the plugin are set up. Plugins require a paid plan, so on Free the gap remains: read [SKILL.md](SKILL.md) if you want the skill's rules, and expect to confirm destructive operations yourself rather than being prompted.
 
-**Update:** uninstall the `outsystems` plugin, then reinstall it from the same marketplace through Claude Desktop's plugin install flow, and restart Claude Desktop. Whether Desktop picks up a new plugin version in place is unverified, so reinstalling is the dependable path; if the reinstall still shows the old version, remove and re-add the `OutSystems/outsystems-mcp` marketplace first. The MCP server entry in `claude_desktop_config.json` needs no update. On Free, re-read [SKILL.md](SKILL.md) on `main` for the current rules.
+**Update:** refresh the marketplace first, then reinstall the plugin. In Claude Desktop, update the `OutSystems/outsystems-mcp` marketplace. Then uninstall the `outsystems` plugin. Install it again from that marketplace through Claude Desktop's plugin install flow. Restart Claude Desktop. The refresh comes first because the install reads the cached copy of the marketplace, and a stale copy still lists the old version. We have not verified an in-place update from the Desktop plugin screens, so the reinstall is the dependable path. If the reinstall still shows the old version, remove the marketplace and add it again. The MCP server entry in `claude_desktop_config.json` needs no update. On Free, re-read [SKILL.md](SKILL.md) on `main` for the current rules.
+
+**Update for an organization (admin):** an admin can keep the plugin current on every machine through Claude Code managed settings. Add these keys to the managed settings file:
+
+```json
+{
+  "env": {"FORCE_AUTOUPDATE_PLUGINS": "1"},
+  "extraKnownMarketplaces": {
+    "outsystems": {
+      "source": {"source": "github", "repo": "OutSystems/outsystems-mcp"},
+      "autoUpdate": true
+    }
+  }
+}
+```
+
+On macOS, the managed settings file is `/Library/Application Support/ClaudeCode/managed-settings.json`. For Linux and Windows, find the location in the [Claude Code settings documentation](https://code.claude.com/docs/en/settings). `"autoUpdate": true` turns on auto-update for the `outsystems` marketplace. `FORCE_AUTOUPDATE_PLUGINS` keeps plugin updates on where the Claude Code updater is off. Claude Desktop runs its bundled Claude Code with that updater off, so Desktop needs this key for plugin auto-updates. The managed settings apply to that bundled Claude Code too. The update comes within about ten minutes after the first message of a session. The running session keeps the version it loaded, and the update applies on the next launch. Tested on Claude Code 2.1.310 and on the Claude Code 2.1.299 that Claude Desktop bundles.
 
 ## Install - Kiro Chat
 
