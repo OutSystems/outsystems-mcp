@@ -181,12 +181,13 @@ review silently instead of failing the job.
 
 Needs `bash`, `git`, `jq` and `python3` with PyYAML. No workflow invokes
 `run.sh` itself, so run it before pushing a change to `ai-review.yml`, to a
-skill doc, to the README, or to the Claude plugin's hook.
+skill doc, to the README, to the Claude plugin's hook, or to a file that
+carries the plugin version.
 `skills-tests.yml` runs one of its suites, `skill-platform-check.test.sh`, on
 its own, on pull requests that touch the skill docs, the README, `lib.sh` or
 that suite; the same workflow also runs the Beta skills' Python suites.
 `plugin-version.yml` runs `plugin-version-lockstep.test.sh` on its own on
-every pull request.
+every pull request and on every push to `main`.
 
 The step suites extract the `run:` bodies from the committed workflow and
 execute them under the command the shell each step declares expands to.
