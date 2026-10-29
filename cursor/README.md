@@ -42,7 +42,7 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
        "outsystems": {
          "url": "https://<my-tenant>/mcp",
          "headers": {
-           "X-OutSystems-Plugin-Version": "1.9.0"
+           "X-OutSystems-Plugin-Version": "1.11.0"
          }
        }
      }
