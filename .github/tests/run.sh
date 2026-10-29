@@ -6,6 +6,8 @@
 # withheld-graph caveat one suite checks, or to the Claude plugin's hook,
 # which one suite runs the way Claude Code does.
 # `skills-tests.yml` runs one suite on its own: skill-platform-check.test.sh.
+# `plugin-version.yml` runs one suite on its own, on every pull request and
+# on every push to `main`: plugin-version-lockstep.test.sh.
 #
 # Needs: bash, git, jq, python3 with PyYAML.
 

@@ -19,7 +19,7 @@ If your organization uses a Cursor Team or Enterprise plan, a **team admin** mus
 1. Open Cursor
 2. In the chat, ask anything OutSystems-related (e.g., "list my apps")
 3. The agent will ask for your **OutSystems tenant hostname** (e.g., `mycompany.outsystems.dev`)
-4. The agent writes your personal `~/.cursor/mcp.json` with the tenant URL, creating that file if you don't have one yet
+4. The agent writes your personal `~/.cursor/mcp.json` with the tenant URL and the plugin version header, creating that file if you don't have one yet
 5. Complete OAuth sign-in when prompted
 6. You're ready to use OutSystems tools
 
@@ -35,12 +35,15 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
 
 **Setup Steps:**
 
-1. **Create or edit the MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project). Both files are merged; if the same server name appears in both, the project-level entry takes priority. Read it first if it exists and preserve your other entries:
+1. **Create or edit the MCP config** at `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project). Both files are merged; if the same server name appears in both, the project-level entry takes priority. Read it first if it exists and preserve your other entries. If an `outsystems` entry already exists, set its `url` to `https://<my-tenant>/mcp` for your tenant, keep its other keys and every other `headers` key, and set the version header to the value shown:
    ```json
    {
      "mcpServers": {
        "outsystems": {
-         "url": "https://<my-tenant>/mcp"
+         "url": "https://<my-tenant>/mcp",
+         "headers": {
+           "X-OutSystems-Plugin-Version": "1.11.0"
+         }
        }
      }
    }
@@ -70,14 +73,7 @@ Cursor CLI works on every plan — individual accounts included, no team admin o
 
 ## Version Alignment
 
-Cursor, Claude, and Kiro plugin versions must stay in sync:
-- `claude/.claude-plugin/plugin.json` -> `version`
-- `.claude-plugin/marketplace.json` -> `plugins[0].version`
-- `cursor/.cursor-plugin/plugin.json` → `version`
-- `.cursor-plugin/marketplace.json` → `plugins[0].version`
-- `kiro/outsystems/plugin.json` → `version`
-
-Update all five together in the same commit when bumping the version. `AGENTS.md`'s "Manifest version lockstep" section is the source of truth for this list.
+Cursor, Claude, and Kiro plugin versions must stay in sync, in the manifests and in the plugin version header of the setup blocks. CONTRIBUTING.md "Versioning and Releases" lists every file that carries the version, and `.github/tests/plugin-version-lockstep.test.sh` fails on drift.
 
 ## Skill Docs Lockstep
 

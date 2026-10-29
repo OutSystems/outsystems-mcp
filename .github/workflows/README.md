@@ -181,10 +181,13 @@ review silently instead of failing the job.
 
 Needs `bash`, `git`, `jq` and `python3` with PyYAML. No workflow invokes
 `run.sh` itself, so run it before pushing a change to `ai-review.yml`, to a
-skill doc, to the README, or to the Claude plugin's hook.
+skill doc, to the README, to the Claude plugin's hook, or to a file that
+carries the plugin version.
 `skills-tests.yml` runs one of its suites, `skill-platform-check.test.sh`, on
 its own, on pull requests that touch the skill docs, the README, `lib.sh` or
 that suite; the same workflow also runs the Beta skills' Python suites.
+`plugin-version.yml` runs `plugin-version-lockstep.test.sh` on its own on
+every pull request and on every push to `main`.
 
 The step suites extract the `run:` bodies from the committed workflow and
 execute them under the command the shell each step declares expands to.
@@ -243,8 +246,21 @@ the suites pin down:
   exact wording in the five skill docs, the Caveats bullet and the Rules
   sentence it relies on, each byte-identical across the five.
 - `spec_deploy_impact_recipe.test.sh` - the same recipe checked against
-  its requirements rather than its wording, and the five plugin manifests
-  carrying one version.
+  its requirements rather than its wording.
+- `plugin-version-lockstep.test.sh` - every file that carries the plugin
+  version agrees with `claude/.claude-plugin/plugin.json`: the five
+  manifests and the `X-OutSystems-Plugin-Version` header value in each
+  Cursor and Kiro setup recipe and config. The source value is SemVer 2.0
+  and at most 64 bytes, and no file outside the list and the two helper
+  scripts sets the header. The Claude plugin's `claude/.mcp.json` holds no
+  literal header. Its `headersHelper` runs the `sh` script, and the
+  PowerShell script where `sh` fails. The suite runs that command under
+  `sh -c` and each script on `plugin.json` in other layouts, and checks the
+  output. Each script must reject a value with a character outside SemVer,
+  and the `sh` script must read a manifest of 3000 objects in under 10 s.
+  The PowerShell script runs when `powershell` or `pwsh` is on PATH, else
+  its checks report a skip. A self-test proves that each check fails on a
+  mutated copy.
 - `status-watcher-hook.test.sh` - the Claude plugin's status-watcher
   hook, run from the command in `claude/hooks/hooks.json` under `sh -c`
   with `CLAUDE_PLUGIN_ROOT` set and the working directory outside the

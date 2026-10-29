@@ -118,10 +118,10 @@ For every manifest file changed in the diff - in this repo that means `claude/.c
    `title`, and `description`.
 2. **Version format**: Verify the version follows `MAJOR.MINOR.PATCH`. Check for obvious format
    errors.
-3. **Cross-file version consistency**: per `AGENTS.md`'s "Manifest version lockstep" table, all
-   five manifest files (Claude's `plugin.json` + `marketplace.json`, Cursor's `plugin.json` +
-   `marketplace.json`, and Kiro's `kiro/outsystems/plugin.json`) track the same version and must be
-   bumped together in the same diff. Read all five and flag any divergence.
+3. **Cross-file version consistency**: per CONTRIBUTING.md's "Versioning and Releases", every
+   listed file (the five manifests and the `X-OutSystems-Plugin-Version` header values) tracks
+   the same version and must be bumped together in the same diff. Read them all and flag any
+   divergence.
 
 **Severity:** MUST for missing required fields or cross-file version mismatch; SHOULD for malformed
 version strings.

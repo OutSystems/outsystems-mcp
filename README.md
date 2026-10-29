@@ -5,7 +5,7 @@ Distribution repo for the OutSystems MCP. To install, paste the matching prompt 
 Every harness section below sets up two artifacts and says how to keep the skill current. Your agent needs both: the MCP server without the skill gives it every tool and none of the rules, the confirm-before-destructive rule included, and the skill without the MCP server leaves it nothing to call. Some hosts deliver both in one step; the section says so when that is the case. The latest published skill is the one on the `main` branch of this repo; there are no release notes, so the [commit history](https://github.com/OutSystems/outsystems-mcp/commits/main) is where changes show up.
 
 - **Skill**: the document that tells the agent how to work with OutSystems: confirm before changing tenant state, poll long-running operations until they finish, decide retries from the error category, prefer the asset key over names. It changes with new releases, so each section carries an **Update** step. Some hosts wrap it in a plugin or a Power.
-- **MCP server**: the OutSystems endpoint at `https://<my-tenant>/mcp`, which exposes the tools and signs you in to your tenant. OutSystems hosts it and updates it on the tenant side, and your harness only stores its URL; if you reach it through the `mcp-remote` local proxy, as the Claude Desktop install does, keep `mcp-remote` at the exact version 0.14.3 the install pins (see [Install - Claude Desktop](#install---claude-desktop)).
+- **MCP server**: the OutSystems endpoint at `https://<my-tenant>/mcp`, which exposes the tools and signs you in to your tenant. OutSystems hosts it and updates it on the tenant side. Your harness stores its URL and, for Cursor and the Kiro Power, a header with the plugin version. The Claude Code plugin reads that version from its own manifest each time it connects. If you reach the server through the `mcp-remote` local proxy, as the Claude Desktop install does, keep `mcp-remote` at the exact version 0.14.3 the install pins (see [Install - Claude Desktop](#install---claude-desktop)).
 
 ## Install - Claude Code
 
@@ -21,6 +21,8 @@ Step 5: tell me to restart Claude Code, then ask anything OutSystems-related; yo
 ```
 
 **Update:** run `claude plugin marketplace update outsystems`, then `claude plugin update outsystems@outsystems`, then restart Claude Code. The first command refreshes Claude Code's cached copy of this repo's marketplace; the second compares the installed plugin version with it and installs the newer plugin, or reports `already at the latest version`. Run both, in this order: the second alone compares against the stale cache and reports the old version as the latest, and the first alone leaves the installed plugin as it was. The update refreshes the skill however the MCP server is registered, including an older `claude mcp add` entry.
+
+To update automatically, open `/plugin`, go to **Marketplaces**, select `outsystems`, and select **Enable auto-update**. In an interactive session, Claude Code then waits a random delay of up to ten minutes after your first message, refreshes the marketplace and updates the plugin on disk. The running session keeps the version it loaded: run `/reload-plugins` to apply the update, or it applies on your next launch.
 
 Upgrading from a version before 0.20.0? The old recipe registered the server with `claude mcp add` at user scope. That entry keeps working, and when it points at the same tenant Claude Code keeps it and hides the plugin's server as a duplicate. To move to the plugin's server: set the option with `claude plugin install outsystems@outsystems --config tenant_hostname=<my-tenant>` (bare hostname, no scheme prefix, no path; on an installed plugin this only updates the option), remove the old entry with `claude mcp remove outsystems -s user`, and restart Claude Code. Removing the entry also drops its saved sign-in, so expect one sign-in on your next OutSystems request. The plugin's tools are named `mcp__plugin_outsystems_outsystems__<tool>`, so rename any permission rules or hooks you wrote against `mcp__outsystems__<tool>`.
 
@@ -50,7 +52,7 @@ Step 5: After restarting, if the server fails to connect: Claude Desktop launche
 
 Add the `OutSystems/outsystems-mcp` marketplace and install the `outsystems` plugin from Claude Desktop's plugin install flow, the same marketplace and plugin the Claude Code recipe above uses, then restart Claude Desktop.
 
-The plugin also declares the same server for Claude Code, built from a `tenant_hostname` plugin option. Desktop's Chat tab keeps using the local-proxy entry you just wrote, and the Code tab loads that same entry from `claude_desktop_config.json`, so both work with the option unset. We have not verified whether Desktop asks for the option when you install the plugin, nor whether it loads the plugin's server at all. Set the option only if you also want the plugin's own HTTP server; if the Code tab does load it, expect two `outsystems` servers there. Setting it needs the standalone `claude` CLI in a terminal: `claude plugin install outsystems@outsystems --config tenant_hostname=<my-tenant>` (bare hostname, no scheme prefix, no path).
+The plugin also declares the same server for Claude Code, built from a `tenant_hostname` plugin option. Desktop's Chat tab keeps using the local-proxy entry you just wrote, and the Code tab loads that same entry from `claude_desktop_config.json`, so both work with the option unset. With the option set, the Claude Code that Desktop bundles loads the plugin's server and sends the plugin version header through it. We have not verified whether Desktop asks for the option when you install the plugin. Set the option only if you also want the plugin's own HTTP server; if the Code tab does load it, expect two `outsystems` servers there. Setting it needs the standalone `claude` CLI in a terminal: `claude plugin install outsystems@outsystems --config tenant_hostname=<my-tenant>` (bare hostname, no scheme prefix, no path).
 
 <details>
 <summary>Native "Add custom connector" steps (not currently working, kept for reference)</summary>
@@ -68,7 +70,23 @@ If the flow starts working: on a Team or Enterprise plan you may not see "Add cu
 
 > **Note:** the plugin installed above delivers the same OutSystems skill Claude Code gets, including the confirm-before-destructive rule, once both the local proxy and the plugin are set up. Plugins require a paid plan, so on Free the gap remains: read [SKILL.md](SKILL.md) if you want the skill's rules, and expect to confirm destructive operations yourself rather than being prompted.
 
-**Update:** uninstall the `outsystems` plugin, then reinstall it from the same marketplace through Claude Desktop's plugin install flow, and restart Claude Desktop. Whether Desktop picks up a new plugin version in place is unverified, so reinstalling is the dependable path; if the reinstall still shows the old version, remove and re-add the `OutSystems/outsystems-mcp` marketplace first. The MCP server entry in `claude_desktop_config.json` needs no update. On Free, re-read [SKILL.md](SKILL.md) on `main` for the current rules.
+**Update:** refresh the marketplace first, then reinstall the plugin. In Claude Desktop, update the `OutSystems/outsystems-mcp` marketplace. Then uninstall the `outsystems` plugin. Install it again from that marketplace through Claude Desktop's plugin install flow. Restart Claude Desktop. The refresh comes first because the install reads the cached copy of the marketplace, and a stale copy still lists the old version. We have not verified an in-place update from the Desktop plugin screens, so the reinstall is the dependable path. If the reinstall still shows the old version, remove the marketplace and add it again. The MCP server entry in `claude_desktop_config.json` needs no update. On Free, re-read [SKILL.md](SKILL.md) on `main` for the current rules.
+
+**Update for an organization (admin):** an admin can keep the plugin current on every machine through Claude Code managed settings. Add these keys to the managed settings file:
+
+```json
+{
+  "env": {"FORCE_AUTOUPDATE_PLUGINS": "1"},
+  "extraKnownMarketplaces": {
+    "outsystems": {
+      "source": {"source": "github", "repo": "OutSystems/outsystems-mcp"},
+      "autoUpdate": true
+    }
+  }
+}
+```
+
+On macOS, the managed settings file is `/Library/Application Support/ClaudeCode/managed-settings.json`. For Linux and Windows, find the location in the [Claude Code settings documentation](https://code.claude.com/docs/en/settings). `"autoUpdate": true` turns on auto-update for the `outsystems` marketplace. `FORCE_AUTOUPDATE_PLUGINS` keeps plugin updates on where the Claude Code updater is off. Claude Desktop runs its bundled Claude Code with that updater off, so Desktop needs this key for plugin auto-updates. The managed settings apply to that bundled Claude Code too. The update comes within about ten minutes after the first message of a session. The running session keeps the version it loaded, and the update applies on the next launch. Tested on Claude Code 2.1.310 and on the Claude Code 2.1.299 that Claude Desktop bundles.
 
 ## Install - Kiro Chat
 
@@ -85,7 +103,7 @@ The Power uses Kiro's Agent Plugins format: `plugin.json` declares it and `skill
 ```
 Finish setting up the OutSystems Power in Kiro.
 Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 2: when I tell you, set the URL `https://<my-tenant>/mcp` in ~/.kiro/settings/mcp.json under top-level `mcpServers.outsystems` (read first, preserve every other entry): `{"type": "http", "url": "https://<my-tenant>/mcp"}`.
+Step 2: when I tell you, set the URL `https://<my-tenant>/mcp` in ~/.kiro/settings/mcp.json under top-level `mcpServers.outsystems` (read first, preserve every other entry): `{"type": "http", "url": "https://<my-tenant>/mcp", "headers": {"X-OutSystems-Plugin-Version": "1.11.0"}}`. If an `outsystems` entry already exists, keep its other keys and every other `headers` key, and set the version header to the value shown.
 Step 3: tell me the OAuth sign-in opens automatically on the next OutSystems tool call. Kiro runs the flow itself and opens the browser for the localhost callback; I just complete the sign-in when prompted. There is no `authenticate` tool to call in Kiro.
 ```
 
@@ -103,6 +121,14 @@ Step 3: tell me to start a new chat session so Kiro loads the agent.
 To update it, run the same recipe again. To remove it, delete `.kiro/agents/status-watcher.json`; the assistant then checks the status itself, as it does without the file. Verified in Kiro CLI 2.26; the Kiro IDE reads the same `.kiro/agents` folder, but the watcher has not been run there.
 
 **Update:** update the OutSystems Power from the Powers panel, or, if the panel offers no update, uninstall it and import it again from the same URL. If you installed through the registry file below, run `git pull` in `~/git/outsystems-mcp` instead; Kiro watches that directory. The MCP server URL stays in place either way, because it lives at the top level. Whether Kiro compares the Power's version on update is unverified, so afterwards compare the `version` in `~/.kiro/powers/installed/outsystems/plugin.json` with the one in [`kiro/outsystems/plugin.json`](kiro/outsystems/plugin.json) on `main`; if they differ, uninstall and import again.
+
+After each update, paste into Kiro Chat so that the MCP server sees the current plugin version:
+
+```text
+Refresh the OutSystems plugin version header in Kiro.
+Step 1: find the OutSystems skill. It is at ~/.kiro/powers/installed/outsystems/skills/outsystems/SKILL.md or at ~/git/outsystems-mcp/kiro/outsystems/skills/outsystems/SKILL.md. Read the file that exists. If both exist, ask me which one to use. Do not choose for me. If neither exists, write nothing and tell me.
+Step 2: read ~/.kiro/settings/mcp.json. In the top-level `mcpServers.outsystems` entry, set the value of the `X-OutSystems-Plugin-Version` header under `headers` to the value in setup step 4 of that skill. If the entry has no `headers` object, add one with the version header. Keep every other key and every other entry. If the file has comments (JSONC), keep them. If there is no `outsystems` entry, write nothing and tell me.
+```
 
 <details>
 <summary>Alternative: install via a registry file (adds the icon to the Powers list)</summary>
@@ -219,8 +245,8 @@ Paste into Cursor agent:
 ```
 Install the OutSystems MCP server in Cursor CLI.
 Step 1: ask me for my OutSystems tenant hostname (something like `mycompany.outsystems.dev`).
-Step 2: create or edit `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json` (project config). Cursor merges both files, and on a server-name collision the project entry is the one that wins. Read it first and preserve existing entries, then add under the top-level `mcpServers` object (NOT `servers`) the canonical `mcpServers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/mcp.json), substituting my tenant for `<my-tenant>`:
-{"outsystems": {"url": "https://<my-tenant>/mcp"}}
+Step 2: create or edit `~/.cursor/mcp.json` (global config) or `.cursor/mcp.json` (project config). Cursor merges both files, and on a server-name collision the project entry is the one that wins. Read it first and preserve existing entries, then add under the top-level `mcpServers` object (NOT `servers`) the canonical `mcpServers.outsystems` block (source: https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/mcp.json), substituting my tenant for `<my-tenant>`. If an `outsystems` entry already exists, set its `url` from the tenant I just gave you, keep its other keys and every other `headers` key, and set the version header to the value shown:
+{"outsystems": {"url": "https://<my-tenant>/mcp", "headers": {"X-OutSystems-Plugin-Version": "1.11.0"}}}
 Important: use `mcpServers` as the key (not `servers`), and omit `type` — Cursor infers the transport from the `url`. Never set `"type": "streamable-http"`; that value makes Cursor CLI silently drop the entire `mcp.json`.
 Only touch Cursor's own config. Do NOT read, copy from, or migrate any other assistant's MCP config — `.vscode/mcp.json`, `.mcp.json`, `~/.copilot/mcp-config.json`, `~/.claude.json`, `claude_desktop_config.json`, `~/.kiro/settings/mcp.json`, `~/.gemini/settings.json`, `.continue/`, or any other assistant's file — even if one exists and already has an `outsystems` entry; different keys and schemas mean a block lifted from one silently never loads in Cursor. Ask me for the tenant instead of hunting for it. Between the two Cursor configs, prefer the project one when my workspace already has it.
 Step 3: install the OutSystems skill: fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes to `AGENTS.md` in my workspace root — Cursor loads that file verbatim. Do NOT save it under `.cursor/rules/`: that loader only reads `.mdc` files carrying rule frontmatter, so a plain `.md` copy there never loads. If `AGENTS.md` already exists, read it before writing: when it already holds an OutSystems skill that another assistant's setup put there, stop and tell me — that file is already doing this job and a second copy alongside it helps nobody. Copy it verbatim — do NOT retype or summarize the contents (that truncates the file and corrupts escaping), and if the file exists with unrelated content do NOT hand-merge; save the copy alongside it and tell me.
@@ -228,11 +254,12 @@ Step 4: in a terminal, run: `agent mcp list` (verify outsystems appears), then `
 Step 5: once logged in, ask `list 10 of my outsystems apps` to ensure it is working.
 ```
 
-**Update:** the skill is a copy of the file on `main` and never refreshes itself; plugin version bumps reach only the Cursor App path. Paste into Cursor agent:
+**Update:** the skill is a copy of the file on `main` and never refreshes itself. To update it, paste into Cursor agent. The prompt copies the current skill and sets the plugin version header in your MCP config to the current plugin version:
 
 ```
 Update the OutSystems skill in my workspace.
-Check that `AGENTS.md` in my workspace root is an earlier copy of the skill: it starts with a frontmatter block carrying `name: outsystems`, followed by the heading `# OutSystems - Remote MCP`. If it doesn't, or the file is missing, write nothing and tell me what you found; if an earlier install saved the copy alongside an existing file, tell me its path. Otherwise fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes over `AGENTS.md`. Copy it verbatim: do NOT retype or summarize the contents (that truncates the file and corrupts escaping).
+Check that `AGENTS.md` in my workspace root is an earlier copy of the skill: it starts with a frontmatter block carrying `name: outsystems`, followed by the heading `# OutSystems - Remote MCP`. If it doesn't, or the file is missing, leave `AGENTS.md` as it is and tell me what you found; if an earlier install saved the copy alongside an existing file, tell me its path. Otherwise fetch https://raw.githubusercontent.com/OutSystems/outsystems-mcp/refs/heads/main/cursor/skills/outsystems/SKILL.md and save its exact bytes over `AGENTS.md`. Copy it verbatim: do NOT retype or summarize the contents (that truncates the file and corrupts escaping).
+Then, in either case, refresh the plugin version header: in `~/.cursor/mcp.json` and in the project `.cursor/mcp.json`, where each holds an `outsystems` entry, set the value of its `X-OutSystems-Plugin-Version` header under `headers` to the value in the "Register the server" block of the skill you fetched in this prompt. If you did not fetch it, fetch it from the same URL to read the value, and do not save it. If the entry has no `headers` object, add one with the version header. Keep every other key and every other entry. If neither file holds an `outsystems` entry, leave both MCP files as they are and tell me.
 ```
 
 ## Install - Cursor App (Plugin)
@@ -252,7 +279,12 @@ Check that `AGENTS.md` in my workspace root is an earlier copy of the skill: it 
 
 No team admin, or on an individual plan? Use the **Cursor CLI** path above; it works on every plan.
 
-**Update:** a team admin refreshes the `OutSystems/outsystems-mcp` import under **Plugins** > **Team Marketplaces** in the dashboard; developers then get the new plugin version. How Cursor resolves a new plugin version, and whether it pulls one without that refresh, is unverified. The `~/.cursor/mcp.json` entry needs no update.
+**Update:** a team admin refreshes the `OutSystems/outsystems-mcp` import under **Plugins** > **Team Marketplaces** in the dashboard; developers then get the new plugin version. How Cursor resolves a new plugin version, and whether it pulls one without that refresh, is unverified. After each update, each developer pastes into Cursor agent so that the MCP server sees the current plugin version:
+
+```text
+Refresh the OutSystems plugin version header in Cursor.
+In `~/.cursor/mcp.json` and in the project `.cursor/mcp.json`, where each holds an `outsystems` entry, set the value of its `X-OutSystems-Plugin-Version` header under `headers` to the value in the "Register the server" block of the OutSystems skill. If the entry has no `headers` object, add one with the version header. Keep every other key and every other entry. If neither file holds an `outsystems` entry, write nothing and tell me.
+```
 
 See [cursor/README.md](cursor/README.md) for detailed setup instructions and version alignment requirements.
 
@@ -389,3 +421,5 @@ When you open an issue in the [outsystems-mcp issue tracker](https://github.com/
 The OutSystems privacy policy is the [OutSystems Privacy Statement](https://www.outsystems.com/legal/terms-of-use/privacy-statement). It describes how OutSystems processes personal data.
 
 OutSystems hosts the MCP server. It signs you in through your own OutSystems tenant, takes your user and tenant identity from that sign-in, and acts on that tenant's apps and environments on your behalf. How OutSystems processes the data in your tenant is governed by your organization's agreement with OutSystems. For customers on the OutSystems Master Subscription Agreement, that includes the [Data Processing Agreement](https://www.outsystems.com/legal/outsystems-msa/data-processing-agreement/). Feedback that you send through the feedback tool goes to OutSystems so that the maintainers can act on it.
+
+The Claude Code plugin, the Cursor setup and the Kiro Power send their version number to the MCP server in a request header; that header carries nothing else about you.

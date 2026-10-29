@@ -36,7 +36,7 @@ There is nothing to install or build. The files under `claude/`, `.claude-plugin
 claude/                   # The Claude plugin folder: what `claude plugin install` and the Claude plugin directory ship
   .claude-plugin/         # plugin.json plus the listing icon image (see the note below the tree)
     plugin.json           # Claude Code / Desktop plugin manifest (name, version, skills dir, commands dir, userConfig, listing URLs)
-  .mcp.json               # MCP server the Claude plugin declares; URL built from the tenant_hostname plugin option
+  .mcp.json               # MCP server the Claude plugin declares; URL built from the tenant_hostname plugin option, plugin version header from the headersHelper
   LICENSE                 # Copy of the root LICENSE (the directory wants one inside the plugin folder)
   README.md               # Plugin-folder README (40+ words): the directory listing description
   agents/
@@ -46,6 +46,9 @@ claude/                   # The Claude plugin folder: what `claude plugin instal
   hooks/
     hooks.json            # PreToolUse hook limiting the status-watcher agent's Bash use to a single sleep
     limit-watcher-bash.sh # The plain shell script that hook runs
+  scripts/
+    plugin-version-header.sh   # The plain shell script the headersHelper of .mcp.json runs: prints the plugin version header from plugin.json
+    plugin-version-header.ps1  # The same output, run where sh fails
   skills/
     outsystems/
       SKILL.md            # Agent-facing skill loaded by the Claude Code plugin (and Claude Desktop via the same plugin)
@@ -125,7 +128,16 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`.
 
 ## Testing
 
-Apart from the Beta skills' scripts, the shipped content has no automated test suite: verify changes manually, accounting for every harness in the AGENTS.md table as step 4 above requires. Five parts are covered by `.github/tests/run.sh`: `.github/workflows/ai-review.yml`'s shell steps and structural guarantees; the deployment-impact recipe in all five skill docs, which `.github/tests/skill-deploy-impact-recipe.test.sh` pins word for word and checks is byte-identical across them, and `.github/tests/spec_deploy_impact_recipe.test.sh` checks against the recipe's requirements; the Caveats bullet for a deployment that does not serve the app model graph, which `.github/tests/skill-withheld-graph.test.sh` checks in all five skill docs and holds byte-identical across them, together with the `refs_fallback_unavailable` rule in Branch B of the three dependency-impact skill docs; the platform check near the top of the five skill docs (the block that opens with "Platform check, only when both OutSystems MCP servers are connected"), once per doc ahead of the first section and byte-identical across them, with the sentences in the "Go straight to the task", "Never guess opaque IDs" and "Confirm before tenant-state mutations" Rules bullets that keep those rules from overriding it, and the "Platform first" Rules bullet, byte-identical across the five skill docs, with the O11 exclusions in the skill and Beta skill descriptions and in the feedback scope, and the README troubleshooting row for a request that lands on the wrong platform, which `.github/tests/skill-platform-check.test.sh` checks; and the Claude plugin's status-watcher hook, which `.github/tests/status-watcher-hook.test.sh` runs from the command in `claude/hooks/hooks.json` against sample hook inputs. `spec_deploy_impact_recipe.test.sh` also checks that the five plugin manifests carry one version. Run it when you touch that workflow, a skill doc, the README, or the hook. No CI runs `run.sh` itself; `.github/workflows/skills-tests.yml` runs `skill-platform-check.test.sh` on its own, on pull requests that touch the skill docs, the README or that suite.
+Apart from the Beta skills' scripts, the shipped content has no automated test suite: verify changes manually, accounting for every harness in the AGENTS.md table as step 4 above requires. `.github/tests/run.sh` covers six parts:
+
+1. `.github/workflows/ai-review.yml`: its shell steps and structural guarantees.
+2. The deployment-impact recipe in all five skill docs. `.github/tests/skill-deploy-impact-recipe.test.sh` pins it word for word and checks that it is byte-identical across them. `.github/tests/spec_deploy_impact_recipe.test.sh` checks it against the recipe's requirements.
+3. The Caveats bullet for a deployment that does not serve the app model graph. `.github/tests/skill-withheld-graph.test.sh` checks it in all five skill docs and holds it byte-identical across them. The same suite checks the `refs_fallback_unavailable` rule in Branch B of the three dependency-impact skill docs.
+4. The platform check near the top of the five skill docs (the block that opens with "Platform check, only when both OutSystems MCP servers are connected"). `.github/tests/skill-platform-check.test.sh` checks that it occurs once per doc ahead of the first section and is byte-identical across them. The same suite checks the sentences in the "Go straight to the task", "Never guess opaque IDs" and "Confirm before tenant-state mutations" Rules bullets that keep those rules from overriding it, and the "Platform first" Rules bullet, byte-identical across the five skill docs. It also checks the O11 exclusions in the skill and Beta skill descriptions and in the feedback scope, and the README troubleshooting row for a request that lands on the wrong platform.
+5. The Claude plugin's status-watcher hook. `.github/tests/status-watcher-hook.test.sh` runs it from the command in `claude/hooks/hooks.json` against sample hook inputs.
+6. The plugin version. `.github/tests/plugin-version-lockstep.test.sh` checks it in every file that carries it, and runs the scripts that the Claude plugin's `headersHelper` names.
+
+Run `run.sh` when you touch that workflow, a skill doc, the README, the hook, or a file that carries the plugin version. No CI runs `run.sh` itself. `.github/workflows/skills-tests.yml` runs `skill-platform-check.test.sh` on its own, on pull requests that touch the skill docs, the README or that suite. The `plugin-version.yml` workflow runs the plugin version check on every pull request (see "Versioning and Releases").
 
 The three architecture Beta skills' scripts and `outsystems-spec-driven-build`'s script have offline suites in `tests/skills/` (Python 3.8+ and `pytest`; the scripts themselves use only the standard library): `python3 -m pytest -q -p no:cacheprovider tests/skills`. They also check that the Cursor and Kiro copies match `claude/skills/`. `.github/workflows/skills-tests.yml` runs them on every pull request that touches those folders. They test the scripts against recorded responses; a change to a Beta skill still needs a live run through an agent against a tenant.
 
@@ -247,7 +259,7 @@ For changes to the root `SKILL.md`, fetch the raw file from GitHub the way Step 
 
 ## Versioning and Releases
 
-Version lives in five places and must stay in sync:
+This section is the one list of the files that carry the plugin version. The version lives in ten files: the five manifests, and six header values in five files. They must stay in sync. The source of truth is `claude/.claude-plugin/plugin.json` → `version`.
 
 **Claude:**
 - `claude/.claude-plugin/plugin.json` → `version`
@@ -260,7 +272,21 @@ Version lives in five places and must stay in sync:
 **Kiro:**
 - `kiro/outsystems/plugin.json` → `version`
 
-Bump all five in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`).
+**Plugin version header** (`X-OutSystems-Plugin-Version`), as a literal value:
+- `cursor/mcp.json` → `mcpServers.outsystems.headers` (the template, and the source of the Cursor CLI recipe)
+- `cursor/skills/outsystems/SKILL.md` → the "Register the server" block, which the Cursor App and the Cursor CLI use
+- `cursor/README.md` → the Cursor CLI block
+- `kiro/outsystems/skills/outsystems/SKILL.md` → setup step 4
+- `README.md` → Step 2 of the Kiro Chat recipe and Step 2 of the Cursor CLI prompt
+
+The Claude plugin sends the header too, but carries no literal value. The `headersHelper` in `claude/.mcp.json` runs `claude/scripts/plugin-version-header.sh`. Where `sh` fails, it runs `plugin-version-header.ps1`. Each script reads `version` from `claude/.claude-plugin/plugin.json` at connect time. With a literal value in `.mcp.json`, the server config changes at each release. Claude Code then asks every user to sign in again. The bump commit edits only the files in this list.
+
+The Copilot recipes and the other copied-file recipes do not send the header. The value means a different thing on each harness:
+- Claude Code reports the installed plugin version.
+- Kiro reports the version of the last setup or refresh. Its default engine sends the GET request on `/mcp` and the sign-in discovery requests without the header. Its POST requests carry it.
+- Cursor reports the version of the last Cursor setup or refresh, App or CLI. A project `.cursor/mcp.json` entry can hide the global one.
+
+Bump the five manifests and the six header values in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`). `.github/tests/plugin-version-lockstep.test.sh` fails on drift, and on a file that carries the header but is not on this list. The `plugin-version.yml` workflow runs it on every pull request.
 
 The same lockstep applies to the other shared manifest fields (`description`, `author`, `keywords`, `license`, `homepage`, `repository`, and `displayName` where the host supports it), and to the description in both `marketplace.json` entries. See AGENTS.md's "Manifest version lockstep" for the field-by-field rule. Kiro's own Powers-panel details view used to read the description and keywords from `kiro/outsystems/POWER.md`'s frontmatter; now that the file is gone, that panel shows an empty description and no keywords for this Power. That is a cost inside Kiro's own UI, not a doc gap here — see AGENTS.md's "Skill docs must stay in lockstep across hosts" section.
 
@@ -276,7 +302,7 @@ Versioning follows [Semantic Versioning](https://semver.org/):
 - **MINOR** — new skill content, new workflows documented, new install path for an additional harness. An install-recipe change whose previous configuration keeps working is MINOR too (0.20.0 moved Claude Code from `claude mcp add` to the plugin's `tenant_hostname` option; entries written by the old recipe still load).
 - **PATCH** — fixes and clarifications that don't change how a user installs or invokes the integration.
 
-There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install`, Claude Desktop plugin install or reinstall, Cursor Team Marketplace refresh, or Kiro Power re-fetch.
+There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install` or Claude Code auto-update, Claude Desktop plugin install or reinstall, Cursor Team Marketplace refresh, or Kiro Power re-fetch. Cursor and Kiro users then also run the refresh prompt in README.md, so that the plugin version header in their MCP config matches the new version.
 
 ## License
 

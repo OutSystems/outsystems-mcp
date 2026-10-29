@@ -43,12 +43,15 @@ When a user opens Cursor with this plugin installed:
    {
      "mcpServers": {
        "outsystems": {
-         "url": "https://<TENANT>/mcp"
+         "url": "https://<TENANT>/mcp",
+         "headers": {
+           "X-OutSystems-Plugin-Version": "1.11.0"
+         }
        }
      }
    }
    ```
-   Key: `mcpServers` (not `servers`). No `type` field needed for HTTP.
+   Key: `mcpServers` (not `servers`). No `type` field needed for HTTP. The `headers` entry carries the plugin version: write it as shown. When an `outsystems` entry already exists, set its `url` from the tenant the user just gave, keep its other keys and every other `headers` key, and set the version header to the value shown here.
 5. **Trigger authentication**: Tell the user that Cursor will prompt for OAuth sign-in the first time they use an OutSystems tool. They complete the sign-in in the browser.
 6. **Retry the user's original request** once authentication completes.
 
@@ -58,7 +61,7 @@ For CLI-only setups (no Cursor app, and no plugin — this path works on every p
 
 1. **Ask the user for their OutSystems tenant hostname** (same prompt as above).
 2. **Normalize and validate** (same as above).
-3. **Create or edit `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project)**, same format as above. Cursor merges the two files; if the same server name appears in both, the project entry is the one that wins. Nothing is plugin-owned on this path, so editing an existing Cursor config in place is fine: read it first, add or update only the `outsystems` entry, preserve every other entry. Prefer the project config when the workspace already has one; don't create a new project config unprompted, since it is often checked in and shared with the user's collaborators.
+3. **Create or edit `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project)**, same format as above, including the `headers` entry. When an `outsystems` entry already exists, set its `url` from the tenant the user just gave, keep its other keys and every other `headers` key, and set the version header to the value shown above. Cursor merges the two files; if the same server name appears in both, the project entry is the one that wins. Nothing is plugin-owned on this path, so editing an existing Cursor config in place is fine: read it first, add or update only the `outsystems` entry, preserve every other entry. Prefer the project config when the workspace already has one; don't create a new project config unprompted, since it is often checked in and shared with the user's collaborators.
 4. **Run CLI commands to verify and authenticate**:
    - `agent mcp list` — see registered servers
    - `agent mcp enable outsystems` — if it shows "needs approval"
