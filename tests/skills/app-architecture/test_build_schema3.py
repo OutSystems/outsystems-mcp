@@ -597,9 +597,9 @@ def test_server_error_shape_with_data_metadata_is_an_error_not_data(tmp_path):
 
 def test_refs_coverage_is_kept_and_shown():
     raw = json.loads((FX / "refs.json").read_text(encoding="utf-8"))
-    assert build._refs_coverage(raw) == {"source": "context-service", "indexedKinds": None}
+    assert build._refs_coverage(raw) == {"source": "context-service", "indexedKinds": None, "coverage": None}
     raw["indexedKinds"] = ["entities"]
-    assert build._refs_coverage(raw) == {"source": "context-service", "indexedKinds": ["entities"]}
+    assert build._refs_coverage(raw) == {"source": "context-service", "indexedKinds": ["entities"], "coverage": None}
     assert build._refs_coverage({"source": "oml-fallback", "references": []})["source"] == "oml-fallback"
     bundle = _fixture_bundle(refs=FX / "refs.json", connections=[FX / "connections.json"])
     assert bundle["refsCoverage"]["source"] == "context-service"
@@ -617,6 +617,31 @@ def test_refs_cache_fallback_keeps_coverage_and_wording_never_claims_completenes
     assert "cov === undefined && D.depsSource" in html
     src = (_SCRIPTS / "build.py").read_text(encoding="utf-8")
     assert '"refsCoverage":      _refs_coverage(refs_raw),' in src
+
+
+def test_merged_declared_modules_are_shown_as_declared_not_as_proof_of_use(tmp_path):
+    raw = json.loads((FX / "refs.json").read_text(encoding="utf-8"))
+    raw["indexedKinds"] = ["entities"]
+    for r in raw["references"]:
+        r["origin"] = "indexed"
+    raw["references"].append({"producerAssetKey": "a0000199-0000-4000-8000-000000000199",
+                              "producerAssetName": "FileTools", "importedKind": "Extension", "origin": "declared"})
+    raw["coverage"] = {"declared": "merged", "revision": 4, "latestRevision": 4, "note": "..."}
+    refs = tmp_path / "refs-merged.json"
+    refs.write_text(json.dumps(raw), encoding="utf-8")
+    bundle = _fixture_bundle(refs=refs, connections=[FX / "connections.json"])
+    assert bundle["refsCoverage"]["coverage"] == {"declared": "merged", "revision": 4, "latestRevision": 4}
+    assert {d["n"]: d.get("origin") for d in bundle["deps"]}["FileTools"] == "declared"
+    html = (_SCRIPTS.parent / "assets" / "template.html").read_text(encoding="utf-8")
+    assert "declared.declared === 'merged'" in html and "A declared module is not proof that the app uses it." in html
+    r = _run(tmp_path / "cache", tmp_path / "out.html", *_six(tmp_path), "--refs", refs)
+    assert r.returncode == 0, r.stderr
+    assert "plus the modules the app declares (declared, not proof of use)" in r.stdout
+    raw["coverage"] = {"declared": "unavailable", "reason": "server_busy"}
+    refs.write_text(json.dumps(raw), encoding="utf-8")
+    r = _run(tmp_path / "cache2", tmp_path / "out2.html", *_six(tmp_path), "--refs", refs)
+    assert r.returncode == 0, r.stderr
+    assert "the list may be incomplete, even for those kinds" in r.stdout
 
 
 def test_claude_code_content_block_saved_file_is_unwrapped(tmp_path):

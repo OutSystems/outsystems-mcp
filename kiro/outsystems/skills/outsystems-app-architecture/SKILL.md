@@ -368,10 +368,12 @@ APP_DATA = {
   inheritedEnums: [{ k, n, desc, fromModule, attrs, records, recordCount }],
   structures: [{ k, n, desc, attrs: [Attr] }],
   roles: [{ k, n, desc, pub }],
-  deps: [{ k, n, kind, cat: "AIModel"|"Library", rev }],   // connections first, deduped with app_refs
+  deps: [{ k, n, kind, cat: "AIModel"|"Library", rev,
+           origin?: "indexed"|"declared" }],               // connections first, deduped with app_refs
   depsSource: "app_refs"|null,                            // where the libraries came from
   depsUnavailable: ["libraries"?, "AI model connections"?], // parts not fetched: the page says so
-  refsCoverage: { source, indexedKinds: [string] | null } | null,  // what app_refs covers: the page says so
+  refsCoverage: { source, indexedKinds: [string] | null,          // what app_refs covers: the page says so
+                  coverage: { declared, reason?, revision?, latestRevision? } | null } | null,
   deployments: { fetchedAt, latestRevision,
                  envs: [{ k, n, purpose, status: "deployed"|"not-deployed"|"unknown"|"n/a",
                           rev?, at?, behind?, reason? }] } | null,
@@ -404,6 +406,16 @@ Attr = { n, t, pk?, req?, len?, d?,
   even a listed kind is not proven complete; the page and your report
   must say which kinds were covered (unknown when `indexedKinds` is null)
   and never present the list as complete. It does not apply to a `stored-xre` answer.
+- `refsCoverage.coverage` is the `coverage` object of a `context-service`
+  answer, or null when the server does not send one. When
+  `coverage.declared` is `merged`, the server added the modules the app
+  declares, read from stored revision `coverage.revision`. The page and
+  your report name those modules as declared, not as proof of use. Any
+  other value keeps the caveat above. For `coverage.reason`
+  `supplement_late_start`, do not fetch `app_refs` again: nothing failed.
+- `deps[].origin` copies the reference's `origin`: `indexed` for a row of
+  the index, `declared` for a module that only the stored app graph names.
+  It is absent on a connection row and on an answer from an older server.
 - Built-in OutSystems modules are filtered out of `deps`. `deps` is
   empty when neither connections nor refs were available; the template
   hides the Dependencies layer then.

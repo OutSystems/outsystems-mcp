@@ -623,6 +623,9 @@ def _categorize_dep(kind: str) -> str:
     return "Library"  # eSpace, Extension, entities-import, etc.
 
 
+_REF_ORIGINS = ("indexed", "declared")
+
+
 def _ref_kind(r: dict) -> str:
     """Best scalar 'kind' for a reference across every app_refs shape.
 
@@ -652,6 +655,9 @@ def _refs_deps(raw) -> list:
       - schemaVersion 2 / oml-fallback: {producerAssetKey, producerAssetName, importedKind}
       - schemaVersion 2 / context-service (live 2026-07-09):
                                         {producerAssetKey, producerAssetName, kinds: [...]}
+    A reference with `origin` ("indexed" or "declared") keeps it; a server
+    that adds the stored graph's declared modules to a context-service
+    answer marks each row that way. Rows without it stay without it.
     Built-in modules are dropped. A `failed` placeholder yields []."""
     if not isinstance(raw, dict) or raw.get("failed"):
         return []
@@ -661,13 +667,16 @@ def _refs_deps(raw) -> list:
         if not name or name in _BUILTIN_MODULES:
             continue
         kind = _ref_kind(r)
-        deps.append({
+        dep = {
             "k":    r.get("moduleKey") or r.get("producerAssetKey") or "",
             "n":    name,
             "kind": kind,
             "cat":  _categorize_dep(kind),
             "rev":  str(r.get("revision") or ""),
-        })
+        }
+        if r.get("origin") in _REF_ORIGINS:
+            dep["origin"] = r["origin"]
+        deps.append(dep)
     return deps
 
 
@@ -682,15 +691,33 @@ def _build_deps(refs_path, app_key: str) -> list:
     return _refs_deps(raw)
 
 
+def _declared_coverage(raw):
+    """The `coverage` object of a context-service answer, reduced to the fields
+    the page reads, or None when the server does not send one. `declared` says
+    whether the stored graph's declared modules are in the references:
+    merged, not_needed, unavailable (with `reason`) or disabled."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("declared"), str):
+        return None
+    out = {"declared": raw["declared"]}
+    if isinstance(raw.get("reason"), str):
+        out["reason"] = raw["reason"]
+    for field in ("revision", "latestRevision"):
+        if isinstance(raw.get(field), int) and not isinstance(raw.get(field), bool):
+            out[field] = raw[field]
+    return out
+
+
 def _refs_coverage(refs_raw):
-    """{source, indexedKinds} of an app_refs answer, or None. indexedKinds is
-    None when a context-service answer does not report it (unknown coverage);
-    it does not apply to a stored-xre or oml-fallback answer."""
+    """{source, indexedKinds, coverage} of an app_refs answer, or None.
+    indexedKinds is None when a context-service answer does not report it
+    (unknown coverage). coverage is None when the answer has none: a
+    stored-xre answer, or a server that does not add declared modules."""
     if not isinstance(refs_raw, dict) or not isinstance(refs_raw.get("source"), str):
         return None
     kinds = refs_raw.get("indexedKinds")
     return {"source": refs_raw["source"],
-            "indexedKinds": [k for k in kinds if isinstance(k, str)] if isinstance(kinds, list) else None}
+            "indexedKinds": [k for k in kinds if isinstance(k, str)] if isinstance(kinds, list) else None,
+            "coverage": _declared_coverage(refs_raw.get("coverage"))}
 
 
 REFS_CACHE_MAX_AGE = 24 * 3600
@@ -1407,9 +1434,14 @@ def main(argv: list) -> int:
     cov = bundle.get("refsCoverage")
     if cov and cov.get("source") == "context-service":
         kinds = cov.get("indexedKinds")
-        print("  library coverage: references indexed for " + ", ".join(kinds)
-              + " only; the list may be incomplete, even for those kinds" if kinds else
-              "  library coverage: unknown (the server does not report indexedKinds)")
+        declared = cov.get("coverage") or {}
+        if declared.get("declared") == "merged":
+            print("  library coverage: references indexed for " + (", ".join(kinds) if kinds else "no kind")
+                  + ", plus the modules the app declares (declared, not proof of use)")
+        else:
+            print("  library coverage: references indexed for " + ", ".join(kinds)
+                  + " only; the list may be incomplete, even for those kinds" if kinds else
+                  "  library coverage: unknown (the server does not report indexedKinds)")
     return 0
 
 

@@ -565,7 +565,13 @@
         if ((D.depsUnavailable || []).length)
           notes.push(`Not fetched: ${D.depsUnavailable.join(' and ')}. The Dependencies counts below leave them out; they do not mean "none".`);
         const cov = D.refsCoverage;
-        if (cov && cov.source === 'context-service') {
+        const declared = cov && cov.coverage;
+        if (cov && cov.source === 'context-service' && declared && declared.declared === 'merged') {
+          const kinds = cov.indexedKinds && cov.indexedKinds.length ? cov.indexedKinds.join(', ') : 'no element kind';
+          const rev = declared.revision == null ? ''
+            : ` (revision ${declared.revision}${declared.latestRevision != null && declared.latestRevision !== declared.revision ? `, the latest is ${declared.latestRevision}` : ''})`;
+          notes.push(`Libraries come from the references the server indexes for: ${kinds}, plus the modules the app declares in its stored app graph${rev}. A declared module is not proof that the app uses it.`);
+        } else if (cov && cov.source === 'context-service') {
           notes.push(cov.indexedKinds && cov.indexedKinds.length
             ? `Libraries come from the references the server indexes for: ${cov.indexedKinds.join(', ')}. The list may be incomplete: a library used only through other element kinds (actions, structures, blocks, themes) can be missing, and even the indexed kinds are not proven complete.`
             : 'Libraries come from the server\'s reference index, whose coverage this server does not report: the list may be incomplete.');
