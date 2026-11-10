@@ -374,6 +374,7 @@ APP_DATA = {
   depsUnavailable: ["libraries"?, "AI model connections"?], // parts not fetched: the page says so
   refsCoverage: { source, indexedKinds: [string] | null,          // what app_refs covers: the page says so
                   coverage: { declared, reason?, revision?, latestRevision? } | null } | null,
+                  // coverage.note and coverage.revisionNote are not copied: quote them from the app_refs answer
   deployments: { fetchedAt, latestRevision,
                  envs: [{ k, n, purpose, status: "deployed"|"not-deployed"|"unknown"|"n/a",
                           rev?, at?, behind?, reason? }] } | null,
@@ -413,6 +414,8 @@ Attr = { n, t, pk?, req?, len?, d?,
   your report name those modules as declared, not as proof of use. Any
   other value keeps the caveat above. For `coverage.reason`
   `supplement_late_start`, do not fetch `app_refs` again: nothing failed.
+  For `disabled`, do not fetch `app_refs` again either: a retry does not
+  help, and `coverage.note` gives the cause.
 - `deps[].origin` copies the reference's `origin`: `indexed` for a row of
   the index, `declared` for a module that only the stored app graph names.
   It is absent on a connection row and on an answer from an older server.
