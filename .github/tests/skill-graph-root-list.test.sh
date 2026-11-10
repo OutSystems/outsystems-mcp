@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Contract of the Caveats bullet for `context_graph` with a `root` list.
 # The server takes `root` as a comma list and answers the union of what
-# the parts match. A part that selects no element is listed in
-# `unmatched_roots`, and a call where no part matches succeeds with a
-# `root_note`, so no doc may name the old `graph_root_not_found` error.
+# the parts match, and it refuses a `root` over 4096 bytes, so the
+# bullet tells the agent to split a longer list over more calls. A part
+# that selects no element is listed in `unmatched_roots`, and a call
+# where no part matches succeeds with a `root_note`, so no doc may name
+# the old `graph_root_not_found` error.
 # The stored graph holds every library element that the app imports, so
 # the bullet says that a match proves a reference, not a use. It routes
 # the users and the owner of an entity to `context_search`. It is
@@ -38,6 +40,8 @@ for doc in "${DOCS[@]}"; do
   check_match "says the answer is the union" "$caveat" 'the answer is the union of what the parts match'
   check_match "asks for one comma list per app" \
     "$caveat" 'send all their keys as one comma list, in one call per app\.'
+  check_match "states the root limit and the split" \
+    "$caveat" '`root` takes at most 4096 bytes\. Split a longer list over more calls to the same app, and keep every key\.'
   check_match "names unmatched_roots and its bound" \
     "$caveat" 'It lists the first 100 parts, and `unmatched_roots_omitted` counts the rest\.'
   check_match "says a full miss succeeds with a root_note" \
