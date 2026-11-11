@@ -46,9 +46,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # The skills promise Python 3.8+, the oldest version setup-python
+        # The skills promise Python 3.10+, the oldest version setup-python
         # still provides on ubuntu-latest, and the newest.
-        python-version: ["3.8", "3.x"]
+        python-version: ["3.10", "3.x"]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
