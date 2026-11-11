@@ -140,7 +140,7 @@ Apart from the Beta skills' scripts, the shipped content has no automated test s
 
 Run `run.sh` when you touch that workflow, a skill doc, the README, the hook, or a file that carries the plugin version. No CI runs `run.sh` itself. `.github/workflows/skills-tests.yml` runs `skill-platform-check.test.sh` on its own, on pull requests that touch the skill docs, the README or that suite. The `plugin-version.yml` workflow runs the plugin version check on every pull request (see "Versioning and Releases").
 
-The three architecture Beta skills' scripts and `outsystems-spec-driven-build`'s script have offline suites in `tests/skills/` (Python 3.8+ and `pytest`; the scripts themselves use only the standard library): `python3 -m pytest -q -p no:cacheprovider tests/skills`. They also check that the Cursor and Kiro copies match `claude/skills/`. `.github/workflows/skills-tests.yml` runs them on every pull request that touches those folders. They test the scripts against recorded responses; a change to a Beta skill still needs a live run through an agent against a tenant.
+The three architecture Beta skills' scripts and `outsystems-spec-driven-build`'s script have offline suites in `tests/skills/` (Python 3.10+ and `pytest`; the scripts themselves use only the standard library): `python3 -m pytest -q -p no:cacheprovider tests/skills`. They also check that the Cursor and Kiro copies match `claude/skills/`. `.github/workflows/skills-tests.yml` runs them on every pull request that touches those folders. They test the scripts against recorded responses; a change to a Beta skill still needs a live run through an agent against a tenant.
 
 ### Claude Code (plugin + skills)
 
