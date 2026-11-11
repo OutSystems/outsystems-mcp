@@ -17,7 +17,7 @@ Guidance for Claude Code (and other coding agents) when working in this reposito
 | Cursor App | `cursor/skills/outsystems/SKILL.md` | automatic, via `cursor/.cursor-plugin/plugin.json` | Team Marketplace install (Team/Enterprise plan required); carries the plugin version header (see CONTRIBUTING.md) | `mcpServers` |
 | Cursor CLI | `cursor/skills/outsystems/SKILL.md` | manual copy to `AGENTS.md` in the user's workspace root (Cursor's instructions file, not this repository's `AGENTS.md`) | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project); carries the plugin version header (see CONTRIBUTING.md) | `mcpServers` |
 | M365 Copilot | n/a | n/a | unsupported: no custom MCP servers | n/a |
-| Other assistants | `SKILL.md` (root) | manual fetch, best effort | harness-specific | harness-specific |
+| Other assistants | `SKILL.md` (root) | manual fetch, best effort; Codex CLI: appended to `AGENTS.md` in the user's workspace, which Codex reads only up to its `project_doc_max_bytes` limit, so the README's Codex CLI recipe has the user raise it | harness-specific; Codex CLI: `~/.codex/config.toml`, written by the user's own `codex mcp add` in a terminal, because Codex's sandbox blocks the agent from writing outside the workspace | harness-specific; Codex CLI: `[mcp_servers.outsystems]` (TOML) |
 
 Three traps the table encodes:
 
