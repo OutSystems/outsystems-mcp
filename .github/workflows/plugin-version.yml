@@ -1,8 +1,10 @@
 name: plugin-version
 
-# Checks that every file that carries the plugin version agrees. It has no
-# path filter, so it also guards a file that starts to carry the version,
-# and it reports on every pull request, so it can be a required check.
+# Checks that every file that carries the plugin version agrees, and that
+# a pull request that changes shipped plugin content raises the version.
+# It has no path filter, so it also guards a file that starts to carry the
+# version, and it reports on every pull request, so it can be a required
+# check.
 
 on:
   pull_request:
@@ -22,3 +24,20 @@ jobs:
 
       - name: Check the plugin version in every file that carries it
         run: bash .github/tests/plugin-version-lockstep.test.sh
+
+  plugin-version-bump:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # The pull_request checkout is the merge of the PR into its base.
+      # Depth 2 fetches the base tip as its first parent.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Test the version bump check
+        run: bash .github/tests/plugin-version-bump.test.sh
+
+      - name: Check that a change to shipped plugin content raises the version
+        run: bash .github/tests/plugin-version-bump.sh HEAD^1 HEAD

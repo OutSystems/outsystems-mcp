@@ -124,7 +124,7 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`.
 2. Make your changes. If you touch tool semantics, update every place that documents them (`claude/skills/outsystems/SKILL.md`, `kiro/outsystems/skills/outsystems/SKILL.md`, `copilot/skill.md`, `cursor/skills/outsystems/SKILL.md`, and the root `SKILL.md`) so they stay aligned.
 3. Open a PR targeting `main`.
 4. Account for every supported harness in the AGENTS.md table, each one verified, not applicable with the reason, or a recorded gap with a follow-up, and record the outcomes in the PR body (see "Testing" below).
-5. After review and merge, the version bump goes out as the next release (see [Versioning and Releases](#versioning-and-releases)).
+5. If the PR changes a file under `claude/`, `cursor/` or `kiro/outsystems/`, raise the plugin version in the same PR, in a separate bump commit (see [Versioning and Releases](#versioning-and-releases)). The `plugin-version.yml` workflow fails the PR otherwise. Users get the change when the PR merges.
 
 ## Testing
 
@@ -288,6 +288,8 @@ The Copilot recipes and the other copied-file recipes do not send the header. Th
 - Cursor reports the version of the last Cursor setup or refresh, App or CLI. A project `.cursor/mcp.json` entry can hide the global one.
 
 Bump the five manifests and the six header values in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`). `.github/tests/plugin-version-lockstep.test.sh` fails on drift, and on a file that carries the header but is not on this list. The `plugin-version.yml` workflow runs it on every pull request.
+
+Each PR that changes shipped plugin content carries its own bump. Shipped plugin content is every file under `claude/`, `cursor/` and `kiro/outsystems/`, the folders the three plugins install from. On a pull request, `plugin-version.yml` runs `.github/tests/plugin-version-bump.sh`. The check fails when the PR changes such a file and the version in `claude/.claude-plugin/plugin.json` is not higher than on the base branch, by SemVer precedence. The Copilot recipes, the root `SKILL.md` and `kiro/agents/` reach users as copied files, so a change to them needs no bump. If two open PRs bump to the same version, the second one to merge must bump again.
 
 The same lockstep applies to the other shared manifest fields (`description`, `author`, `keywords`, `license`, `homepage`, `repository`, and `displayName` where the host supports it), and to the description in both `marketplace.json` entries. See AGENTS.md's "Manifest version lockstep" for the field-by-field rule. Kiro's own Powers-panel details view used to read the description and keywords from `kiro/outsystems/POWER.md`'s frontmatter; now that the file is gone, that panel shows an empty description and no keywords for this Power. That is a cost inside Kiro's own UI, not a doc gap here — see AGENTS.md's "Skill docs must stay in lockstep across hosts" section.
 

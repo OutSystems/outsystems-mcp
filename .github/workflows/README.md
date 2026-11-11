@@ -187,7 +187,8 @@ carries the plugin version.
 its own, on pull requests that touch the skill docs, the README, `lib.sh` or
 that suite; the same workflow also runs the Beta skills' Python suites.
 `plugin-version.yml` runs `plugin-version-lockstep.test.sh` on its own on
-every pull request and on every push to `main`.
+every pull request and on every push to `main`. On every pull request, it
+also runs `plugin-version-bump.test.sh` and then `plugin-version-bump.sh`.
 
 The step suites extract the `run:` bodies from the committed workflow and
 execute them under the command the shell each step declares expands to.
@@ -261,6 +262,11 @@ the suites pin down:
   The PowerShell script runs when `powershell` or `pwsh` is on PATH, else
   its checks report a skip. A self-test proves that each check fails on a
   mutated copy.
+- `plugin-version-bump.test.sh` - `plugin-version-bump.sh` fails a pull
+  request that changes a file under `claude/`, `cursor/` or
+  `kiro/outsystems/` and does not raise the version by SemVer precedence,
+  pre-release and build metadata included. A change elsewhere, or a bump
+  alone, passes.
 - `status-watcher-hook.test.sh` - the Claude plugin's status-watcher
   hook, run from the command in `claude/hooks/hooks.json` under `sh -c`
   with `CLAUDE_PLUGIN_ROOT` set and the working directory outside the
