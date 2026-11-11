@@ -2,7 +2,7 @@
 name: outsystems-dependency-impact
 description: "[Beta] Build an interactive HTML REVERSE-dependency explorer — answers 'who depends on this library/agent/connection?' from the platform's deletion-impact analysis (read-only; nothing is deleted). One named target is one analysis: seconds, a few K tokens. A whole-tenant map is one analysis per library/agent/connection in parallel batches (estimate: ~0.5K tokens per target plus ~0.1–0.15K per dependent found). Use ONLY for reverse questions like 'who depends on [library/agent]', 'if I publish [library] who breaks', 'blast radius of [library/agent]', 'reverse dependency map', 'library impact audit', 'agent impact audit'. For forward questions about a specific app ('what does App X depend on', 'deps of App X'), use outsystems-app-architecture or the app's references directly. Not for OutSystems 11 (O11) or Service Studio."
 license: MIT
-compatibility: Needs an agent that can run shell commands and Python 3.8+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it.
+compatibility: Needs an agent that can run shell commands and Python 3.10+ (standard library only), with the OutSystems MCP server connected and signed in. Validated on Claude Code. Claude Desktop's Chat tab has no shell and cannot run it.
 allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/outsystems-dependency-impact/scripts/build.py *) Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/outsystems-dependency-impact/scripts/build.py" *) Write mcp__plugin_outsystems_outsystems__auth_status mcp__plugin_outsystems_outsystems__app_list mcp__plugin_outsystems_outsystems__app_refs mcp__plugin_outsystems_outsystems__env_list mcp__plugin_outsystems_outsystems__deploy_impact mcp__plugin_outsystems_outsystems__deploy_impact_status mcp__outsystems__auth_status mcp__outsystems__app_list mcp__outsystems__app_refs mcp__outsystems__env_list mcp__outsystems__deploy_impact mcp__outsystems__deploy_impact_status
 metadata:
   version: "1.5.0"
@@ -48,7 +48,7 @@ the one-target path whenever the user names a target.
   the tools named below; tool names here are the server's own, and your
   harness may show them with a prefix (in Claude Code,
   `mcp__plugin_outsystems_outsystems__deploy_impact` for `deploy_impact`).
-- A shell with `python3` (3.8 or later, standard library only). The
+- A shell with `python3` (3.10 or later, standard library only). The
   script reads the saved analysis results from disk and writes the HTML;
   it never calls the server and holds no sign-in of its own.
 - `<skill-folder>` below is this skill's own folder: the one holding this
@@ -463,7 +463,7 @@ same ratio.
   then retry once.
 - **The OutSystems tools are missing** → the MCP server is not connected;
   ask the user to connect it (see the main OutSystems skill's setup).
-- **`python3: command not found`** → ask the user to install Python 3.8
+- **`python3: command not found`** → ask the user to install Python 3.10
   or later; nothing else is needed.
 - **`build.py` exits 3 with `INCOMPLETE: the asset list pages starting
   at <file> cover N of T`** → an `app_list` page was truncated and its

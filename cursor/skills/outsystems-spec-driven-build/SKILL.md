@@ -2,7 +2,7 @@
 name: outsystems-spec-driven-build
 description: '[Beta] Drive ODC Mentor to bootstrap an OutSystems app from a TEXT-ONLY structured spec. For Figma/image/HTML inputs, use `outsystems-design-to-app` instead. EXPERIMENTAL — Mentor is built for in-flow edits, so treat results as draft scaffolds for review, NOT ship-ready apps. A spec check first confirms every screen names a role the spec defines and that entities are listed, and warns when relationships or integrations are not stated; then it drives Mentor in two parts, data model then screens, each published, with guardrails against its known mistakes. Three entry modes — your own markdown spec file, an interview, or clone from an example template. Use when the user asks to "build a new app from spec", "generate an app from requirements", "have Mentor build [app] from this spec", "build an app from this written description", "write a spec for a new app and build it", or similar spec- or requirements-driven greenfield asks with NO design artifact. Not for OutSystems 11 (O11) or Service Studio.'
 license: MIT
-compatibility: Ships for Claude Code, Cursor and Kiro. Needs a shell with Python 3.8+ (standard library only; on Windows the interpreter may be `python` or `py -3`), so Claude Desktop's Chat tab, which has no shell, can't run it. Requires the `outsystems` MCP server connected and authenticated, with the session-based Mentor tools available, and builds on the main `outsystems` skill for session, polling and publish rules. Mentor must be enabled on the tenant.
+compatibility: Ships for Claude Code, Cursor and Kiro. Needs a shell with Python 3.10+ (standard library only; on Windows the interpreter may be `python` or `py -3`), so Claude Desktop's Chat tab, which has no shell, can't run it. Requires the `outsystems` MCP server connected and authenticated, with the session-based Mentor tools available, and builds on the main `outsystems` skill for session, polling and publish rules. Mentor must be enabled on the tenant.
 metadata:
   version: "1.5.0"
   author: outsystems-r-and-d
@@ -21,7 +21,7 @@ Generate a new OutSystems app from a structured, text-only spec via ODC Mentor. 
 
 - **The `outsystems` MCP server connected and authenticated**, per the main `outsystems` skill.
 - **Mentor enabled on the tenant** (this skill drives Mentor).
-- **A shell with Python 3.8+** to run `scripts/build.py` (standard library only). The script never calls the MCP; it handles the spec, the prompts and the report. The commands below say `python3`; on Windows use `python` or `py -3` if `python3` isn't found.
+- **A shell with Python 3.10+** to run `scripts/build.py` (standard library only). The script never calls the MCP; it handles the spec, the prompts and the report. The commands below say `python3`; on Windows use `python` or `py -3` if `python3` isn't found.
 - **A target app.** Either a new Web app the skill creates (after confirmation) from the standard template, or an empty app the user already created in ODC Studio; see Step 4.
 
 ## When NOT to use
