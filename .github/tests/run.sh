@@ -3,8 +3,8 @@
 # it: run it locally before pushing a change to `ai-review.yml`, whose
 # shell steps only ever execute on a privileged runner otherwise, to any
 # skill doc, whose deployment-impact recipe two suites here check and whose
-# withheld-graph caveat one suite checks, or to the Claude plugin's hook,
-# which one suite runs the way Claude Code does.
+# withheld-graph caveat and root-list caveat one suite each checks, or to
+# the Claude plugin's hook, which one suite runs the way Claude Code does.
 # `skills-tests.yml` runs one suite on its own: skill-platform-check.test.sh.
 # `plugin-version.yml` runs one suite on its own, on every pull request and
 # on every push to `main`: plugin-version-lockstep.test.sh.
