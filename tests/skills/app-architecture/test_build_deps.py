@@ -128,7 +128,89 @@ def test_stored_xre_importedkind_shape():
     assert deps[0]["k"] == "pk1"
     assert deps[0]["kind"] == "Extension"
     assert deps[0]["cat"] == "Library"
-    assert build._refs_coverage(payload) == {"source": "stored-xre", "indexedKinds": []}
+    assert build._refs_coverage(payload) == {"source": "stored-xre", "indexedKinds": [], "coverage": None}
+    assert "origin" not in deps[0]
+
+
+def test_stored_xre_rows_keep_their_declared_origin():
+    """schemaVersion 3 / stored-xre from a server that marks every row
+    `origin: declared`; a row with no kind carries `origin` alone."""
+    payload = {
+        "schemaVersion": 3,
+        "source": "stored-xre",
+        "assetKey": "stored",
+        "degraded": False,
+        "references": [
+            {"producerAssetKey": "pk1", "producerAssetName": "SomeLib", "importedKind": "Extension",
+             "origin": "declared"},
+            {"producerAssetKey": "pk2", "producerAssetName": "OtherLib", "origin": "declared"},
+        ],
+        "indexedKinds": [],
+        "fallbackReason": "not_indexed",
+    }
+    deps = _deps_for(payload)
+    assert [(d["n"], d["kind"], d["origin"]) for d in deps] == [
+        ("SomeLib", "Extension", "declared"), ("OtherLib", "", "declared")]
+    assert build._refs_coverage(payload) == {"source": "stored-xre", "indexedKinds": [], "coverage": None}
+
+
+# A context-service answer where the server added the stored graph's declared
+# modules because indexedKinds lacks actions, blocks and structures.
+MERGED = {
+    "assetKey": "a00000f5-0000-4000-8000-0000000000f5",
+    "schemaVersion": 2,
+    "source": "context-service",
+    "degraded": False,
+    "indexedKinds": ["entities"],
+    "references": [
+        {"kinds": ["entities"], "producerAssetKey": "a0000101-0000-4000-8000-000000000101",
+         "producerAssetName": "SharedData", "origin": "indexed"},
+        {"importedKind": "Extension", "producerAssetKey": "a0000102-0000-4000-8000-000000000102",
+         "producerAssetName": "FileTools", "origin": "declared"},
+        {"producerAssetKey": "a0000103-0000-4000-8000-000000000103",
+         "producerAssetName": "HttpHelpers", "origin": "declared"},
+    ],
+    "coverage": {"declared": "merged", "revision": 5, "latestRevision": 6,
+                 "revisionNote": {"text": "Read from revision 5; the latest is 6."},
+                 "note": "The stored app graph adds the modules the app declares."},
+}
+
+
+def test_merged_context_service_answer_keeps_origin_and_coverage():
+    deps = _deps_for(MERGED)
+    assert [(d["n"], d["kind"], d["origin"]) for d in deps] == [
+        ("SharedData", "entities", "indexed"), ("FileTools", "Extension", "declared"),
+        ("HttpHelpers", "", "declared")]
+    assert all(d["cat"] == "Library" for d in deps)
+    assert build._refs_coverage(MERGED) == {
+        "source": "context-service", "indexedKinds": ["entities"],
+        "coverage": {"declared": "merged", "revision": 5, "latestRevision": 6}}
+
+
+def test_unavailable_coverage_keeps_its_reason():
+    payload = dict(MERGED, references=MERGED["references"][:1],
+                   coverage={"declared": "unavailable", "reason": "supplement_late_start", "note": "..."})
+    assert build._refs_coverage(payload)["coverage"] == {
+        "declared": "unavailable", "reason": "supplement_late_start"}
+
+
+def test_context_service_answer_without_origin_or_coverage_is_read_as_before():
+    """schemaVersion 2 from a server that sends neither `origin` nor `coverage`."""
+    payload = {"schemaVersion": 2, "source": "context-service", "indexedKinds": ["entities"],
+               "references": [{"kinds": ["entities"], "producerAssetKey": "k1", "producerAssetName": "SharedData"}]}
+    deps = _deps_for(payload)
+    assert deps == [{"k": "k1", "n": "SharedData", "kind": "entities", "cat": "Library", "rev": ""}]
+    assert build._refs_coverage(payload) == {
+        "source": "context-service", "indexedKinds": ["entities"], "coverage": None}
+
+
+def test_unknown_origin_and_malformed_coverage_fields_are_dropped():
+    payload = dict(MERGED, references=[dict(MERGED["references"][0], origin="guessed")],
+                   coverage={"declared": "merged", "revision": True, "latestRevision": "6", "reason": 3})
+    assert "origin" not in _deps_for(payload)[0]
+    assert build._refs_coverage(payload)["coverage"] == {"declared": "merged"}
+    assert build._refs_coverage(dict(MERGED, coverage="merged"))["coverage"] is None
+    assert build._refs_coverage(dict(MERGED, coverage={"declared": None}))["coverage"] is None
 
 
 def test_builtins_only_yields_empty():
