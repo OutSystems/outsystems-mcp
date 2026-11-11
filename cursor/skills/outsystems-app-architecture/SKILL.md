@@ -343,7 +343,7 @@ that wrote it).
   AI model connections, libraries (the second line `build.py` prints)
 - Deployment line `build.py` prints, with its "as of" time
 - The `library coverage:` and `dependencies not fetched:` lines when
-  `build.py` prints them: never present the library list as complete
+  `build.py` prints them
 - Cache state — "used (Xs old)" or "refreshed"; mention any
   `note:`/`warning:` lines `build.py` printed (for example about records)
 
@@ -374,7 +374,7 @@ APP_DATA = {
   depsUnavailable: ["libraries"?, "AI model connections"?], // parts not fetched: the page says so
   refsCoverage: { source, indexedKinds: [string] | null,          // what app_refs covers: the page says so
                   coverage: { declared, reason?, revision?, latestRevision? } | null } | null,
-                  // coverage.note and coverage.revisionNote are not copied: quote them from the app_refs answer
+                  // coverage.note and coverage.revisionNote are not copied
   deployments: { fetchedAt, latestRevision,
                  envs: [{ k, n, purpose, status: "deployed"|"not-deployed"|"unknown"|"n/a",
                           rev?, at?, behind?, reason? }] } | null,
@@ -401,24 +401,7 @@ Attr = { n, t, pk?, req?, len?, d?,
 - `deployments.envs[].status` is `unknown` when the environment's
   `env_apps` response was not fetched, or was truncated without a row
   for this app key.
-- `refsCoverage`: a `context-service` answer lists only the element kinds
-  in `indexedKinds` (often just `entities`), so a library the app uses
-  only through actions, structures, blocks or themes can be missing, and
-  even a listed kind is not proven complete; the page and your report
-  must say which kinds were covered (unknown when `indexedKinds` is null)
-  and never present the list as complete. It does not apply to a `stored-xre` answer.
-- `refsCoverage.coverage` is the `coverage` object of a `context-service`
-  answer, or null when the server does not send one. When
-  `coverage.declared` is `merged`, the server added the modules the app
-  declares, read from stored revision `coverage.revision`. The page and
-  your report name those modules as declared, not as proof of use. Any
-  other value keeps the caveat above. For `coverage.reason`
-  `supplement_late_start`, do not fetch `app_refs` again: nothing failed.
-  For `disabled`, do not fetch `app_refs` again either: a retry does not
-  help, and `coverage.note` gives the cause.
-- `deps[].origin` copies the reference's `origin`: `indexed` for a row of
-  the index, `declared` for a module that only the stored app graph names.
-  It is absent on a connection row and on an answer from an older server.
+- For what an `app_refs` answer covers (`indexedKinds`, `origin`, `coverage`), read the `app_refs` tool description.
 - Built-in OutSystems modules are filtered out of `deps`. `deps` is
   empty when neither connections nor refs were available; the template
   hides the Dependencies layer then.

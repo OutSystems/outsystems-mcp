@@ -655,9 +655,7 @@ def _refs_deps(raw) -> list:
       - schemaVersion 2 / oml-fallback: {producerAssetKey, producerAssetName, importedKind}
       - schemaVersion 2 / context-service (live 2026-07-09):
                                         {producerAssetKey, producerAssetName, kinds: [...]}
-    A reference with `origin` ("indexed" or "declared") keeps it; a server
-    that adds the stored graph's declared modules to a context-service
-    answer marks each row that way. Rows without it stay without it.
+    A reference keeps its `origin` when it is "indexed" or "declared".
     Built-in modules are dropped. A `failed` placeholder yields []."""
     if not isinstance(raw, dict) or raw.get("failed"):
         return []
@@ -693,9 +691,7 @@ def _build_deps(refs_path, app_key: str) -> list:
 
 def _declared_coverage(raw):
     """The `coverage` object of a context-service answer, reduced to the fields
-    the page reads, or None when the server does not send one. `declared` says
-    whether the stored graph's declared modules are in the references:
-    merged, not_needed, unavailable (with `reason`) or disabled."""
+    the page reads, or None when the server does not send one."""
     if not isinstance(raw, dict) or not isinstance(raw.get("declared"), str):
         return None
     out = {"declared": raw["declared"]}
@@ -710,8 +706,7 @@ def _declared_coverage(raw):
 def _refs_coverage(refs_raw):
     """{source, indexedKinds, coverage} of an app_refs answer, or None.
     indexedKinds is None when a context-service answer does not report it
-    (unknown coverage). coverage is None when the answer has none: a
-    stored-xre answer, or a server that does not add declared modules."""
+    (unknown coverage). coverage is None when the answer has none."""
     if not isinstance(refs_raw, dict) or not isinstance(refs_raw.get("source"), str):
         return None
     kinds = refs_raw.get("indexedKinds")

@@ -201,19 +201,7 @@ Mentor is a multi-turn conversation backed by a server-side session that holds t
 
 The context lookups index by **visibility**, not ownership: app-scoped queries return owned rows plus rows inherited from referenced libraries (OutSystemsUI, Charts, etc.). Each row carries `isReferenced` and `producerAssetKey`/`producerAssetName`. `owned_only` defaults to `true` when `app` is set, `false` tenant-wide; pass `owned_only: false` with `app` to keep inherited rows.
 
-## App references coverage (`indexedKinds`, `coverage`)
-
-An app's references list the producers the Context Service records as referenced, and it does not record every kind of dependency. On a `context-service` answer, `indexedKinds` names the element kinds the index confirms as referenced in the tenant, often only `entities`. When `indexedKinds` lacks `actions`, `blocks` or `structures`, the server also reads the stored app graph and adds the modules the app declares.
-
-Each reference carries `origin`. A reference with `origin: indexed` is a row of the index and carries `kinds`. A reference with `origin: declared` comes only from the stored app graph and carries `importedKind` when the graph records one. A declared module is a module the app declares, not proof that the app uses it.
-
-Read `coverage` before you conclude that the app does not use a library. `coverage.declared` is `merged` when `references` holds the declared modules, and `coverage.revision` and `coverage.latestRevision` then name the stored revision the server read. `not_needed` means the index covers actions, blocks and structures. `unavailable` and `disabled` mean that the server did not add the declared modules, and `unavailable` carries `coverage.reason`. Each `coverage` also carries `coverage.note`, one sentence about the coverage that you can show to the user. A merged answer read from a revision older than the newest also carries `coverage.revisionNote`.
-
-An `unavailable` coverage is not a failed call: the rows are the index answer. For `supplement_late_start`, do not retry: the index answered too late to read the stored app graph in time, and nothing failed. For `server_busy`, retry later with backoff only if you need the declared modules. For `refs_fallback_unavailable`, do not retry: this deployment has no stored app graph. For `internal`, report the problem to the user. For `disabled`, do not retry: a retry does not help, and `coverage.note` gives the cause.
-
-When `coverage.declared` is not `merged`, a kind missing from `indexedKinds` is unknown, not absent. A library the app uses only through that kind (actions, structures, blocks, themes) can then be missing from `references`. So never present the list as complete, and never conclude from the absence of a library alone that the app does not use it. When the answer depends on it, tell the user which kinds the index covered and whether the server added the declared modules. A listed kind does not prove the app's references of that kind are complete either.
-
-`indexedKinds` and `coverage` do not apply to a `stored-xre` answer (`schemaVersion` 3). That answer lists the modules the app declares, read from the stored app graph of the app's newest stored revision, and each reference has `origin: declared`. A `stored-xre` answer read from a revision older than the newest carries `revision`, `latestRevision` and `revisionNote`. A `context-service` answer without `indexedKinds` comes from an older server whose coverage is unknown. A `context-service` answer without `coverage` comes from an older server that does not add the declared modules.
+For what an `app_refs` answer covers (`indexedKinds`, `origin`, `coverage`), read the `app_refs` tool description.
 
 ## Workflows
 
