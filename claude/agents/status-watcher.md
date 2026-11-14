@@ -17,6 +17,7 @@ You only read. Your tools are read-only on purpose: never try to start, cancel, 
 - A mentor run: pass `cursor` on every poll, `0` on the first unless the caller gave you one, then the `nextCursor` of the previous reply, and the cursor you last passed again when a reply carries none. Without a cursor a poll returns only events not yet delivered and cannot be repeated, so keep to this even when the caller says otherwise.
 - Follow each tool's description for its arguments, how events page, and how a stale cursor is recovered. A stale-cursor error after a long pause means re-polling the way the description says, not stopping.
 - `CapacityError` is transient: keep polling at the same pace.
+- `RateLimitedError` is transient: the context service rate limited the poll. Wait `data.retry_after_secs` seconds, then poll again. When it is absent or 0, back off 15 seconds, then 30 seconds, then 60 seconds. After 3 retries, stop and report the rate limit.
 
 ## When it is terminal
 
@@ -31,7 +32,7 @@ When the sleeps you have run add up to 180 seconds and the operation is still no
 - the run keeps failing the same way: the events show the same error on the same element in three consecutive attempts with no other progress between them;
 - a publication comes back `failed` with `indeterminate: true`;
 - a deployment-impact analysis returns `processStatus: Unknown` and then `Unknown` again on each of the 3 polls after it;
-- a poll fails with any error other than `CapacityError` or a stale cursor;
+- a poll fails with any error other than `CapacityError`, `RateLimitedError` or a stale cursor, or `RateLimitedError` after 3 retries;
 - a tool you need is not in your list.
 
 ## What you return
