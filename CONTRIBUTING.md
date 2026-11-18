@@ -128,7 +128,7 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`.
 
 ## Testing
 
-Apart from the Beta skills' scripts, the shipped content has no automated test suite: verify changes manually, accounting for every harness in the AGENTS.md table as step 4 above requires. `.github/tests/run.sh` covers seven parts:
+Apart from the Beta skills' scripts, the shipped content has no automated test suite: verify changes manually, accounting for every harness in the AGENTS.md table as step 4 above requires. `.github/tests/run.sh` covers eight parts:
 
 1. `.github/workflows/ai-review.yml`: its shell steps and structural guarantees.
 2. The deployment-impact recipe in all five skill docs. `.github/tests/skill-deploy-impact-recipe.test.sh` pins it word for word and checks that it is byte-identical across them. `.github/tests/spec_deploy_impact_recipe.test.sh` checks it against the recipe's requirements.
@@ -137,6 +137,7 @@ Apart from the Beta skills' scripts, the shipped content has no automated test s
 5. The Caveats bullet that states what a `context_graph` match proves (an import or a reference, not a use) and routes the search for the apps that import or reference an entity to `context_search`. `.github/tests/skill-graph-root-list.test.sh` checks it in all five skill docs and holds it byte-identical across them. It also checks that no skill doc names `graph_root_not_found` or the phrase "apps that use an entity".
 6. The Claude plugin's status-watcher hook. `.github/tests/status-watcher-hook.test.sh` runs it from the command in `claude/hooks/hooks.json` against sample hook inputs.
 7. The plugin version. `.github/tests/plugin-version-lockstep.test.sh` checks it in every file that carries it, and runs the scripts that the Claude plugin's `headersHelper` names.
+8. The Rules bullet that says Application Objects apply to ODC. `.github/tests/skill-application-objects.test.sh` checks it in all five skill docs and holds it byte-identical across them. It also checks that the bullet says they apply on ODC as well as on O11, forbids saying they do not exist on ODC, says that the server cannot report AO consumption unless `tools/list` offers a tool for it, and points to the Subscription section of the ODC Portal.
 
 Run `run.sh` when you touch that workflow, a skill doc, the README, the hook, or a file that carries the plugin version. No CI runs `run.sh` itself. `.github/workflows/skills-tests.yml` runs `skill-platform-check.test.sh` on its own, on pull requests that touch the skill docs, the README or that suite. The `plugin-version.yml` workflow runs the plugin version check on every pull request (see "Versioning and Releases").
 
