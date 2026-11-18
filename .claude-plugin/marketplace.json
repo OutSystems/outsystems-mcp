@@ -14,7 +14,13 @@
       "author": {
         "name": "OutSystems AI Platform"
       },
-      "source": "./claude"
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/OutSystems/outsystems-mcp.git",
+        "path": "claude",
+        "ref": "v1.13.0",
+        "sha": "9f758830d4356ff0b96bc08de946d8271532750b"
+      }
     }
   ]
 }

@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# Fails when the changes from <base> to <head> touch shipped plugin content
-# and the version in `claude/.claude-plugin/plugin.json` is not higher at
-# <head> than at <base>, by SemVer 2.0 precedence. Without a higher version,
-# `claude plugin update` reports "already at the latest version" and users
-# never get the change.
-#
-# Shipped plugin content is every path under `claude/`, `cursor/` and
-# `kiro/outsystems/`, the folders the three versioned plugins install
-# from. The Copilot recipes, the root SKILL.md and `kiro/agents/` reach
-# users as copied files, not through a plugin update, so a change to them
-# needs no bump.
+# Fails when the version in `claude/.claude-plugin/plugin.json` at <head>
+# is not higher than at <base>, by SemVer 2.0 precedence. The release
+# workflow runs it with the previous release tag as <base> and the new tag
+# as <head>. Without a higher version, `claude plugin update` reports
+# "already at the latest version" and users never get the release. No
+# pull request has to raise the version: the release pull request does
+# (CONTRIBUTING.md "Versioning and Releases"). Which files changed between
+# the two revisions does not matter to the check.
 #
 # Usage: plugin-version-bump.sh <base> <head>
 # Exits 0 when the check passes, 1 when it fails, 2 on a usage or git error.
@@ -18,16 +15,16 @@ set -uo pipefail
 export LC_ALL=C
 
 SOURCE=claude/.claude-plugin/plugin.json
-CONTENT=(claude cursor kiro/outsystems)
 
 [ $# -eq 2 ] || { echo "usage: $0 <base> <head>" >&2; exit 2; }
 base=$1 head=$2
 
-changed=$(git diff --name-only "$base" "$head" -- "${CONTENT[@]}") || exit 2
-if [ -z "$changed" ]; then
-  echo "No change under ${CONTENT[*]}: no version bump needed."
-  exit 0
-fi
+for rev in "$base" "$head"; do
+  git rev-parse --verify --quiet "$rev^{commit}" >/dev/null || {
+    echo "$0: unknown revision: $rev" >&2
+    exit 2
+  }
+done
 
 version_at() { # rev
   git show "$1:$SOURCE" 2>/dev/null | jq -r '.version // empty | strings' 2>/dev/null
@@ -63,12 +60,10 @@ higher() { # a, b
 }
 
 if higher "$from" "$to"; then
-  echo "Plugin content changed and the version went from $from to $to."
+  echo "The plugin version went from $from at $base to $to at $head."
   exit 0
 fi
 
-echo "::error file=$SOURCE::Plugin content changed, but the version did not go up (base: ${from:-none}, head: ${to:-none})."
+echo "::error file=$SOURCE::The plugin version did not go up from $base to $head (base: ${from:-none}, head: ${to:-none})."
 echo "Bump every file in CONTRIBUTING.md \"Versioning and Releases\" to a higher version."
-echo "Changed plugin files:"
-printf '  %s\n' $changed
 exit 1

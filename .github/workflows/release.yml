@@ -1,0 +1,209 @@
+name: release
+
+# Runs when a release tag `vX.Y.Z` is pushed, or by hand for a tag that
+# exists already (the first release, or a run that failed half-way). On the
+# tagged commit it checks that the tag names the version in
+# `claude/.claude-plugin/plugin.json`, that the commit is on `main`, that
+# every file that carries the version agrees, and that the version is
+# higher than the previous release tag's. It then creates the GitHub
+# Release with generated notes, fast-forwards the `release` branch to the
+# tag, and opens a pull request that points the Claude marketplace entry
+# on `main` at the tag. `main` requires a review and signed commits, so
+# the workflow cannot push to it: the commit on the pull request's branch
+# is created through the GitHub API, which signs it. Every step is safe
+# to run again: what exists already is left alone. CONTRIBUTING.md
+# "Versioning and Releases" describes the release steps around it.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "A release tag that exists already, vX.Y.Z"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One release at a time: two runs would race on the release branch and
+# on the marketplace pull request.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# `bash --noprofile --norc -eo pipefail {0}`: a pipeline whose left side
+# fails fails the step.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      MARKETPLACE: .claude-plugin/marketplace.json
+    steps:
+      - name: Check the tag name
+        run: |
+          case "$TAG" in
+            v[0-9]*) echo "Releasing $TAG." ;;
+            *) echo "::error::'$TAG' is not a release tag (vX.Y.Z)."; exit 1 ;;
+          esac
+
+      # The tagged commit, with every branch and tag: the checks below
+      # compare it with `main` and with the previous release tag.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check that the tag names the plugin version
+        run: |
+          version=$(jq -r '.version // empty' claude/.claude-plugin/plugin.json)
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error file=claude/.claude-plugin/plugin.json::$TAG does not name the plugin version (${version:-none}). The tag is v<version>."
+            exit 1
+          fi
+
+      - name: Check that the tagged commit is on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$TAG points at $(git rev-parse HEAD), which is not on main. Tag the merge commit of the release pull request."
+            exit 1
+          fi
+
+      - name: Check the plugin version in every file that carries it
+        run: bash .github/tests/plugin-version-lockstep.test.sh
+
+      - name: Check that the version is higher than the previous release's
+        id: previous
+        run: |
+          bash .github/tests/plugin-version-bump.test.sh
+          # The highest release tag other than this one. `versionsort.suffix`
+          # ranks a pre-release below its release: v1.2.0-rc.1 < v1.2.0.
+          previous=$(git -c versionsort.suffix=- tag --list 'v[0-9]*' --sort=-version:refname |
+            { grep -vx "$TAG" || true; } | head -n 1)
+          if [ -z "$previous" ]; then
+            echo "No earlier release tag: $TAG is the first release."
+          else
+            bash .github/tests/plugin-version-bump.sh "$previous" "$TAG"
+          fi
+          echo "tag=$previous" >> "$GITHUB_OUTPUT"
+
+      - name: Create the GitHub Release
+        env:
+          PREVIOUS: ${{ steps.previous.outputs.tag }}
+        run: |
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            echo "The release $TAG exists already."
+            exit 0
+          fi
+          args=(--repo "$REPO" --verify-tag --title "$TAG" --generate-notes)
+          if [ -n "$PREVIOUS" ]; then
+            args+=(--notes-start-tag "$PREVIOUS")
+          fi
+          case "$TAG" in
+            *-*) args+=(--prerelease) ;;
+          esac
+          gh release create "$TAG" "${args[@]}"
+
+      # The Claude plugin directory tracks this branch, so it moves only
+      # forward, and only to a release.
+      - name: Fast-forward the release branch to the tag
+        run: |
+          sha=$(git rev-parse "refs/tags/$TAG^{commit}")
+          if current=$(gh api "repos/$REPO/git/ref/heads/release" --jq .object.sha 2>/dev/null); then
+            if [ "$current" = "$sha" ]; then
+              echo "The release branch is at $sha already."
+            elif git merge-base --is-ancestor "$current" "$sha"; then
+              gh api --method PATCH "repos/$REPO/git/refs/heads/release" -f sha="$sha" -F force=false >/dev/null
+              echo "release: $current -> $sha"
+            else
+              echo "::error::The release branch is at $current, which $TAG does not descend from. Tag a later commit, or move the branch by hand."
+              exit 1
+            fi
+          else
+            gh api --method POST "repos/$REPO/git/refs" -f ref=refs/heads/release -f sha="$sha" >/dev/null
+            echo "release: created at $sha"
+          fi
+
+      - name: Point the marketplace entry on main at the tag
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          sha=$(git rev-parse "refs/tags/$TAG^{commit}")
+          main=$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)
+          current=$(gh api -H "Accept: application/vnd.github.raw+json" "repos/$REPO/contents/$MARKETPLACE?ref=$main")
+          version=$(jq -r '.plugins[0].version // empty' <<<"$current")
+          if [ "v$version" != "$TAG" ]; then
+            echo "::warning::main advertises version ${version:-none}, not $TAG, so the marketplace entry stays as it is. A later release pull request has merged already, or the entry on main drifted."
+            exit 0
+          fi
+          if [ "$(jq -r '.plugins[0].source.source // empty' <<<"$current")" != git-subdir ]; then
+            echo "::error file=$MARKETPLACE::The marketplace entry on main is not a git-subdir source (see CONTRIBUTING.md \"Versioning and Releases\")."
+            exit 1
+          fi
+          wanted=$(jq --arg ref "$TAG" --arg sha "$sha" \
+            '.plugins[0].source.ref = $ref | .plugins[0].source.sha = $sha' <<<"$current")
+          if [ "$(jq -c . <<<"$current")" = "$(jq -c . <<<"$wanted")" ]; then
+            echo "The marketplace entry on main points at $TAG ($sha) already."
+            exit 0
+          fi
+
+          branch="release/marketplace-$TAG"
+          url=$(gh pr list --repo "$REPO" --head "$branch" --base main --state open --json url --jq '.[0].url // empty')
+          if [ -n "$url" ]; then
+            echo "A pull request for $branch is open already: $url"
+            exit 0
+          fi
+
+          # The branch starts at main (reset, if an earlier run left one
+          # behind without a pull request). The commit is created through
+          # the API, which signs it, as main requires.
+          if gh api "repos/$REPO/git/ref/heads/$branch" >/dev/null 2>&1; then
+            gh api --method PATCH "repos/$REPO/git/refs/heads/$branch" -f sha="$main" -F force=true >/dev/null
+          else
+            gh api --method POST "repos/$REPO/git/refs" -f ref="refs/heads/$branch" -f sha="$main" >/dev/null
+          fi
+          title="chore(marketplace): point the Claude plugin at $TAG"
+          jq -n --arg repo "$REPO" --arg branch "$branch" --arg head "$main" --arg title "$title" \
+            --arg path "$MARKETPLACE" --arg contents "$(printf '%s\n' "$wanted" | base64 -w0)" '
+            { query: "mutation ($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+              variables: { input: {
+                branch: { repositoryNameWithOwner: $repo, branchName: $branch },
+                expectedHeadOid: $head,
+                message: { headline: $title },
+                fileChanges: { additions: [{ path: $path, contents: $contents }] } } } }' |
+            gh api graphql --input - --jq '"committed " + .data.createCommitOnBranch.commit.oid'
+
+          body="This PR is for... pointing the Claude marketplace entry at the release \`$TAG\`, opened by the release workflow ($RUN_URL).
+
+          ### What was happening
+          * \`$MARKETPLACE\` pointed the \`outsystems\` plugin at the previous release.
+
+          ### What was done
+          * \`plugins[0].source.ref\` is now \`$TAG\` and \`plugins[0].source.sha\` is \`$sha\`, the commit the tag points at. Nothing else changed; the version was bumped in the release PR.
+
+          ### Test Steps
+          1. The release run checked the tagged commit: the tag names the plugin version, the commit is on \`main\`, every file that carries the version agrees, and the version is higher than the previous release's.
+          2. A pull request opened with the workflow's own token runs no \`pull_request\` workflow, so no check reports here.
+          3. After merging: \`claude plugin marketplace update outsystems\`, then \`claude plugin update outsystems@outsystems\`, installs \`$TAG\`.
+
+          ### Checklist
+          * [x] every supported harness accounted for: only the Claude marketplace entry changes; the Cursor and Kiro manifests were bumped in the release PR
+          * [x] no internal references leaked
+          * [x] skill content unchanged
+          * [x] version bumped in the release PR, not here"
+          if ! gh pr create --repo "$REPO" --base main --head "$branch" --title "$title" --body "$body"; then
+            echo "::error::Could not open the pull request. Open it by hand from https://github.com/$REPO/compare/main...$branch?expand=1 (Settings > Actions > General must allow GitHub Actions to create pull requests for the workflow to open it)."
+            exit 1
+          fi

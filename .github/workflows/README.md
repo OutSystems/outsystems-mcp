@@ -186,9 +186,17 @@ carries the plugin version.
 `skills-tests.yml` runs one of its suites, `skill-platform-check.test.sh`, on
 its own, on pull requests that touch the skill docs, the README, `lib.sh` or
 that suite; the same workflow also runs the Beta skills' Python suites.
-`plugin-version.yml` runs `plugin-version-lockstep.test.sh` on its own on
-every pull request and on every push to `main`. On every pull request, it
-also runs `plugin-version-bump.test.sh` and then `plugin-version-bump.sh`.
+`plugin-version.yml` runs `plugin-version-lockstep.test.sh` and
+`plugin-version-bump.test.sh` on every pull request and on every push to
+`main`; no pull request has to raise the version. `release.yml` runs on a
+`vX.Y.Z` tag: it checks that the tag names the version in
+`claude/.claude-plugin/plugin.json` and sits on `main`, runs the same two
+suites on the tagged commit, then `plugin-version-bump.sh` with the
+previous release tag as the base, and only then creates the GitHub
+Release, fast-forwards the `release` branch and opens the pull request
+that points `.claude-plugin/marketplace.json` on `main` at the tag
+(CONTRIBUTING.md "Versioning and Releases"). It can be started by hand
+for a tag that exists already, and every step leaves alone what exists.
 
 The step suites extract the `run:` bodies from the committed workflow and
 execute them under the command the shell each step declares expands to.
@@ -255,11 +263,11 @@ the suites pin down:
   and at most 64 bytes, no file outside the list sets the header, and the
   Claude plugin's `claude/.mcp.json` holds no header at all. A self-test
   proves that each check fails on a mutated copy.
-- `plugin-version-bump.test.sh` - `plugin-version-bump.sh` fails a pull
-  request that changes a file under `claude/`, `cursor/` or
-  `kiro/outsystems/` and does not raise the version by SemVer precedence,
-  pre-release and build metadata included. A change elsewhere, or a bump
-  alone, passes.
+- `plugin-version-bump.test.sh` - `plugin-version-bump.sh` fails when the
+  version at the second revision is not higher than at the first by SemVer
+  precedence, pre-release and build metadata included, whatever else
+  changed between them; two release tags work as the revisions, and an
+  unknown revision exits 2.
 - `skill-withheld-graph.test.sh` - the Caveats bullet for a deployment
   that does not serve the app model graph, byte-identical in the five skill
   docs, and the matching refusal rule in Branch B of the dependency-impact
@@ -333,6 +341,14 @@ Set once, at the repo level:
 
 The IAM role's trust policy must include a subject condition allowing
 `repo:OutSystems/outsystems-mcp:*`.
+
+`release.yml` needs "Allow GitHub Actions to create and approve pull
+requests" switched on under Settings > Actions > General > Workflow
+permissions; without it, the last step cannot open the marketplace pull
+request and prints the compare link to open it by hand. `main` requires a
+review and signed commits, admins included, which is why that step opens
+a pull request rather than pushing: the commit is created through the
+GitHub API, which signs it.
 
 ## Re-running
 

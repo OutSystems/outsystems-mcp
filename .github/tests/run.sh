@@ -5,9 +5,10 @@
 # skill doc, whose deployment-impact recipe two suites here check and whose
 # withheld-graph caveat and root-list caveat one suite each checks.
 # `skills-tests.yml` runs one suite on its own: skill-platform-check.test.sh.
-# `plugin-version.yml` runs plugin-version-lockstep.test.sh on every pull
-# request and on every push to `main`, and plugin-version-bump.test.sh on
-# every pull request.
+# `plugin-version.yml` runs plugin-version-lockstep.test.sh and
+# plugin-version-bump.test.sh on every pull request and on every push to
+# `main`. `release.yml` runs both again on a release tag, and then
+# plugin-version-bump.sh against the previous release tag.
 #
 # Needs: bash, git, jq, python3 with PyYAML.
 

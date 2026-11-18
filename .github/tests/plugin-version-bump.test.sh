@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Runs `plugin-version-bump.sh` on throwaway repositories. Each case makes
 # one commit on top of a base commit and checks the exit status: 0 when
-# the check passes, 1 when it fails.
+# the check passes, 1 when it fails. The check reads only the version, so
+# the files a case changes besides it do not matter; a few cases change
+# some to show that.
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
@@ -16,9 +18,9 @@ new_repo() { # version
   local r
   r=$(mktemp -d "$WORK/repo.XXXXXX")
   git -C "$r" init -q
-  mkdir -p "$r/claude/.claude-plugin" "$r/cursor" "$r/kiro/outsystems" "$r/kiro/agents" "$r/copilot"
+  mkdir -p "$r/claude/.claude-plugin" "$r/cursor" "$r/kiro/outsystems" "$r/copilot"
   jq -n --arg v "$1" '{name: "outsystems", version: $v}' > "$r/$SOURCE"
-  for f in claude/skill.md cursor/skill.md kiro/outsystems/skill.md kiro/agents/a.json copilot/skill.md README.md; do
+  for f in claude/skill.md cursor/skill.md kiro/outsystems/skill.md copilot/skill.md README.md; do
     echo base > "$r/$f"
   done
   git -C "$r" add -A
@@ -46,16 +48,10 @@ status() { # base version, head version, changed files...
   echo $?
 }
 
-section "no shipped plugin content changed"
-check "no change at all passes" "$(status 1.0.0 1.0.0)" 0
-check "README.md alone passes" "$(status 1.0.0 1.0.0 README.md)" 0
-check "copilot/ alone passes" "$(status 1.0.0 1.0.0 copilot/skill.md)" 0
-check "kiro/agents/ alone passes" "$(status 1.0.0 1.0.0 kiro/agents/a.json)" 0
-
-section "shipped plugin content changed without a higher version"
-for f in claude/skill.md cursor/skill.md kiro/outsystems/skill.md claude/new/file.md; do
-  check "$f with the same version fails" "$(status 1.0.0 1.0.0 "$f")" 1
-done
+section "the version did not go up"
+check "the same version fails" "$(status 1.0.0 1.0.0)" 1
+check "the same version with a change under claude/ fails" "$(status 1.0.0 1.0.0 claude/skill.md)" 1
+check "the same version with a change outside the plugins fails" "$(status 1.0.0 1.0.0 README.md)" 1
 check "a lower version fails" "$(status 1.2.0 1.1.9 claude/skill.md)" 1
 check "a pre-release of the same core fails" "$(status 1.2.0 1.2.0-rc.1 claude/skill.md)" 1
 check "build metadata alone fails" "$(status 1.2.0 1.2.0+b.2 claude/skill.md)" 1
@@ -65,13 +61,26 @@ check "a numeric pre-release identifier below an alphanumeric one fails" \
 check "a shorter pre-release with the same start fails" \
   "$(status 1.2.0-rc.1 1.2.0-rc claude/skill.md)" 1
 check "a head version that is not SemVer fails" "$(status 1.0.0 v1.1.0 claude/skill.md)" 1
+check "a base version that is not SemVer fails" "$(status v1.0.0 1.1.0)" 1
 check "an empty head version fails" "$(status 1.0.0 "" claude/skill.md)" 1
+r=$(new_repo 1.0.0)
+git -C "$r" rm -q "$SOURCE"
+git -C "$r" commit -q -m head
+(cd "$r" && bash "$CHECK" HEAD^1 HEAD >/dev/null 2>&1)
+check "a head without the manifest fails" "$?" 1
+r=$(new_repo 1.0.0)
+git -C "$r" rm -q "$SOURCE"
+git -C "$r" commit -q -m "no manifest"
+git -C "$r" revert -q --no-edit HEAD
+(cd "$r" && bash "$CHECK" HEAD^1 HEAD >/dev/null 2>&1)
+check "a base without the manifest fails" "$?" 1
 
-section "shipped plugin content changed with a higher version"
+section "the version went up"
 check "a bump with no other change passes" "$(status 1.0.0 1.1.0)" 0
 check "a MINOR bump passes" "$(status 1.11.0 1.12.0 claude/skill.md)" 0
 check "a PATCH bump passes" "$(status 1.11.0 1.11.1 cursor/skill.md)" 0
 check "a MAJOR bump passes" "$(status 1.11.0 2.0.0 kiro/outsystems/skill.md)" 0
+check "a bump with changes outside the plugins passes" "$(status 1.0.0 1.0.1 README.md copilot/skill.md)" 0
 check "numbers compare as numbers, not as text" "$(status 1.9.0 1.10.0 claude/skill.md)" 0
 check "a release above its pre-release passes" "$(status 1.2.0-rc.1 1.2.0 claude/skill.md)" 0
 check "a higher numeric pre-release identifier passes" \
@@ -79,11 +88,30 @@ check "a higher numeric pre-release identifier passes" \
 check "a longer pre-release with the same start passes" \
   "$(status 1.2.0-rc 1.2.0-rc.1 claude/skill.md)" 0
 
+section "release tags as the revisions"
+r=$(new_repo 1.0.0)
+git -C "$r" tag v1.0.0
+set_version "$r" 1.1.0
+git -C "$r" commit -q -am "bump 1.0.0 -> 1.1.0"
+echo change >> "$r/claude/skill.md"
+git -C "$r" commit -q -am "a change after the release"
+set_version "$r" 1.1.1
+git -C "$r" commit -q -am "bump 1.1.0 -> 1.1.1"
+git -C "$r" tag v1.1.1
+(cd "$r" && bash "$CHECK" v1.0.0 v1.1.1 >/dev/null 2>&1)
+check "a higher version at the new tag passes, commits between them included" "$?" 0
+(cd "$r" && bash "$CHECK" v1.1.1 v1.0.0 >/dev/null 2>&1)
+check "the tags in the wrong order fail" "$?" 1
+(cd "$r" && bash "$CHECK" v1.1.1 v1.1.1 >/dev/null 2>&1)
+check "the same tag twice fails" "$?" 1
+
 section "usage"
 r=$(new_repo 1.0.0)
 (cd "$r" && bash "$CHECK" HEAD >/dev/null 2>&1)
 check "one argument exits 2" "$?" 2
 (cd "$r" && bash "$CHECK" HEAD no-such-rev >/dev/null 2>&1)
 check "an unknown revision exits 2" "$?" 2
+(cd "$r" && bash "$CHECK" no-such-rev HEAD >/dev/null 2>&1)
+check "an unknown base exits 2" "$?" 2
 
 finish
