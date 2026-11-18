@@ -36,7 +36,7 @@ Steps:
 3. **Construct the URL**: `https://<TENANT>/mcp`.
 4. **Patch `~/.kiro/settings/mcp.json`.** Use Read + Write: read first, preserve every other entry, write back. Never clobber siblings. If the file has comments (JSONC), preserve them. Set top-level `mcpServers.outsystems` to:
    ```
-   {"type": "http", "url": "<URL>", "timeout": 100000, "headers": {"X-OutSystems-Plugin-Version": "1.12.0"}}
+   {"type": "http", "url": "<URL>", "timeout": 100000, "headers": {"X-OutSystems-Plugin-Version": "1.13.0"}}
    ```
    ALWAYS keep top-level `mcpServers` as an object (Kiro's user-level loader rejects the file without it). The `headers` entry carries the plugin version: write it as shown. When an `outsystems` entry already exists, keep its other keys and every other `headers` key, and set the version header to the value shown here.
 5. **Tell the user** Kiro's MCP file watcher will reload within a few seconds. Then proceed to the "Authenticating" section below; Kiro runs the OAuth sign-in on the first OutSystems tool call.
@@ -175,6 +175,15 @@ For what an `app_refs` answer covers (`indexedKinds`, `origin`, `coverage`), rea
 3. Publish, once the user confirms, by sending the session a mentor turn that asks Mentor to publish, with a publish note in the prompt — the same note ODC Studio's "1-Click Publish with message" sets, capped at 500 characters. There is no separate publish call (see Caveats).
 4. Poll the run to terminal. Its events carry the publish outcome, including a conflict or an automatic merge, and the publication key once the platform accepted the publish (see Mentor session round-trip). A publish that timed out may still land. Where you follow it up through the publication status, **a `failed` carrying `indeterminate: true` is not a confirmed failure** either — the server lost sight of the publish, so it may still be building and may yet succeed. Do NOT re-publish on either (a second publish on the same app while the first is still running is what wedges an app); re-poll the publish status with the publication key, or verify via the environment's app info, and only then decide.
 5. Release the session once the publish has landed, if the surface gives you a way to; releasing discards anything unpublished.
+
+**Test the running app after a publish:**
+Mentor's own read-back is not proof that a change works; the running app is. After each successful publish, drive the app in a browser.
+1. Take the app's URL from the environment's app info or from the publish result, never from the app's name. Long names are shortened in URLs, so a URL built from the name can answer 404.
+2. Use whatever browser tool the harness has. Where you can choose, prefer a command-line driver that runs several commands per call, such as agent-browser, over tools that take one action per call: on measured app builds it needed about 70% fewer browser calls. With no browser tool, tell the user which screens and actions to check.
+3. Keep a short test for each screen as you build it (open the screen, act, check what it shows), and replay all of them after every successful publish, not only at the end. Fix a failure before the next change.
+4. Retry a failed test once, on its own, after the others. A pass on the retry is flaky; only a test that fails twice is a regression.
+5. Dropdowns fill after the screen renders: wait for the options before selecting one.
+6. Screens that need login: don't change a screen's access to test it. Ask the user to sign in, in a browser session you can then use.
 
 **Promote a build across environments:**
 1. Start a deployment with the asset key, the target `env_key`, and `from_env` for the source (or pin with `build_key` + `revision`); it returns an operation key.
