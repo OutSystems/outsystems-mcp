@@ -22,21 +22,29 @@ ao_bullet() { # doc -> the Application Objects Rules bullet
   grep -F -- '- **Application Objects apply to ODC.**' "$REPO_ROOT/$1"
 }
 
+bullet_hash() { # doc -> hash of its bullet, or a marker no other doc shares when it has none
+  local bullet
+  bullet=$(ao_bullet "$1")
+  if [ -n "$bullet" ]; then
+    printf '%s' "$bullet" | git hash-object --stdin
+  else
+    printf 'no bullet in %s\n' "$1"
+  fi
+}
+
 in_rules() { # doc -> 1 when the bullet sits under the ## Rules heading, else 0
   awk -v bullet='- **Application Objects apply to ODC.**' \
     '/^## /{ rules = ($0 == "## Rules") } rules && index($0, bullet) == 1 { found = 1 } END { print found + 0 }' \
     "$REPO_ROOT/$1"
 }
 
-first_hash=""
+reference_hash=$(bullet_hash "${DOCS[0]}")
 for doc in "${DOCS[@]}"; do
   section "$doc"
   bullet=$(ao_bullet "$doc")
   check "carries the Application Objects bullet once" "$(printf '%s\n' "$bullet" | grep -c .)" 1
 
-  hash=$(printf '%s' "$bullet" | git hash-object --stdin)
-  [ -n "$first_hash" ] || first_hash=$hash
-  check "bullet is byte-identical to ${DOCS[0]}" "$hash" "$first_hash"
+  check "bullet is byte-identical to ${DOCS[0]}" "$(bullet_hash "$doc")" "$reference_hash"
 
   check "sits under the Rules heading" "$(in_rules "$doc")" 1
   check_match "says Application Objects apply on ODC as well as on O11" "$bullet" 'on ODC as well as on O11'
