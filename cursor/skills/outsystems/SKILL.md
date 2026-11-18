@@ -45,7 +45,7 @@ When a user opens Cursor with this plugin installed:
        "outsystems": {
          "url": "https://<TENANT>/mcp",
          "headers": {
-           "X-OutSystems-Plugin-Version": "1.12.0"
+           "X-OutSystems-Plugin-Version": "1.13.0"
          }
        }
      }
