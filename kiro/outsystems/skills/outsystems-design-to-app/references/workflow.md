@@ -42,6 +42,8 @@ There is no separate capture file. Extract per source, then author the richness 
 
 **Image**: Analyze visually. Hex values may need approximation — mark uncertain values as approximate. Author the screen `anatomy` (recipe A): walk the layout tree region by region, pick the real OS UI block for each node with inline classes read from the pixels, transcribe the visible sample data verbatim into `sample_data`, and infer the data model from columns/filters/chips.
 
+**Keep the design files for batch 2.** Save a screenshot of each screen (the Figma node's screenshot, the image itself, or a browser screenshot of the HTML or web source) and, for an HTML source, a copy with every linked stylesheet inlined, in the working folder: SKILL.md Step 5 attaches them to the screen batch.
+
 ## Stage 1: Compose spec.json
 
 Follow SKILL.md Step 3 in order (3.0 anatomy → 3.1 layout + skeleton → 3a block mapping → 3b the rest of the spec → 3c verify → 3d acceptance gates), using the extraction above. Save `spec.json` in the working folder; `assets/enriched-blueprint.json` is the schema.
@@ -52,14 +54,14 @@ Follow SKILL.md Steps 4 to 6, which hold the batch prompt (the only prompt block
 
 1. **Step 4 go/no-go**, then **open one session**: reference the existing app by its key in every prompt, or restate the creation the user confirmed in Step 1 and send it as its own Mentor turn (a new Web application from the standard template), then reference the new app's key. Keep that session.
 2. **Batch 1: entities + roles + seed actions** (`Bootstrap<Entity>` actions, `BootstrapData` and `BootstrapTimer`, which runs when the app is published), as one Mentor turn (the batch prompt plus the batch 1 slice of the spec). Poll to terminal, check whether Mentor published on its own, then **confirm and publish** so the data model is durable; then check the `Bootstrap<Entity>` log lines (SKILL.md Step 5) before sending batch 2.
-3. **Batch 2: screens + theme CSS + charts + chrome**, as another prompt on the same session (the batch prompt, the SHARED CHROME paragraph when it applies, and the batch 2 slice; do NOT split chrome into its own turn). Poll to terminal, check for a self-publish, **confirm and publish** again.
+3. **Batch 2: screens + theme CSS + charts + chrome**, as another prompt on the same session (the batch prompt, the SHARED CHROME paragraph when it applies, the ATTACHMENTS paragraph with the design screenshots and source attached as SKILL.md Step 5 describes, and the batch 2 slice; do NOT split chrome into its own turn). Poll to terminal, check for a self-publish, **confirm and publish** again.
 
 Use **2 batches** (field-tested: more turns means unacceptable latency; do NOT decompose section-by-section).
 
 ## Stage 3: Verify and report
 
 - The environment's app info for the runtime URL, then the spec's `post_publish_checks`: seeding ran (checked after the batch 1 publish: the app's runtime logs, searched for "Bootstrap", show one `Bootstrap<Entity>` line per seeded entity, `inserted N rows` or `skipped, N present`, with N its `sample_data` row count), and the context lookups to spot-check screens and entities. The rendered app and the logs are the real check; Mentor's self-check is not.
-- **Visual check and fix pass** (SKILL.md Step 6b): screenshot the live screen, compare with the design region by region, list the defects, and with the user's yes send one targeted fix turn (no publish in it), confirm, publish and re-check. At most two passes.
+- **Visual check and fix pass** (SKILL.md Step 6b): screenshot the live screen, compare with the design region by region, list the defects, and with the user's yes send one targeted fix turn with the live screenshot, the design screenshot and a defect report attached (no publish in it), confirm, publish and re-check. At most two passes.
 - Report to the user as SKILL.md Step 7 describes (including the Step 6b result).
 
 ## Follow-up
