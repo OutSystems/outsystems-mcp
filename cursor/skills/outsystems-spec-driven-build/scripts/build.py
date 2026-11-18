@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 outsystems-spec-driven-build driver.
 

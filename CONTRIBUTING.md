@@ -36,19 +36,13 @@ There is nothing to install or build. The files under `claude/`, `.claude-plugin
 claude/                   # The Claude plugin folder: what `claude plugin install` and the Claude plugin directory ship
   .claude-plugin/         # plugin.json plus the listing icon image (see the note below the tree)
     plugin.json           # Claude Code / Desktop plugin manifest (name, version, skills dir, commands dir, userConfig, listing URLs)
-  .mcp.json               # MCP server the Claude plugin declares; URL built from the tenant_hostname plugin option, plugin version header from the headersHelper
+  .mcp.json               # MCP server the Claude plugin declares; URL built from the tenant_hostname plugin option (no headers, no headersHelper)
   LICENSE                 # Copy of the root LICENSE (the directory wants one inside the plugin folder)
   README.md               # Plugin-folder README (40+ words): the directory listing description
   agents/
     status-watcher.md     # Fresh-context poller for long-running operations, shipped by the Claude plugin
   commands/
     outsystems-feedback.md  # Slash command shipped by the Claude plugin
-  hooks/
-    hooks.json            # PreToolUse hook limiting the status-watcher agent's Bash use to a single sleep
-    limit-watcher-bash.sh # The plain shell script that hook runs
-  scripts/
-    plugin-version-header.sh   # The plain shell script the headersHelper of .mcp.json runs: prints the plugin version header from plugin.json
-    plugin-version-header.ps1  # The same output, run where sh fails
   skills/
     outsystems/
       SKILL.md            # Agent-facing skill loaded by the Claude Code plugin (and Claude Desktop via the same plugin)
@@ -128,17 +122,16 @@ Common scopes: `plugin`, `power`, `kiro`, `skill`, `mentor`, `README`.
 
 ## Testing
 
-Apart from the Beta skills' scripts, the shipped content has no automated test suite: verify changes manually, accounting for every harness in the AGENTS.md table as step 4 above requires. `.github/tests/run.sh` covers seven parts:
+Apart from the Beta skills' scripts, the shipped content has no automated test suite: verify changes manually, accounting for every harness in the AGENTS.md table as step 4 above requires. `.github/tests/run.sh` covers six parts:
 
 1. `.github/workflows/ai-review.yml`: its shell steps and structural guarantees.
 2. The deployment-impact recipe in all five skill docs. `.github/tests/skill-deploy-impact-recipe.test.sh` pins it word for word and checks that it is byte-identical across them. `.github/tests/spec_deploy_impact_recipe.test.sh` checks it against the recipe's requirements.
 3. The Caveats bullet for a deployment that does not serve the app model graph. `.github/tests/skill-withheld-graph.test.sh` checks it in all five skill docs and holds it byte-identical across them. The same suite checks the `refs_fallback_unavailable` rule in Branch B of the three dependency-impact skill docs.
 4. The platform check near the top of the five skill docs (the block that opens with "Platform check, only when both OutSystems MCP servers are connected"). `.github/tests/skill-platform-check.test.sh` checks that it occurs once per doc ahead of the first section and is byte-identical across them. The same suite checks the sentences in the "Go straight to the task", "Never guess opaque IDs" and "Confirm before tenant-state mutations" Rules bullets that keep those rules from overriding it, and the "Platform first" Rules bullet, byte-identical across the five skill docs. It also checks the O11 exclusions in the skill and Beta skill descriptions and in the feedback scope, and the README troubleshooting row for a request that lands on the wrong platform.
 5. The Caveats bullet that states what a `context_graph` match proves (an import or a reference, not a use) and routes the search for the apps that import or reference an entity to `context_search`. `.github/tests/skill-graph-root-list.test.sh` checks it in all five skill docs and holds it byte-identical across them. It also checks that no skill doc names `graph_root_not_found` or the phrase "apps that use an entity".
-6. The Claude plugin's status-watcher hook. `.github/tests/status-watcher-hook.test.sh` runs it from the command in `claude/hooks/hooks.json` against sample hook inputs.
-7. The plugin version. `.github/tests/plugin-version-lockstep.test.sh` checks it in every file that carries it, and runs the scripts that the Claude plugin's `headersHelper` names.
+6. The plugin version. `.github/tests/plugin-version-lockstep.test.sh` checks it in every file that carries it.
 
-Run `run.sh` when you touch that workflow, a skill doc, the README, the hook, or a file that carries the plugin version. No CI runs `run.sh` itself. `.github/workflows/skills-tests.yml` runs `skill-platform-check.test.sh` on its own, on pull requests that touch the skill docs, the README or that suite. The `plugin-version.yml` workflow runs the plugin version check on every pull request (see "Versioning and Releases").
+Run `run.sh` when you touch that workflow, a skill doc, the README, or a file that carries the plugin version. No CI runs `run.sh` itself. `.github/workflows/skills-tests.yml` runs `skill-platform-check.test.sh` on its own, on pull requests that touch the skill docs, the README or that suite. The `plugin-version.yml` workflow runs the plugin version check on every pull request (see "Versioning and Releases").
 
 The three architecture Beta skills' scripts and `outsystems-spec-driven-build`'s script have offline suites in `tests/skills/` (Python 3.10+ and `pytest`; the scripts themselves use only the standard library): `python3 -m pytest -q -p no:cacheprovider tests/skills`. They also check that the Cursor and Kiro copies match `claude/skills/`. `.github/workflows/skills-tests.yml` runs them on every pull request that touches those folders. They test the scripts against recorded responses; a change to a Beta skill still needs a live run through an agent against a tenant.
 
@@ -280,10 +273,9 @@ This section is the one list of the files that carry the plugin version. The ver
 - `kiro/outsystems/skills/outsystems/SKILL.md` → setup step 4
 - `README.md` → Step 2 of the Kiro Chat recipe and Step 2 of the Cursor CLI prompt
 
-The Claude plugin sends the header too, but carries no literal value. The `headersHelper` in `claude/.mcp.json` runs `claude/scripts/plugin-version-header.sh`. Where `sh` fails, it runs `plugin-version-header.ps1`. Each script reads `version` from `claude/.claude-plugin/plugin.json` at connect time. With a literal value in `.mcp.json`, the server config changes at each release. Claude Code then asks every user to sign in again. The bump commit edits only the files in this list.
+The Claude plugin sends no header. With a literal value in `claude/.mcp.json`, the server config would change at each release and Claude Code would ask every user to sign in again; the `headersHelper` that used to send it without that cost is accepted by the Claude plugin directory only from a Verified organization (see AGENTS.md, "The Claude plugin declares the MCP server"). The bump commit edits only the files in this list.
 
-The Copilot recipes and the other copied-file recipes do not send the header. The value means a different thing on each harness:
-- Claude Code reports the installed plugin version.
+The Claude plugin, the Copilot recipes and the other copied-file recipes do not send the header. The value means a different thing on each harness:
 - Kiro reports the version of the last setup or refresh. Its default engine sends the GET request on `/mcp` and the sign-in discovery requests without the header. Its POST requests carry it.
 - Cursor reports the version of the last Cursor setup or refresh, App or CLI. A project `.cursor/mcp.json` entry can hide the global one.
 
