@@ -38,6 +38,8 @@ For what utility classes and block inputs don't cover, define custom classes in 
 
 Applied on the anatomy's real blocks (a node's `class=` is its `ExtendedClass`): `<Tag Color=Green Shape=Rounded class="crm-status-active">Active</Tag>` and `<Card class="crm-kpi-card padding-m shadow-s">`. The block supplies the chip or surface; the class carries only what the design adds, and spacing/shadow stay utilities.
 
+When the design source holds its styles as CSS rules, it goes to Mentor with batch 2, so a class takes its values `from` the source's rule instead of repeating them: see [`../design-capture.md`](../design-capture.md), "The theme".
+
 ## Anti-Patterns
 
 | Wrong | Right | Why |
