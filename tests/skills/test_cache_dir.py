@@ -80,15 +80,13 @@ def test_dependency_impact_waits_within_bounds(tmp_path):
 
 @pytest.mark.parametrize("name", NAMES)
 def test_skill_docs_use_only_their_allowed_shell_commands(name):
-    """`allowed-tools` grants only the skill's own build.py (unquoted and
-    quoted path), never an interpreter or a shell command with a wildcard,
-    and every shell command in the SKILL.md is that script."""
+    """The SKILL.md declares no `allowed-tools` (the Claude plugin directory
+    accepts only Read, Grep, Glob and LS there from an organization that is
+    not Verified, which would pre-approve nothing the skill runs), and every
+    shell command in the SKILL.md is the skill's own build.py."""
     import re
     text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
-    allowed = re.search(r"^allowed-tools: (.*)$", text, re.M).group(1)
-    script = f"${{CLAUDE_PLUGIN_ROOT}}/skills/{name}/scripts/build.py"
-    bash = re.findall(r"Bash\(([^)]*)\)", allowed)
-    assert bash == [f"python3 {script} *", f'python3 "{script}" *'], bash
+    assert re.search(r"^allowed-tools:", text, re.M) is None, f"{name}: declares allowed-tools"
     for block in re.findall(r"```bash\n(.*?)```", text, re.S):
         for line in block.splitlines():
             cmd = line.strip()

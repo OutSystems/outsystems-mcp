@@ -250,31 +250,18 @@ the suites pin down:
   its requirements rather than its wording.
 - `plugin-version-lockstep.test.sh` - every file that carries the plugin
   version agrees with `claude/.claude-plugin/plugin.json`: the five
-  manifests and the `X-OutSystems-Plugin-Version` header value in each
-  Cursor and Kiro setup recipe and config. The source value is SemVer 2.0
-  and at most 64 bytes, and no file outside the list and the two helper
-  scripts sets the header. The Claude plugin's `claude/.mcp.json` holds no
-  literal header. Its `headersHelper` runs the `sh` script, and the
-  PowerShell script where `sh` fails. The suite runs that command under
-  `sh -c` and each script on `plugin.json` in other layouts, and checks the
-  output. Each script must reject a value with a character outside SemVer,
-  and the `sh` script must read a manifest of 3000 objects in under 10 s.
-  The PowerShell script runs when `powershell` or `pwsh` is on PATH, else
-  its checks report a skip. A self-test proves that each check fails on a
-  mutated copy.
+  manifests, the `X-OutSystems-Plugin-Version` header value in each
+  Cursor and Kiro setup recipe and config, and the `plugin_version`
+  argument value in the Claude skill doc's Authenticating section. The
+  source value is SemVer 2.0 and at most 64 bytes, no file outside the
+  list sets the header or the argument, and the Claude plugin's
+  `claude/.mcp.json` holds no header at all. A self-test proves that
+  each check fails on a mutated copy.
 - `plugin-version-bump.test.sh` - `plugin-version-bump.sh` fails a pull
   request that changes a file under `claude/`, `cursor/` or
   `kiro/outsystems/` and does not raise the version by SemVer precedence,
   pre-release and build metadata included. A change elsewhere, or a bump
   alone, passes.
-- `status-watcher-hook.test.sh` - the Claude plugin's status-watcher
-  hook, run from the command in `claude/hooks/hooks.json` under `sh -c`
-  with `CLAUDE_PLUGIN_ROOT` set and the working directory outside the
-  plugin: a watcher call passes only as a foreground `sleep <n>` with n
-  of at least 1, every other caller passes untouched, the script the
-  command names stays plain shell, as the plugin directory's validator
-  requires, and a checkout made with `core.autocrlf=true`, Git for
-  Windows' default, still gets the script with LF line endings.
 - `skill-withheld-graph.test.sh` - the Caveats bullet for a deployment
   that does not serve the app model graph, byte-identical in the five skill
   docs, and the matching refusal rule in Branch B of the dependency-impact
