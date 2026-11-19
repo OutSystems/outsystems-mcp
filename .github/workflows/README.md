@@ -250,11 +250,13 @@ the suites pin down:
   its requirements rather than its wording.
 - `plugin-version-lockstep.test.sh` - every file that carries the plugin
   version agrees with `claude/.claude-plugin/plugin.json`: the five
-  manifests and the `X-OutSystems-Plugin-Version` header value in each
-  Cursor and Kiro setup recipe and config. The source value is SemVer 2.0
-  and at most 64 bytes, no file outside the list sets the header, and the
-  Claude plugin's `claude/.mcp.json` holds no header at all. A self-test
-  proves that each check fails on a mutated copy.
+  manifests, the `X-OutSystems-Plugin-Version` header value in each
+  Cursor and Kiro setup recipe and config, and the `plugin_version`
+  argument value in the Claude skill doc's Authenticating section. The
+  source value is SemVer 2.0 and at most 64 bytes, no file outside the
+  list sets the header or the argument, and the Claude plugin's
+  `claude/.mcp.json` holds no header at all. A self-test proves that
+  each check fails on a mutated copy.
 - `plugin-version-bump.test.sh` - `plugin-version-bump.sh` fails a pull
   request that changes a file under `claude/`, `cursor/` or
   `kiro/outsystems/` and does not raise the version by SemVer precedence,

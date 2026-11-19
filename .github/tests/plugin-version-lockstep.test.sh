@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # Every file that carries the plugin version agrees with
-# `claude/.claude-plugin/plugin.json`: the five manifests, and the
+# `claude/.claude-plugin/plugin.json`: the five manifests, the
 # `X-OutSystems-Plugin-Version` header value in the five files that set it
-# as a literal. The Claude plugin sets no header at all: `claude/.mcp.json`
-# holds no header key, because Claude Code keys the stored sign-in on the
-# headers, and the directory accepts no header helper command from this
-# organization. CONTRIBUTING.md "Versioning and Releases" lists those
-# files, and the suite holds that list to the files it checks. The source
-# value must be SemVer 2.0 and at most 64 bytes, because the MCP server
-# applies the same rule to the header it receives. A new manifest fails the
-# suite, and so does a file other than those where the header name, in any
-# letter case and optionally quoted, is followed by `:` or `=`.
+# as a literal, and the `plugin_version` argument value that the Claude
+# skill doc tells the agent to pass to `auth_status` once per session. The
+# Claude plugin sets no header at all: `claude/.mcp.json` holds no header
+# key, because Claude Code keys the stored sign-in on the headers, and the
+# directory accepts no header helper command from this organization; the
+# argument carries the version from Claude Code instead. CONTRIBUTING.md
+# "Versioning and Releases" lists those files, and the suite holds that
+# list to the files it checks. The source value must be SemVer 2.0 and at
+# most 64 bytes, because the MCP server applies the same rule to the header
+# and to the argument it receives. A new manifest fails the suite, and so
+# does a file other than those where the header name or the argument name,
+# in any letter case and optionally quoted, is followed by `:` or `=`.
 
 set -uo pipefail
 # A caller's environment must not point the git calls at another repository.
@@ -35,6 +38,8 @@ HEADER_MD=(
   cursor/README.md
   README.md
 )
+# The skill doc that tells the agent to pass the version to `auth_status`.
+ARG_MD=claude/skills/outsystems/SKILL.md
 
 # Built from parts so that this file never carries the shapes it looks for.
 # `shape` is the JSON key with its opening value quote. `key` is the name in
@@ -43,6 +48,10 @@ HEADER_MD=(
 name=X-OutSystems-Plugin-Version
 shape="\"$name\":[[:space:]]*\""
 key="[\"']?${name}[\"']?[[:space:]]*[:=]"
+# The argument, as `<name>: "<value>"` in the skill doc, built the same way.
+argname=plugin_version
+argshape="${argname}:[[:space:]]*\""
+argkey="[\"']?${argname}[\"']?[[:space:]]*[:=]"
 
 # Runs a boolean jq filter, with `$s` bound to the JSON-encoded source value
 # and `$h` to the header name. Every comparison with the source happens in
@@ -84,21 +93,41 @@ md_servers() { # file
     }' "$1"
 }
 
+# The raw JSON string literals of the argument values a Markdown file
+# sets, one per line.
+arg_literals() { # file
+  grep -oE "${argshape}[^\"]*\"" "$1" | sed -E "s/^${argname}:[[:space:]]*//"
+}
+
+# The `## ` section that holds each argument the Markdown file sets, one
+# per line.
+arg_sections() { # file
+  awk -v shape="$argshape" '
+    { sub(/\r$/, "") }
+    /^## / { section = substr($0, 4) }
+    { n = gsub(shape, "&"); for (i = 0; i < n; i++) print section }' "$1"
+}
+
 # The files among the NUL-separated paths on stdin, relative to the dir,
-# that set the header in any syntax.
-header_files() { # dir
+# that set the header, or the argument, in any syntax.
+key_files() { # dir, key regex
   local f
   while IFS= read -r -d '' f; do
     f=${f#./}
-    [ -f "$1/$f" ] && grep -qiE -- "$key" "$1/$f" && echo "$f"
+    [ -f "$1/$f" ] && grep -qiE -- "$2" "$1/$f" && echo "$f"
   done | sort
 }
 
 EVERY_KEY="every header key in any letter case, anywhere in the file"
 COMPLETE="the header appears only in the listed files"
+COMPLETE_ARG="the argument appears only in the listed file"
 NO_LITERAL="$CLAUDE_MCP: no header key in any letter case"
 MANIFESTS="the manifests are exactly the listed five"
 LISTED="CONTRIBUTING.md lists exactly the files that carry the version"
+ARG_COUNT="$ARG_MD: argument count"
+ARG_SECTION="$ARG_MD: every argument sits in the Authenticating section"
+ARG_VALUE="$ARG_MD: argument value 1"
+ARG_SEMVER="$ARG_MD: argument value 1 is SemVer 2.0"
 
 # The paths at the start of the list items in "Versioning and Releases".
 contributing_list() { # file
@@ -163,11 +192,22 @@ check_root() { # dir, command that lists the files of the dir NUL-separated
     done < <(md_literals "$dir/$f")
   done
 
+  section "version argument in the Claude skill doc"
+  check "$ARG_COUNT" "$(arg_literals "$dir/$ARG_MD" | wc -l | tr -d ' ')" 1
+  check "$ARG_SECTION" "$(arg_sections "$dir/$ARG_MD" | grep -cvx Authenticating)" 0
+  n=0
+  while IFS= read -r v; do
+    n=$((n + 1))
+    check "$ARG_MD: argument value $n" "$(jq_true - '. == $s' <<<"$v")" yes
+    check_match "$ARG_MD: argument value $n is SemVer 2.0" \
+      "$(jq -r . <<<"$v" 2>/dev/null)" "$SEMVER"
+  done < <(arg_literals "$dir/$ARG_MD")
+
   section "completeness"
-  check "$COMPLETE" "$("$list" "$dir" | header_files "$dir")" \
+  check "$COMPLETE" "$("$list" "$dir" | key_files "$dir" "$key")" \
     "$expected_headers"
-  check "$LISTED" "$(contributing_list "$dir/CONTRIBUTING.md")" \
-    "$(printf '%s\n' "$expected_headers" "$expected_manifests" | sort)"
+  check "$COMPLETE_ARG" "$("$list" "$dir" | key_files "$dir" "$argkey")" "$ARG_MD"
+  check "$LISTED" "$(contributing_list "$dir/CONTRIBUTING.md")" "$expected_listed"
 }
 
 check_manifests() { # dir, a git work tree
@@ -180,6 +220,7 @@ all_files() { (cd "$1" && find . -type f -print0); }
 
 expected_headers=$(printf '%s\n' "${HEADER_JSON[@]}" "${HEADER_MD[@]}" | sort)
 expected_manifests=$(printf '%s\n' "$SOURCE" "${PLUGINS[@]}" "${MARKETPLACES[@]}" | sort)
+expected_listed=$(printf '%s\n' "$expected_headers" "$expected_manifests" "$ARG_MD" | sort)
 before=$_checks
 check_root "$REPO_ROOT" tracked_files
 all_checks=$((_checks - before))
@@ -187,7 +228,7 @@ check_manifests "$REPO_ROOT"
 
 section "self-test: each mutation fails exactly the checks it targets"
 ALL=("$SOURCE" "${PLUGINS[@]}" "${MARKETPLACES[@]}" "${HEADER_JSON[@]}" "${HEADER_MD[@]}"
-  "$CLAUDE_MCP")
+  "$CLAUDE_MCP" "$ARG_MD")
 MUT="$WORK/mut"
 PRISTINE="$WORK/pristine"
 for f in "${ALL[@]}" CONTRIBUTING.md; do
@@ -248,8 +289,9 @@ sed_edit() { # file, sed script
 
 sed_escape() { printf '%s' "$1" | sed 's/[\\&|]/\\&/g'; }
 
-# Writes the value into all ten files. Every equality check then
-# passes, so only the source-value checks can fail.
+# Writes the value into all eleven files. Every equality check then
+# passes, so only the source-value checks and the argument's own SemVer
+# check can fail.
 set_everywhere() { # value
   local f quoted
   jq_edit "$SOURCE" --arg v "$1" '.version = $v'
@@ -262,6 +304,7 @@ set_everywhere() { # value
   for f in "${HEADER_MD[@]}"; do
     sed_edit "$f" "s|\"$name\":[[:space:]]*\"[^\"]*\"|\"$name\": $quoted|g"
   done
+  sed_edit "$ARG_MD" "s|${argname}:[[:space:]]*\"[^\"]*\"|${argname}: $quoted|g"
 }
 
 NEWLINE="$SOURCE: version holds no newline"
@@ -283,6 +326,7 @@ for f in "${HEADER_JSON[@]}"; do
   VALUE_CHECKS+=("$f: outsystems header value" "$f: $EVERY_KEY")
 done
 for f in "${HEADER_MD[@]}"; do VALUE_CHECKS+=("$(md_value_checks "$f")"); done
+VALUE_CHECKS+=("$ARG_VALUE")
 
 restore
 expect_failure "the unmutated copy"
@@ -345,8 +389,22 @@ for f in "${HEADER_MD[@]}"; do
   expect_failure "$f: header in another server entry" "$f: every header sits in the outsystems entry"
 done
 
+sed_edit "$ARG_MD" "s|\\($argshape\\)[^\"]*\"|\\1$(sed_escape "$drift")\"|"
+expect_failure "$ARG_MD: changed argument value" "$ARG_VALUE"
+sed_edit "$ARG_MD" "s|${argshape}[^\"]*\"||"
+expect_failure "$ARG_MD: argument removed" "$ARG_COUNT" "$COMPLETE_ARG"
+sed_edit "$ARG_MD" "s|${argname}:[[:space:]]*\"[^\"]*\"|${argname}:$TAB\"$(sed_escape "$drift")\"|"
+expect_failure "$ARG_MD: tab before a changed argument value" "$ARG_VALUE"
+printf '%s: "%s"\n' "$argname" "$drift" >> "$MUT/$ARG_MD"
+expect_failure "$ARG_MD: second argument with another value" \
+  "$ARG_COUNT" "$ARG_SECTION" "$ARG_MD: argument value 2"
+sed_edit "$ARG_MD" 's/^## Authenticating$/## Signing in/'
+expect_failure "$ARG_MD: argument outside the Authenticating section" "$ARG_SECTION"
+
 sed_edit CONTRIBUTING.md '/^- `cursor\/README.md`/d'
 expect_failure "CONTRIBUTING.md: a listed file removed" "$LISTED"
+sed_edit CONTRIBUTING.md '/^- `claude\/skills\/outsystems\/SKILL.md`/d'
+expect_failure "CONTRIBUTING.md: the argument file removed from the list" "$LISTED"
 awk '{ print } /^- `kiro\/outsystems\/plugin.json`/ { print "- `kiro/outsystems/extra.json` → `version`" }' \
   "$MUT/CONTRIBUTING.md" > "$MUT/CONTRIBUTING.md.tmp" && mv "$MUT/CONTRIBUTING.md.tmp" "$MUT/CONTRIBUTING.md"
 expect_failure "CONTRIBUTING.md: an extra file listed" "$LISTED"
@@ -361,6 +419,12 @@ printf '{"%s":\n  "%s"}\n' "$name" "$src" > "$MUT/new.json"
 expect_failure "new file with the value on the next line" "$COMPLETE"
 printf '[headers]\n"%s" = "%s"\n' "$name" "$src" > "$MUT/new.toml"
 expect_failure "new TOML file" "$COMPLETE"
+
+# A new file that sets the argument with the current value.
+printf 'call auth_status with %s: "%s"\n' "$argname" "$src" > "$MUT/new.md"
+expect_failure "new file with the argument" "$COMPLETE_ARG"
+printf '%s = "%s"\n' "$(printf '%s' "$argname" | tr '[:lower:]' '[:upper:]')" "$src" > "$MUT/new.toml"
+expect_failure "new file with the argument name in uppercase before =" "$COMPLETE_ARG"
 
 # A trailing newline in one consumer value.
 for f in "${PLUGINS[@]}"; do
@@ -380,6 +444,8 @@ for f in "${HEADER_MD[@]}"; do
   sed_edit "$f" "s|\\($shape\\)[^\"]*\"|\\1$(sed_escape "$src")\\\\n\"|"
   expect_failure "$f: header value with a trailing newline" "$(md_value_checks "$f")"
 done
+sed_edit "$ARG_MD" "s|\\($argshape\\)[^\"]*\"|\\1$(sed_escape "$src")\\\\n\"|"
+expect_failure "$ARG_MD: argument value with a trailing newline" "$ARG_VALUE"
 
 for f in "${HEADER_MD[@]}"; do
   sed_edit "$f" "s|\"$name\":[[:space:]]*\"|\"$name\":$TAB\"|"
@@ -387,22 +453,26 @@ for f in "${HEADER_MD[@]}"; do
   awk '{ printf "%s\r\n", $0 }' "$MUT/$f" > "$MUT/$f.tmp" && mv "$MUT/$f.tmp" "$MUT/$f"
   expect_failure "$f: CRLF line endings"
 done
+sed_edit "$ARG_MD" "s|${argname}:[[:space:]]*\"|${argname}:$TAB\"|"
+expect_failure "$ARG_MD: tab before the argument value"
+awk '{ printf "%s\r\n", $0 }' "$MUT/$ARG_MD" > "$MUT/$ARG_MD.tmp" && mv "$MUT/$ARG_MD.tmp" "$MUT/$ARG_MD"
+expect_failure "$ARG_MD: CRLF line endings"
 
 long="1.0.0-$(printf 'a%.0s' $(seq 58))"
 for v in "$long" "1.0.0-rc.1+build.5" "1.0.0+20130313144700"; do
   set_everywhere "$v"
-  expect_failure "valid source value $(jq -n --arg v "$v" '$v') in all ten files"
+  expect_failure "valid source value $(jq -n --arg v "$v" '$v') in all eleven files"
 done
 
 set_everywhere ""
-expect_failure 'empty source value "" in all ten files' "$NONEMPTY" "$SEMVER_CHECK"
+expect_failure 'empty source value "" in all eleven files' "$NONEMPTY" "$SEMVER_CHECK" "$ARG_SEMVER"
 set_everywhere "${long}a"
-expect_failure "source value of 65 bytes in all ten files" "$LENGTH"
+expect_failure "source value of 65 bytes in all eleven files" "$LENGTH"
 set_everywhere $'1.7.1\n'
-expect_failure 'source value "1.7.1\n" in all ten files' "$NEWLINE"
+expect_failure 'source value "1.7.1\n" in all eleven files' "$NEWLINE"
 for v in "1.7" "1.0.0-01" "v1.0.0" "01.0.0" "1.0.0+" "1.0.0-a..b"; do
   set_everywhere "$v"
-  expect_failure "invalid source value \"$v\" in all ten files" "$SEMVER_CHECK"
+  expect_failure "invalid source value \"$v\" in all eleven files" "$SEMVER_CHECK" "$ARG_SEMVER"
 done
 
 section "self-test: the git listings"
@@ -418,6 +488,11 @@ printf '{"%s": "%s"}\n' "$name" "$src" > "$GITREPO/new.json"
 git -C "$GITREPO" add new.json
 check "self-test: a tracked new file with the header fails only the targeted checks" \
   "$(failed_checks "$(run_checks check_root "$GITREPO" tracked_files)")" "$COMPLETE"
+git -C "$GITREPO" rm -qf new.json
+printf '%s: "%s"\n' "$argname" "$src" > "$GITREPO/new.md"
+git -C "$GITREPO" add new.md
+check "self-test: a tracked new file with the argument fails only the targeted checks" \
+  "$(failed_checks "$(run_checks check_root "$GITREPO" tracked_files)")" "$COMPLETE_ARG"
 mkdir "$GITREPO/x"
 cp "$PRISTINE/${PLUGINS[0]}" "$GITREPO/x/plugin.json"
 git -C "$GITREPO" add x/plugin.json
