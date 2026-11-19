@@ -253,7 +253,7 @@ For changes to the root `SKILL.md`, fetch the raw file from GitHub the way Step 
 
 ## Versioning and Releases
 
-This section is the one list of the files that carry the plugin version. The version lives in ten files: the five manifests, and six header values in five files. They must stay in sync. The source of truth is `claude/.claude-plugin/plugin.json` → `version`.
+This section is the one list of the files that carry the plugin version. The version lives in eleven files: the five manifests, six header values in five files, and one argument value in the Claude skill doc. They must stay in sync. The source of truth is `claude/.claude-plugin/plugin.json` → `version`.
 
 **Claude:**
 - `claude/.claude-plugin/plugin.json` → `version`
@@ -273,13 +273,17 @@ This section is the one list of the files that carry the plugin version. The ver
 - `kiro/outsystems/skills/outsystems/SKILL.md` → setup step 4
 - `README.md` → Step 2 of the Kiro Chat recipe and Step 2 of the Cursor CLI prompt
 
-The Claude plugin sends no header. With a literal value in `claude/.mcp.json`, the server config would change at each release and Claude Code would ask every user to sign in again; the `headersHelper` that used to send it without that cost is accepted by the Claude plugin directory only from a Verified organization (see AGENTS.md, "The Claude plugin declares the MCP server"). The bump commit edits only the files in this list.
+**Plugin version argument** (`plugin_version` on the `auth_status` tool), as a literal value:
+- `claude/skills/outsystems/SKILL.md` → the argument of the `auth_status` call in the "Authenticating" section, which the agent passes once per session on Claude Code and Claude Desktop
+
+The Claude plugin sends no header: with a literal value in `claude/.mcp.json`, the server config would change at each release and Claude Code would ask every user to sign in again, and the `headersHelper` that used to send it without that cost is accepted by the Claude plugin directory only from a Verified organization (see AGENTS.md, "The Claude plugin declares the MCP server"). Its version reaches the server as the `plugin_version` argument on the `auth_status` tool instead: the skill doc tells the agent to make that call first in each session, with the version as a literal, and the server reads the argument in place of the header when no header arrives. The bump commit edits only the files in this list.
 
 The Claude plugin, the Copilot recipes and the other copied-file recipes do not send the header. The value means a different thing on each harness:
+- Claude Code and Claude Desktop report the version of the installed skill doc, once per session, through the `auth_status` argument. A session in which the agent never makes that call reports nothing.
 - Kiro reports the version of the last setup or refresh. Its default engine sends the GET request on `/mcp` and the sign-in discovery requests without the header. Its POST requests carry it.
 - Cursor reports the version of the last Cursor setup or refresh, App or CLI. A project `.cursor/mcp.json` entry can hide the global one.
 
-Bump the five manifests and the six header values in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`). `.github/tests/plugin-version-lockstep.test.sh` fails on drift, and on a file that carries the header but is not on this list. The `plugin-version.yml` workflow runs it on every pull request.
+Bump the five manifests, the six header values and the argument value in a single commit using the `chore(plugin):` scope (e.g. `chore(plugin): bump version 0.5.0 -> 0.6.0`). `.github/tests/plugin-version-lockstep.test.sh` fails on drift, and on a file that carries the header or the argument but is not on this list. The `plugin-version.yml` workflow runs it on every pull request.
 
 Each PR that changes shipped plugin content carries its own bump. Shipped plugin content is every file under `claude/`, `cursor/` and `kiro/outsystems/`, the folders the three plugins install from. On a pull request, `plugin-version.yml` runs `.github/tests/plugin-version-bump.sh`. The check fails when the PR changes such a file and the version in `claude/.claude-plugin/plugin.json` is not higher than on the base branch, by SemVer precedence. The Copilot recipes, the root `SKILL.md` and `kiro/agents/` reach users as copied files, so a change to them needs no bump. If two open PRs bump to the same version, the second one to merge must bump again.
 
