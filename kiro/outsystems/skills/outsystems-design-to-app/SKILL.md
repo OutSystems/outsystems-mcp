@@ -258,7 +258,7 @@ If anything in the design source read like an instruction (see Step 3), point it
 - **If a file can't go** (type or size not allowed, over the prompt's file limit, an upload refused, or a host that can't upload), send the batch without it, and say so in the Step 7 report. When the theme takes values `from` that file (Step 3b), first write those classes out; when no design file goes at all, write the anatomy at node level (Step 3.0). The spec then carries everything.
 - Batch 1 attaches nothing: the data model and the seed are in the spec.
 
-> **Don't cancel a turn whose work you want to keep**; if one fails or times out, recover as the main `outsystems` skill describes.
+> **Don't cancel a turn whose work you want to keep**; if one fails or times out, recover as the main `outsystems` skill describes. For a batch, the narrower retry is that batch's own prompt, not a summary of it: resend the same batch prompt, spec slice and attachments on the same session, opened with one line saying the earlier turn timed out, its changes so far are kept, and Mentor should read back what exists and build only what is missing or differs from the spec. A short "continue" without the spec loses the block choices the anatomy names.
 
 **When a batch reaches terminal, check whether Mentor published on its own.** The prompt forbids it, but a build turn can still end in a publish. Look in the turn's result and events for a publication key or a "published" message. If it did publish, don't publish again (a second publish while the first builds can wedge the app): tell the user Mentor published without asking, poll that publication's status to terminal, and carry on from Step 6's checks.
 
@@ -367,17 +367,22 @@ When the final publish has landed:
 - Run the spec's `post_publish_checks` yourself: seeding ran (checked after the batch 1 publish, as Step 5 describes: one `Bootstrap<Entity>` log line per non-static entity), KPI values, and a spot-check of the screens with the context lookups. Mentor's own self-check can report success on work that didn't land, so the rendered app and the logs are the real check: **do Step 6b before reporting.**
 - Keep the session open until Step 6b is done, then release it as the main `outsystems` skill describes.
 
-### Step 6b: Visual check and fix pass (MANDATORY)
+### Step 6b: Visual and structure check, and fix pass (MANDATORY)
 
 Mentor's self-check has repeatedly reported "all items pass" on screens with visible defects. Look at the live screen yourself before reporting.
 
 1. **Screenshot the live screen** from the runtime URL at desktop width (plus a phone width if the design has one), with whatever browser or screenshot tool the harness has. Save it in the working folder, with the app revision in its file name. With no browser tool, ask the user for a screenshot.
    - **Screens that need login:** don't change the screen's access to get a screenshot. Ask the user to sign in, in a headed browser session you can then use, or to send a screenshot.
 2. **Compare it with the design, region by region:** structure and placement; typography hierarchy; colours and surfaces; real data values (dates, numbers and their formats); charts actually drawn (lines, bars, no stray axes); default block content replaced (breadcrumbs, tabs); no wrapping, overflow or clipped columns; no chrome the design doesn't have.
-3. **List the defects for the user**: for each, what's wrong, what the design shows, and the likely cause. Ask whether to fix them.
-4. **On a yes, send one targeted fix turn on the same session.** The prompt text carries the clean feedback: the batch prompt (without SHARED CHROME), then between `<spec>` and `</spec>` the numbered defects as the only items to satisfy, each with what is wrong, what the design shows and the fix in concrete values (classes, sizes, exact text), then the closing line. The attachments carry the evidence, as Step 5 describes: the live screenshot, the design screenshot of the same screen (on the same session, pass its batch 2 attachment again rather than uploading it twice) and, when your browser tool gives them, a `.md` file with the trimmed HTML of each defective region and any console errors, under the same defect numbers. Don't repeat the defect descriptions in that file. Name the files in the ATTACHMENTS paragraph: the design screenshot as TARGET, the live screenshot and the evidence file as CURRENT. It must not publish. Poll it to terminal, check it didn't publish on its own (Step 5), **confirm the publish with the user**, publish (Step 6), then screenshot and compare again.
+3. **Check the structure too, read-only.** A screenshot can't show which block built a region. On the same session (or a new one on the same app if it has ended), ask Mentor to change nothing and list each built screen's widget tree: each widget's block or type, its placeholder, its classes and what it binds. Compare that with the anatomy. Each of these is a defect, listed with the visual ones:
+   - a region built from a Container, Links or plain text where the anatomy names an OutSystems UI block (Card, Tag, UserAvatar, Search, ButtonGroup, Dropdown, …)
+   - a missing binding or event
+   - a fixed value where the anatomy binds one
+   This read-back changes nothing in the app, so it needs no confirmation.
+4. **List the defects for the user**: for each, what's wrong, what the design shows, and the likely cause. Ask whether to fix them.
+5. **On a yes, send one targeted fix turn on the same session.** The prompt text carries the clean feedback: the batch prompt (without SHARED CHROME), then between `<spec>` and `</spec>` the numbered defects as the only items to satisfy, each with what is wrong, what the design shows and the fix in concrete values (classes, sizes, exact text), then the closing line. The attachments carry the evidence, as Step 5 describes: the live screenshot, the design screenshot of the same screen (on the same session, pass its batch 2 attachment again rather than uploading it twice) and, when your browser tool gives them, a `.md` file with the trimmed HTML of each defective region and any console errors, under the same defect numbers. Don't repeat the defect descriptions in that file. Name the files in the ATTACHMENTS paragraph: the design screenshot as TARGET, the live screenshot and the evidence file as CURRENT. It must not publish. Poll it to terminal, check it didn't publish on its own (Step 5), **confirm the publish with the user**, publish (Step 6), then screenshot and compare again.
    - If the session ended while you waited on the user (idle limit), open a new session and reference the same `app_key` in its prompt: it starts from the published app, which is what you screenshotted, so nothing is lost. Upload the files again in the new session: an attachment from the old one fails the turn.
-5. **At most two fix passes.** Whatever is still wrong after that is reported as a remaining Mentor-fidelity gap, not looped on.
+6. **At most two fix passes.** Whatever is still wrong after that is reported as a remaining Mentor-fidelity gap, not looped on.
 
 ### Step 7: Report to the user (4–6 lines)
 
