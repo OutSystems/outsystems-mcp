@@ -178,8 +178,8 @@ For what an `app_refs` answer covers (`indexedKinds`, `origin`, `coverage`), rea
 Mentor's own read-back is not proof that a change works; the running app is. After each successful publish, drive the app in a browser.
 1. Take the app's URL from the environment's app info or from the publish result, never from the app's name. Long names are shortened in URLs, so a URL built from the name can answer 404.
 2. Use whatever browser tool the harness has. Where you can choose, prefer a command-line driver that runs several commands per call, such as agent-browser, over tools that take one action per call: on measured app builds it needed about 70% fewer browser calls. With no browser tool, tell the user which screens and actions to check.
-3. Keep a short test for each screen as you build it (open the screen, act, check what it shows), and replay all of them after every successful publish, not only at the end. Fix a failure before the next change.
-4. Retry a failed test once, on its own, after the others. A pass on the retry is flaky; only a test that fails twice is a regression.
+3. Keep a short test for each screen as you build it (open the screen, act, check what it shows), and replay all of them after every successful publish, not only at the end. Fix a failure before the next change. Tests that only read are safe to replay. A test that writes (create, edit, delete, approve, clone) changes real records: run it only on test data the user agreed to, and only when that data can be put back.
+4. Retry a failed read-only test once, on its own, after the others; don't retry a write until you have checked what its first run changed. Report the first failure either way: a pass on the retry means the test is flaky, not that the publish is clean, and a test that fails twice is a regression.
 5. Dropdowns fill after the screen renders: wait for the options before selecting one.
 6. Screens that need login: don't change a screen's access to test it. Ask the user to sign in, in a browser session you can then use.
 
