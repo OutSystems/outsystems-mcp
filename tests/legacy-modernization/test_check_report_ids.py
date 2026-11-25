@@ -24,14 +24,14 @@ REQ-001 and REQ-002 are built; RULE-012 is Changed.
 
 ## 5. Requirements list
 
-| Spec id | Description | Status | Tested | Built as | Evidence |
-|---|---|---|---|---|---|
-| BR-418 | Credit limit needs approval | Implemented, tested | PASS | Order.Submit | J2 |
-| `RULE-012` | A rejected order returns to draft | Changed | PASS | ApprovalStep | note field |
-| **REQ-001** | Enter orders | Implemented, tested | PASS | NewOrder | J1 |
-| REQ-002 | Approvers see pending orders | Implemented, not tested | PARTIAL | Approvals | one region |
-| NFR-03 | Pages load in under 2 s | Implemented, not tested | NOT OBSERVABLE | none | no load tool |
-| IN-01 | Export to CSV, from the brief | Implemented, tested | PASS | ExportCsv | J3 |
+| Req ID | Type | Source id | Description | Status | Tested | Built as | Evidence |
+|---|---|---|---|---|---|---|---|
+| REQ-00001 | Business rule | BR-418 | Credit limit needs approval | Implemented, tested | PASS | Order.Submit | J2 |
+| REQ-00002 | Business rule | `RULE-012` | A rejected order returns to draft | Changed | PASS | ApprovalStep | note field |
+| REQ-00003 | Functional requirement | **REQ-001** | Enter orders | Implemented, tested | PASS | NewOrder | J1 |
+| REQ-00004 | Functional requirement | REQ-002 | Approvers see pending orders | Implemented, not tested | PARTIAL | Approvals | one region |
+| REQ-00005 | Non-functional | NFR-03 | Pages load in under 2 s | Implemented, not tested | NOT OBSERVABLE | none | no load tool |
+| REQ-00006 | Input | IN-01 | Export to CSV, from the brief | Implemented, tested | PASS | ExportCsv | J3 |
 
 ### Additions
 
@@ -84,10 +84,18 @@ BUSINESS_SPEC = """# Northwind Orders - Business Specification
 """
 
 
+def renumber(report: str) -> str:
+    """Number section 5's requirement rows REQ-00001 upward, in order (a new row may say REQ-?????)."""
+    counter = iter(range(1, 10000))
+    return re.sub(r"(?m)^\| REQ-(?:[0-9]{5}|\?{5}) \|", lambda m: "| REQ-{:05d} |".format(next(counter)), report)
+
+
 def with_rule(report: str, cell: str, a_cell: str = "", z_cell: str = "") -> str:
     """GOOD plus one implemented, tested rule row in section 5, appendix A and appendix Z."""
-    report = report.replace("| IN-01 | Export to CSV", "| {} | Orders over the limit wait for approval | "
-                            "Implemented, tested | PASS | Order.Submit | J2 |\n| IN-01 | Export to CSV".format(cell))
+    report = re.sub(r"(?m)^(\| REQ-[0-9]{5} \| Input \| IN-01 \| Export to CSV)",
+                    lambda m: "| REQ-????? | Business rule | {} | Orders over the limit wait for approval | "
+                              "Implemented, tested | PASS | Order.Submit | J2 |\n{}".format(cell, m.group(1)), report)
+    report = renumber(report)
     report = report.replace("| NFR-03 | none | spec 09 |",
                             "| NFR-03 | none | spec 09 |\n| {} | Order.Submit | rules, line 12 |".format(a_cell or cell))
     report = report.replace("| IN-01 | Orders export",
@@ -179,10 +187,10 @@ class CheckReportIdsTest(unittest.TestCase):
         # The validator gate reads this figure: two rows Not built must lower it, not leave it at 6 of 6.
         report = GOOD
         for rid, z in (("REQ-001", "Staff can enter orders"), ("REQ-002", "Approvers see the orders waiting for them")):
-            row = next(line for line in report.splitlines() if line.startswith("| {} |".format(rid))
-                       or line.startswith("| **{}** |".format(rid)))
+            row = next(line for line in report.splitlines() if line.startswith("| REQ-0000")
+                       and ("| {} |".format(rid) in line or "| **{}** |".format(rid) in line))
             cells = row.split("|")
-            cells[3], cells[4] = " Not built ", " NOT TESTED "
+            cells[5], cells[6] = " Not built ", " NOT TESTED "
             report = report.replace(row, "|".join(cells))
             report = report.replace("| {} | {} | Yes | {} |".format(rid, z, "Yes" if rid == "REQ-001" else "Partial"),
                                     "| {} | {} | No | No |".format(rid, z))
@@ -286,7 +294,8 @@ class CheckReportIdsTest(unittest.TestCase):
     def test_lowercase_family_word_is_not_an_id(self) -> None:
         # The spec has a US- id, so the case guard is the only thing keeping "us 2" prose.
         self.write_requirements(SPEC_IDS + ["US-002"])
-        report = GOOD.replace("| NFR-03 | Pages load", "| US-002 | Story | Implemented, tested | PASS | y | z |\n| NFR-03 | Pages load")
+        report = renumber(GOOD.replace("| REQ-00005 | Non-functional | NFR-03 | Pages load", "| REQ-????? | User story | US-002 | "
+                                        "Story | Implemented, tested | PASS | y | z |\n| REQ-00005 | Non-functional | NFR-03 | Pages load"))
         report = report.replace("| NFR-03 | none | spec 09 |", "| US-002 | y | z |\n| NFR-03 | none | spec 09 |")
         report = report.replace("| IN-01 | Orders export", "| US-002 | A story | Yes | Yes |\n| IN-01 | Orders export")
         report = report.replace("Implemented: 6 of 6. Tested: 4 of 5.", "Implemented: 7 of 7. Tested: 5 of 6.")
@@ -399,9 +408,10 @@ class CheckReportIdsTest(unittest.TestCase):
         for label in ("section 5", "appendix A", "appendix Z"):
             self.assertTrue(any("no {} row: PMODEL-ORD100-0001".format(label) in p for p in problems), problems)
         self.assertFalse(any("UNK-001" in p for p in problems), problems)
-        report = GOOD.replace("| IN-01 | Export to CSV",
-                              "| PMODEL-ORD100-0001 | Orders over the limit wait for approval | Implemented, tested "
-                              "| PASS | Order.Submit | J2 |\n| IN-01 | Export to CSV")
+        report = renumber(GOOD.replace("| REQ-00006 | Input | IN-01 | Export to CSV",
+                                       "| REQ-????? | Business rule | PMODEL-ORD100-0001 | Orders over the limit wait for "
+                                       "approval | Implemented, tested | PASS | Order.Submit | J2 |\n"
+                                       "| REQ-00006 | Input | IN-01 | Export to CSV"))
         report = report.replace("| NFR-03 | none | spec 09 |",
                                 "| NFR-03 | none | spec 09 |\n| PMODEL-ORD100-0001 | Order.Submit | ORD100.pmodel:12 |")
         report = report.replace("| IN-01 | Orders export",
@@ -459,7 +469,7 @@ class CheckReportIdsTest(unittest.TestCase):
                               "| Enter orders | [Implemented, tested](#evidence) | [PASS](#j1) |")
         report = report.replace("| Staff can enter orders | Yes | Yes |",
                                 "| Staff can enter orders | [Yes](#evidence) | [Yes](#j1) |")
-        report = report.replace("| Spec id | Description | Status |", "| Spec id | [Description](#how-to-read) | Status |")
+        report = report.replace("| Source id | Description | Status |", "| Source id | [Description](#how-to-read) | Status |")
         self.assertEqual(self.run_check(report), [])
 
     def test_a_link_target_is_not_a_description(self) -> None:
@@ -539,8 +549,54 @@ class CheckReportIdsTest(unittest.TestCase):
         self.assertFlags(GOOD.replace("REQ-001 and REQ-002 are built", "REQ-001–REQ-02 are built"),
                          "respells spec id REQ-002 as REQ-02")
 
+    def test_requirements_are_numbered_from_req_00001_in_order(self) -> None:
+        self.assertEqual(self.run_check(GOOD), [])
+        self.assertFlags(GOOD.replace("| REQ-00003 | Functional", "| REQ-00004 | Functional"),
+                         "Req ID is 'REQ-00004', expected REQ-00003")
+        self.assertFlags(GOOD.replace("| REQ-00001 | Business rule", "| REQ-1 | Business rule"),
+                         "Req ID is 'REQ-1', expected REQ-00001")
+        self.assertFlags(GOOD.replace("| REQ-00004 | Functional requirement |", "| REQ-00004 |  |"),
+                         "REQ-00004 has no Type")
+        self.assertFlags(GOOD.replace("| Req ID | Type | Source id |", "| Type | Source id |").replace(
+            "| REQ-00001 | Business rule | BR-418", "| Business rule | BR-418"), "has no Req ID column")
+        # The running number is not a spec id, so it never reads as a respelling of REQ-001.
+        self.assertFalse(any("respells" in p for p in self.run_check(GOOD)))
+
+    def write_brief(self, report: str) -> Path:
+        """A Business Brief whose section 5 is the report's numbered table, minus the build columns."""
+        rows = [line for line in report.split("## A.")[0].split("### Additions")[0].splitlines()
+                if line.startswith("| REQ-") or line.startswith("| Req ID")]
+        table = ["| " + " | ".join(line.strip("|").split("|")[i].strip() for i in range(4)) + " |" for line in rows]
+        table.insert(1, "|---|---|---|---|")
+        brief = self.dir / "Northwind-business-brief.md"
+        brief.write_text("# Northwind - Business Specification\n\n## 5. Requirements\n\n" + "\n".join(table) + "\n",
+                         encoding="utf-8")
+        return brief
+
+    def test_the_report_maps_the_briefs_table_one_for_one_in_order(self) -> None:
+        brief = self.write_brief(GOOD)
+        self.assertEqual(self.run_check(GOOD, specs=[brief]), [])
+        # Same rows, two swapped: the order differs from the brief's.
+        swapped = GOOD.replace("| REQ-00003 | Functional requirement | **REQ-001** | Enter orders |",
+                               "| REQ-00003 | Functional requirement | REQ-002 | Enter orders |", 1)
+        self.assertTrue(any("row REQ-00003 is REQ-002" in p and "has REQ-00003 REQ-001" in p
+                            for p in self.run_check(swapped, specs=[brief])), self.run_check(swapped, specs=[brief]))
+        # A different Type for the same requirement.
+        self.assertTrue(any("row REQ-00005" in p for p in self.run_check(
+            GOOD.replace("| REQ-00005 | Non-functional |", "| REQ-00005 | Business rule |"), specs=[brief])))
+        # A row the brief doesn't have.
+        longer = self.write_brief(with_rule(GOOD, "BR-418"))
+        self.assertTrue(any("lists 6 requirements but Northwind-business-brief.md section 5 lists 7" in p
+                            for p in self.run_check(GOOD, specs=[longer])))
+
+    def test_the_brief_is_numbered_too(self) -> None:
+        brief = self.write_brief(GOOD)
+        brief.write_text(brief.read_text(encoding="utf-8").replace("| REQ-00002 |", "| REQ-00009 |"), encoding="utf-8")
+        self.assertTrue(any("Northwind-business-brief.md" in p and "expected REQ-00002" in p
+                            for p in self.run_check(GOOD, specs=[brief])))
+
     def test_a_missing_status_column_fails_once(self) -> None:
-        problems = self.run_check(GOOD.replace("| Spec id | Description | Status |", "| Spec id | Description | State |"))
+        problems = self.run_check(GOOD.replace("| Source id | Description | Status |", "| Source id | Description | State |"))
         self.assertEqual(sum("no Status column" in p for p in problems), 1, problems)
 
     def test_checklist_lists_every_section_5_row(self) -> None:
@@ -552,7 +608,7 @@ class CheckReportIdsTest(unittest.TestCase):
                          "IN-02 has no section-5 row")
 
     def test_checklist_needs_a_readable_section_5_status(self) -> None:
-        self.assertFlags(GOOD.replace("| Spec id | Description | Status | Tested |", "| Spec id | Description | State | Result |"),
+        self.assertFlags(GOOD.replace("| Source id | Description | Status | Tested |", "| Source id | Description | State | Result |"),
                          "the requirements table has no Status column", "the requirements table has no Tested column")
         self.assertFlags(GOOD.replace("| Enter orders | Implemented, tested |", "| Enter orders | Built |"),
                          "REQ-001 status is 'Built', not one of")
@@ -597,14 +653,14 @@ class CheckReportIdsTest(unittest.TestCase):
                 self.assertIn("`merged`", problems[0])
 
     def test_requirements_split_over_two_tables(self) -> None:
-        report = GOOD.replace("| NFR-03 | Pages load",
+        report = GOOD.replace("| REQ-00005 | Non-functional | NFR-03 | Pages load",
                               "\n### Rules numbered only in the Business Spec\n\n"
                               "| Spec id | Description | Status | Tested | Built as | Evidence |\n|---|---|---|---|---|---|\n"
                               "| NFR-03 | Pages load")
         self.assertFlags(report, "section 5 splits the spec ids over 2 tables")
 
     def test_every_requirement_has_a_description(self) -> None:
-        self.assertFlags(GOOD.replace("| Spec id | Description | Status |", "| Spec id | Requirement | Status |"),
+        self.assertFlags(GOOD.replace("| Source id | Description | Status |", "| Source id | Requirement | Status |"),
                          "the table has no Description column")
         self.assertFlags(GOOD.replace("| REQ-002 | Approvers see pending orders |", "| REQ-002 |  |"),
                          "REQ-002 has no description")
@@ -800,7 +856,8 @@ class CheckReportIdsTest(unittest.TestCase):
 def linked(report: str) -> str:
     """GOOD with each spec row's section-5 Evidence cell citing its Test Evidence Pack matrix row."""
     for rid in SPEC_IDS:
-        report = re.sub(r"(?m)^(\| (?:`|\*\*)?{}(?:`|\*\*)? \|.*\| )([^|]*) \|$".format(re.escape(rid)),
+        report = re.sub(r"(?m)^(\| REQ-[0-9]{{5}} \| [^|]* \| (?:`|\*\*)?{}(?:`|\*\*)? \|.*\| )([^|]*) \|$".format(
+                            re.escape(rid)),
                         lambda m: "{}{} · [matrix](evidence/traceability-matrix.html#req-{}) |".format(
                             m.group(1), m.group(2), rid), report, count=1)
     return report

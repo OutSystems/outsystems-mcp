@@ -44,7 +44,10 @@ word: *"Legacy modernization is in limited availability and isn't enabled for yo
    A Report covering several apps prefixes each test id with its app,
    `<App> TEST-007`, since each app's pack numbers its own.
    Every spec id, including a rule the Business Spec numbers outside
-   `requirements.json`, sits in **one** requirements list; every row in both
+   `requirements.json`, sits in **one** requirements list, numbered
+   `REQ-00001`, `REQ-00002`, … in a first Req ID column with a Type and a
+   Source id column, and the Report's section 5 maps the Business Brief's table
+   one for one, in the same order (`--spec` proves it); every row in both
    documents carries a short plain-English description a non-developer
    understands; and the Report ends with a per-requirement checklist
    (implemented? tested? with `X of N` totals).

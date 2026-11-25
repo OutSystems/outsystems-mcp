@@ -45,7 +45,7 @@ capability. Re-frame each one, and keep the trace back to its source:
   ids. Before rendering the Report, run `scripts/check_report_ids.py` from this
   skill's folder on `requirements.json` and the Report (add `--business-spec`
   with the extractor's Business Spec, and `--spec` with the
-  Business Brief when the Report cites `CAP-nn` ids) and fix every `FAIL` line
+  Business Brief whenever there is one) and fix every `FAIL` line
   in the Report, never in `requirements.json` or the Brief.
 - **Cite the Test Evidence Pack's run as the evidence.** When the app has a pack
   (Skill `outsystems-test-evidence-pack`), its full run's `<pack>/evidence/summary.json`
@@ -146,6 +146,21 @@ summary, 1 scope, 2 roles and access, 3 data model, 4 screens and journeys,
 8 non-functional, 9 open questions, A traceability. Same ids too: a `CAP-nn` or
 `BR-nn` sits in the same section in both. The Spec fills each section with what
 is *needed*; the Report answers, for the same ids, what was built and how we know.
+
+**The requirements table is one numbered list, the same in both documents.**
+Section 5 of the Spec holds every requirement in one table that starts
+`| Req ID | Type | Source id | Description |`. Number its rows `REQ-00001`,
+`REQ-00002`, … in order (five digits, no gap or repeat), in spec order:
+`requirements.json`, then the rules only the extractor's Business Spec numbers,
+then derived rules and report-local inputs. **Type** says what kind of
+requirement the row is (functional requirement, business rule, user story,
+non-functional, integration, derived rule, input, …); **Source id** keeps the
+spec id exactly as spelled, so traceability never depends on the new number. The
+Implementation Report's section 5 maps that table one for one: the same rows,
+the same order, the same Req ID, Type and Source id, with its status, tested and
+evidence columns added after them. `scripts/check_report_ids.py` with
+`--spec <AppName>-business-brief.md` proves it; renumber the brief, never the
+report on its own.
 
 **Every requirement row says what it is, in plain English, in both documents.**
 An id or a code fragment ("If Order.Total > Customer.Limit") means nothing to the

@@ -12,6 +12,12 @@ This compares the two, mechanically:
 * every spec id has exactly one row in section 5 (the requirements list, one
   table), a row in appendix A (traceability) and a row in appendix Z (the
   requirements checklist, the report's last section);
+* section 5's requirements table numbers its rows in a `Req ID` column,
+  `REQ-00001`, `REQ-00002`, ... in row order with no gap, gives each row a
+  `Type` (functional requirement, business rule, non-functional, ...), and
+  cites the spec id in a `Source id` column; with `--spec`, its rows are the
+  Business Brief's section-5 rows one for one, in the same order, with the same
+  Req ID, Type and Source id;
 * every id a section-5, appendix-A or appendix-Z row cites is a spec id or a
   report-local `IN-nn` id; under section 5's Additions subsection only ids the
   spec doesn't have are allowed;
@@ -43,7 +49,9 @@ table list every requirement) and each `domains/*/<...>-Business-Spec.md`. An ov
 from an extraction older than those tables numbers nothing: pass only the domain specs.
 Passed beside them anyway, it is skipped with a note in the OK line.
 
-`--spec` adds the re-derived capability ids (`CAP-nn`) a Business Brief defines
+`--spec` passes the Business Brief. Its section 5 is numbered the same way
+(checked too), and the report's section 5 must list exactly its rows, in its
+order. It also adds the re-derived capability ids (`CAP-nn`) the brief defines
 beyond `requirements.json`, so the report may cite them too. It admits no other
 family: the reporter writes the brief and the report in the same turn, so a
 brief must not be able to legitimise an id the spec doesn't have.
@@ -99,6 +107,8 @@ RIGHT = r"(?!\w)(?![" + DASHES + r".]\w)"
 ANY_ID = re.compile(r"(?<!\w)(?<![A-Za-z][" + DASHES + r"])(?<!\w\.)([A-Za-z]{2,6})([" + DASHES + r"]| ?)([0-9]{1,4})"
                     + RIGHT)
 LOCAL_ID = re.compile(r"^IN-[0-9]{2,}$")
+# The running number of a section-5 requirements row: REQ-00001, REQ-00002, ...
+REQ_NUMBER = "REQ-{:05d}"
 # A Test Evidence Pack test's own id (the pack's testId()), as the report cites it; and any spelling of one.
 TEST_ID = re.compile(r"^TEST-[0-9]{3,}$")
 # Whole tokens only, like a spec id: `TEST-001-v2` and `TEST-001.extra` are other tokens, never `TEST-001`.
@@ -296,17 +306,29 @@ class Row:
         self.table = table
         self.cells = row_cells
         self.first = row_cells[0]
+        self.id_index = 0
 
     def cell(self, index: Optional[int]) -> str:
         """A cell as the reader sees it: a link counts by its label, never by its target."""
         return visible(self.cells[index]) if index is not None and index < len(self.cells) else ""
 
 
-def section_rows(lines: List[str], section: str, body_rows: Dict[int, int]) -> Optional[List[Row]]:
+def id_column(header: List[str]) -> int:
+    """The cell that cites the spec id: `Source id` in a table numbered by a `Req ID` column, else the first."""
+    if column(header, "req id") is not None:
+        source = column(header, "source id")
+        if source is not None:
+            return source
+    return 0
+
+
+def section_rows(lines: List[str], section: str, body_rows: Dict[int, int],
+                 headers: Optional[Dict[int, List[str]]] = None) -> Optional[List[Row]]:
     """Table body rows of a `##` section whose number is `section`, or None when the section is absent.
 
-    Each row carries the ids its first cell names (none for an unnumbered row) and
-    its table; rows under a `###` heading that mentions "Addition" are flagged as additions.
+    Each row carries the ids its id cell names (the first cell, or the `Source id` cell of a table
+    numbered by a `Req ID` column; none for an unnumbered row) and its table; rows under a `###`
+    heading that mentions "Addition" are flagged as additions.
     """
     rows = []  # type: List[Row]
     found, inside = False, False
@@ -327,7 +349,12 @@ def section_rows(lines: List[str], section: str, body_rows: Dict[int, int]) -> O
         if not inside or no not in body_rows:
             continue
         row_cells = cells(line)
-        rows.append(Row(no, ids_in_cell(visible(row_cells[0])), bool(addition_level), body_rows[no], row_cells))
+        index = id_column((headers or {}).get(body_rows[no], []))
+        row = Row(no, [], bool(addition_level), body_rows[no], row_cells)
+        row.id_index = index
+        row.first = row_cells[index] if index < len(row_cells) else ""
+        row.ids = ids_in_cell(visible(row.first))
+        rows.append(row)
     return rows if found else None
 
 
@@ -497,10 +524,10 @@ def _check(requirements: Path, report: Path, specs: Iterable[Path] = (), busines
                 if is_spec_token(t) and [tok for tok, _ in find_ids(t)] != [t]]
 
     # Rows whose first cell is checked here; the prose scan below reads their other cells.
-    row_lines = set()  # type: Set[int]
+    row_lines = {}  # type: Dict[int, int]
     spec_rows = {}  # type: Dict[str, Dict[str, Row]]
     for label, section in (("section 5", "5"), ("appendix A", "A"), ("appendix Z", "Z")):
-        rows = section_rows(lines, section, body_rows)
+        rows = section_rows(lines, section, body_rows, headers)
         if rows is None:
             problems.append("{}: no {} heading (`## {}. ...`)".format(name, label, section))
             continue
@@ -531,7 +558,7 @@ def _check(requirements: Path, report: Path, specs: Iterable[Path] = (), busines
                     problems.append("{}:{} ({}): a row with no spec id ({}); every row cites one, or sits under "
                                     "Additions".format(name, row.line_no, label, row.first or "empty"))
                 continue
-            row_lines.add(row.line_no)
+            row_lines[row.line_no] = row.id_index
             where = "{}:{} ({})".format(name, row.line_no, label)
             if section != "A" and not row.addition:
                 index = column(headers.get(row.table, []), "description")
@@ -573,6 +600,18 @@ def _check(requirements: Path, report: Path, specs: Iterable[Path] = (), busines
             shown = ", ".join(missing[:20]) + (" and {} more".format(len(missing) - 20) if len(missing) > 20 else "")
             problems.append("{}: {} of {} spec ids have no {} row: {}".format(
                 name, len(missing), len(expected), label, shown))
+    numbered = requirement_list(name, lines, body_rows, headers, problems)
+    if numbered is not None:
+        for spec in specs:
+            try:
+                brief_lines = strip_fences(read(spec).splitlines())
+            except ValueError as exc:
+                problems.append(str(exc))
+                continue
+            brief_rows, brief_headers, _ = table_rows(brief_lines)
+            planned = requirement_list(spec.name, brief_lines, brief_rows, brief_headers, problems)
+            if planned is not None:
+                problems += same_list(name, numbered, spec.name, planned)
     if "Z" in spec_rows:
         found, figure = checklist(name, lines, headers, spec_rows.get("5", {}), spec_rows["Z"], expected_set)
         problems += found
@@ -585,7 +624,10 @@ def _check(requirements: Path, report: Path, specs: Iterable[Path] = (), busines
     # Prose, captions, other tables and a row's other cells: a respelled id anywhere still breaks the lookup.
     for no, line in enumerate(lines, 1):
         # Addresses go first, so blanking an id inside a URL can't leave a piece of it to read as prose.
-        text = spelled.sub(" ", ADDRESS.sub(" ", "|".join(cells(line)[1:]) if no in row_lines else line))
+        if no in row_lines:
+            row_cells = cells(line)
+            line = "|".join(row_cells[:row_lines[no]] + row_cells[row_lines[no] + 1:])
+        text = spelled.sub(" ", ADDRESS.sub(" ", line))
         for token, key in sorted(set(find_ids(text))):
             twin = by_key.get(key)
             if twin and token not in known_set:
@@ -600,6 +642,63 @@ def _check(requirements: Path, report: Path, specs: Iterable[Path] = (), busines
         summary += ("; skipped {}: an overview from before the extractor numbered requirements in it, so only "
                     "the domain specs were read").format(", ".join(skipped))
     return problems, summary, figure
+
+
+def requirement_list(name: str, lines: List[str], body_rows: Dict[int, int], headers: Dict[int, List[str]],
+                     problems: List[str]) -> Optional[List[Tuple[int, str, str, str]]]:
+    """Section 5's numbered requirements rows, as `(line, Req ID, Type, Source id)`, in order.
+
+    Adds a problem when the table has no Req ID, Type or Source id column, when a Req ID breaks the
+    `REQ-00001`, `REQ-00002`, ... sequence, or when a row has no Type. None when section 5 or its
+    requirements table is missing (reported elsewhere).
+    """
+    rows = section_rows(lines, "5", body_rows, headers)
+    if not rows:
+        return None
+    tables = [t for t in dict.fromkeys(row.table for row in rows if not row.addition)]
+    if not tables:
+        return None
+    # The requirements table is the one numbered by Req ID, else the first (pre-numbering) table.
+    table = next((t for t in tables if column(headers.get(t, []), "req id") is not None), tables[0])
+    header = headers.get(table, [])
+    req, kind, source = column(header, "req id"), column(header, "type"), column(header, "source id")
+    missing = [label for label, index in (("Req ID", req), ("Type", kind), ("Source id", source)) if index is None]
+    if missing:
+        problems.append("{}: the section-5 requirements table has no {} column; it starts `| Req ID | Type | "
+                        "Source id | Description |`, numbered REQ-00001, REQ-00002, ... in order".format(
+                            name, " or ".join(missing)))
+        return None
+    listed = []  # type: List[Tuple[int, str, str, str]]
+    for row in (r for r in rows if r.table == table and not r.addition):
+        number = REQ_NUMBER.format(len(listed) + 1)
+        got = row.cell(req)
+        where = "{}:{} (section 5)".format(name, row.line_no)
+        if got != number:
+            problems.append("{}: Req ID is {!r}, expected {}; number the rows REQ-00001 upward, in order, with no "
+                            "gap or repeat".format(where, got, number))
+        if not row.cell(kind):
+            problems.append("{}: {} has no Type; say what kind of requirement it is (functional requirement, "
+                            "business rule, non-functional, ...)".format(where, number))
+        listed.append((row.line_no, got, re.sub(r"\s+", " ", row.cell(kind)).lower(),
+                       re.sub(r"\s+", " ", row.cell(source))))
+    return listed
+
+
+def same_list(name: str, report: List[Tuple[int, str, str, str]], brief_name: str,
+              brief: List[Tuple[int, str, str, str]]) -> List[str]:
+    """The report's section-5 rows are the brief's, one for one and in the same order."""
+    problems = []  # type: List[str]
+    for (line, rid, kind, source), (_, b_rid, b_kind, b_source) in zip(report, brief):
+        if (rid, kind, source) != (b_rid, b_kind, b_source):
+            problems.append("{}:{} (section 5): row {} is {} {} ({}), but {} section 5 has {} {} ({}) there; list "
+                            "the brief's rows one for one, in its order".format(
+                                name, line, rid, source or "no source id", kind or "no type", rid, brief_name,
+                                b_rid, b_source or "no source id", b_kind or "no type"))
+            break
+    if len(report) != len(brief):
+        problems.append("{}: section 5 lists {} requirements but {} section 5 lists {}; the report maps the brief's "
+                        "table one for one".format(name, len(report), brief_name, len(brief)))
+    return problems
 
 
 def checklist(name: str, lines: List[str], headers: Dict[int, List[str]], listed: Dict[str, Row],
@@ -632,7 +731,8 @@ def checklist(name: str, lines: List[str], headers: Dict[int, List[str]], listed
             if index is None:
                 problems.append("{}: the checklist has no {} column".format(where, answer_col.capitalize()))
                 continue
-            answer = row.cell(index).lower()
+            said = row.cell(index)
+            answer = said.lower()
             if answer not in set(mapping.values()):
                 problems.append("{}: {} {} is {!r}; answer {}".format(where, rid, answer_col, row.cell(index), allowed))
                 continue
@@ -655,7 +755,7 @@ def checklist(name: str, lines: List[str], headers: Dict[int, List[str]], listed
                     ", ".join(sorted({k.upper() if mapping is TESTED else k.capitalize() for k in mapping}))))
             elif want != answer:
                 problems.append("{}: {} {} says {} but its section-5 row says {}".format(
-                    where, rid, answer_col, row.cell(index), want.capitalize() if want != "n/a" else want))
+                    where, rid, answer_col, said, want.capitalize() if want != "n/a" else want))
     figure = (spec_done, len(spec))
     problems += reqs_card(name, lines, figure)
     totals = checklist_totals(lines)

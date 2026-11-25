@@ -186,6 +186,20 @@ something the spec already numbered. One id per section-5 row: a row never merge
 two ids. A re-derived capability (`CAP-nn`, from the handover-docs skill) cites
 the source ids it traces to; it never replaces them in section 5 or appendix A.
 
+**One numbered requirements table, the Business Brief's.** Section 5's table
+numbers its rows in a first **Req ID** column: `REQ-00001`, `REQ-00002`, … in row
+order, five digits, with no gap or repeat. A **Type** column says what kind of
+requirement each row is (functional requirement, business rule, user story,
+non-functional, integration, derived rule, input, …), and a **Source id** column
+carries the spec id exactly as spelled. The running number is the table's row
+number, never a spec id: it doesn't replace the source id anywhere. When there
+is a Business Brief, the report's section 5 maps the brief's section-5 table one
+for one: the same rows, in the same order, with the same Req ID, Type and Source
+id, so a reader lays the two side by side and reads across. Number the brief
+first (spec order: `requirements.json`, then the rules only the Business Spec
+numbers, then derived rules and inputs) and copy its numbering; never renumber
+the report on its own.
+
 **Check before you render** (these are the rules that keep the report aligned
 with the spec): every spec id has a section-5 row and an appendix-Z row; every
 section-5 row cites an id the input carries (or a report-local `IN-` id), or
@@ -209,8 +223,9 @@ confirm` table list every requirement, and once per domain's Business Spec
 (`domains/*/<…>-Business-Spec.md`); an overview from an older extraction has
 neither table, so pass only the domain specs, and the check skips such an
 overview with a note; add
-`--spec <AppName>-business-brief.md` when the report cites re-derived
-`CAP-nn` ids). Fix every `FAIL` line and run it again until it prints `OK`;
+`--spec <AppName>-business-brief.md` whenever there is a Business Brief: it also
+proves section 5 lists the brief's numbered rows one for one, in its order, and
+lets the report cite the brief's re-derived `CAP-nn` ids). Fix every `FAIL` line and run it again until it prints `OK`;
 a report it fails is not ready to render. **Fix the report, never
 `requirements.json` or the spec**, and never add ids to the brief you pass
 with `--spec` to make a line pass. If a `FAIL` looks wrong, report it as
@@ -333,7 +348,8 @@ lives in a data app or a screen in another delivered app is not lost.
      base64-embedded** screenshot of the RUNNING app + a caption (what it shows,
      which design node it implements, how it behaves, what data feeds it).
 5. **Requirements list** — the core of the report, and mostly ONE table: one row
-   per spec id, in spec order, over EVERY requirement, every
+   per spec id, in the Business Brief's order (spec order when there is no
+   brief), over EVERY requirement, every
    individually-identified business rule AND every user story the source / brief
    implies. When a rules or stories source exists (the extractor's
    `04-business-rules.md` / `06-user-stories.md` slices, a `business-rules.md` /
@@ -343,7 +359,10 @@ lives in a data app or a screen in another delivered app is not lost.
    carry is a row in this same table, never a second table or subsection of its
    own: the reader ticks off one list. Rows of different id families (BR, REQ,
    RULE, US) keep spec order inside the one table.
-   Columns: spec id · **description** (one short plain-English sentence on what
+   Columns: **Req ID** (`REQ-00001`, `REQ-00002`, … in row order: the Business
+   Brief's number for the same row, see "One numbered requirements table" above)
+   · **type** (functional requirement, business rule, user story, non-functional,
+   …) · **source id** (the spec id, exactly as spelled) · **description** (one short plain-English sentence on what
    the requirement asks for, written so someone who doesn't read code
    understands it: "Orders over the customer's credit limit need a manager's
    approval", not "If Order.Total > Customer.Limit". Use the spec's own
