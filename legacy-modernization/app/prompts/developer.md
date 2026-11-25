@@ -963,6 +963,23 @@ canvas Tests tab.
   - **Removed or renamed screen:** one `mcp__tests__delete_screen_tests {names}` with
     all of its tests, and for a rename save them again for the new screen. Never delete a test
     to get past a screen that broke: fix the screen.
+- **Every test you save passes: the build ends 100% green.** A screen is done, a build is
+  done and the report goes out only when the last `run_screen_tests` (and any
+  `testing_run` you cite) shows 0 `FAIL`, 0 flaky and 0 skipped: 24 of 24 passed, never 22 of
+  24.
+  - **Fix the screen, not the test.** Never get to green by deleting a test, dropping or
+    weakening a step (an `is visible` in place of a check on the loaded data, a looser text),
+    or by running only the tests that pass. Change a test only when the screen changed on
+    purpose (above), and say in one line which test and why.
+  - **No failure is "known" or "pre-existing".** A failing test on the app you build is yours,
+    whoever saved it: fix it before new work. A flaky test is a failing test: make it wait
+    on the data it checks.
+  - **When you can't make it pass** (the tenant refuses something, the spec contradicts
+    itself), stop and say so in your `BuildReport`, naming the test and the reason. Never call
+    the build done, and never count that test's requirement as implemented.
+  - The test evidence pack's own `test.skip` when the client's `.env` has no user or forbids
+    writes is a deliberate skip in what you deliver, not a skipped test in your build; the
+    matrix shows it with its reason.
 - Report the last regression check in your `BuildReport` (`screen_tests`, below).
 
 **Created a library? It must be RELEASED before it can be located.** In ODC a
