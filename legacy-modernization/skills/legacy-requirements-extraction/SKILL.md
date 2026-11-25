@@ -4,7 +4,7 @@ description: >-
   Extract a requirements spec collection (13 domain slices, manifest.json, requirements.json and a Business Spec) from a legacy application's source code (Lotus Notes .dxl, AB Suite .pmodel, MS Access, AS/400 (DDS, RPG and CL source), AS/400 with CA 2E / Synon model exports, COBOL, Java, .NET or Node.js) through the modernize_* tools on the user's OutSystems MCP. Use whenever the user points at legacy source and asks to extract, generate, derive or write its specs, requirements, business specification, documentation or "what the app does", or to analyse it before a migration, even if they never type /extract-requirements. Not for: building a new app from a brief -> outsystems-app-generation; an already-extracted spec collection to build from -> the /workflow-legacy-app command.
 license: MIT
 compatibility: Any Agent Skills host with an OutSystems MCP whose tenant is enabled for legacy extraction (the modernize_* tools). Needs a shell to zip a source tree and HTTP PUT a presigned upload. No scripts — pure guidance.
-allowed-tools: Read Glob Bash Write Skill TodoWrite mcp__outsystems__auth_status mcp__outsystems__authenticate mcp__outsystems__modernize_session_start mcp__outsystems__modernize_upload_url_create mcp__outsystems__modernize_source_upload mcp__outsystems__modernize_run_start mcp__outsystems__modernize_run_get mcp__outsystems__modernize_session_close
+allowed-tools: Read Glob Bash Write Skill TodoWrite mcp__outsystems__auth_status mcp__plugin_outsystems_outsystems__auth_status mcp__outsystems__authenticate mcp__plugin_outsystems_outsystems__authenticate mcp__outsystems__modernize_session_start mcp__plugin_outsystems_outsystems__modernize_session_start mcp__outsystems__modernize_upload_url_create mcp__plugin_outsystems_outsystems__modernize_upload_url_create mcp__outsystems__modernize_source_upload mcp__plugin_outsystems_outsystems__modernize_source_upload mcp__outsystems__modernize_run_start mcp__plugin_outsystems_outsystems__modernize_run_start mcp__outsystems__modernize_run_get mcp__plugin_outsystems_outsystems__modernize_run_get mcp__outsystems__modernize_session_close mcp__plugin_outsystems_outsystems__modernize_session_close
 metadata:
   version: "1.0.0"
   author: outsystems-r-and-d
@@ -49,14 +49,14 @@ step, so a skills-only install can still run the extraction.
   stop. See [Authorize before you run](../../README.md#authorize-before-you-run).
   Never report an unauthenticated server as a missing feature, a disabled
   tenant or an outage, and never work around it.
-- **Check the installed skills are current.** Plugin version of this copy: `2.2.2`.
+- **Check the installed skills are current.** Plugin version of this copy: `3.0.0`.
   Read the latest released version from the plugin's `.claude-plugin/plugin.json`:
   `gh api repos/OutSystems/outsystems-mcp/contents/legacy-modernization/.claude-plugin/plugin.json --jq .content | base64 --decode`,
   or, without `gh`, `curl -fsSL https://raw.githubusercontent.com/OutSystems/outsystems-mcp/main/legacy-modernization/.claude-plugin/plugin.json`.
   If its `version` is newer than this copy's, say so once, right after the authentication check:
   the version loaded, the version current, and how to update on this host. On
-  Claude Code that is `claude plugin marketplace update legacy-modernization`, then
-  `claude plugin update legacy-modernization@legacy-modernization`; on other hosts,
+  Claude Code that is `claude plugin marketplace update outsystems`, then
+  `claude plugin update legacy-modernization@outsystems`; on other hosts,
   the plugin README's update table. An update takes effect in a **new** session.
   Then carry on: an old copy still runs, the user just loses what changed. If
   neither command can reach the repo, say the check was skipped and carry on.
@@ -82,8 +82,8 @@ step, so a skills-only install can still run the extraction.
 - **Ask for the customer name** if the user did not give one. Do not invent it.
 - **Then check the tool list.** Authenticated and `modernize_session_start` is
   listed → use the tools below by their bare names. Authenticated but it is not
-  listed → the tenant is not enabled for legacy extraction: say that, tell the
-  user to ask their OutSystems contact to enable it, and stop.
+  listed → the tenant has no access yet. Tell the user, in these words:
+  *"Legacy modernization is in limited availability and isn't enabled for your tenant yet. Contact OutSystems if you'd like access."* Then stop.
   No OutSystems MCP attached at all → say so and point at the plugin README's
   [If OutSystems MCP is not installed](../../README.md#if-outsystems-mcp-is-not-installed).
   In every one of these cases, never hand-write a spec collection: the next

@@ -197,10 +197,10 @@ def _migration_nodes(source: str) -> list[dict]:
             "publishing once at the end. Report the published URL as soon as that "
             "first screen is live, and again on every later publish — the user "
             "should be able to open the app while the run is still going. WHEN FIGMA "
-            "IS IN SCOPE, also invoke Skill `ui-exactness` before any Mentor "
+            "IS IN SCOPE, also invoke Skill `outsystems-ui-exactness` before any Mentor "
             "UI / Theme turn: literal hex/px CLAIMS, design-pack or DesignBrief "
             "claim tables (same shape as "
-            "`skills/ui-exactness/design-pack-templates.md`), "
+            "the `outsystems-ui-exactness` skill's `design-pack-templates.md`), "
             "DOM-before-CSS on OSUI chrome, one publish then claim verify — "
             "no soft 'closer to Figma' remold loops. This step owns ALL the work: do your "
             "own smoke checks and fix everything you find BEFORE marking the "
@@ -232,7 +232,7 @@ def _migration_nodes(source: str) -> list[dict]:
                 "Creates the app, the data model and the seed data straight away, in parallel with the design — none of it depends on the look",
                 "First screen first: the first publish is a screen you can open and navigate, not an empty data model",
                 "Builds the remaining screens and logic via the OutSystems Mentor flow, one chunk → one publish → one drive-test",
-                "When Figma is in scope: Skill ui-exactness (CLAIMS + claim tables) before Mentor UI/Theme",
+                "When Figma is in scope: Skill outsystems-ui-exactness (CLAIMS + claim tables) before Mentor UI/Theme",
                 "Publishes on the tenant continuously and posts the URL, so you can open the app while the run is still going",
             ],
         ),
@@ -399,8 +399,8 @@ def _migration_nodes(source: str) -> list[dict]:
             "Design QA",
             "Score how faithfully each built screen matches its Figma frame — "
             f"gate passes at ≥{DESIGN_PASS_THRESHOLD_PCT}% of screens PASS",
-            "Design QA: READ-ONLY scorer for Skill `ui-exactness` "
-            "(`skills/ui-exactness/UI-Exactness.md`) — the single "
+            "Design QA: READ-ONLY scorer for Skill `outsystems-ui-exactness` "
+            "(the `outsystems-ui-exactness` skill's `UI-Exactness.md`, in the `outsystems` plugin) — the single "
             "screen design-parity law. NEVER fixes, edits, or publishes; "
             "deviations are screen FAILs for the design-fidelity gate (fixes "
             "belong to the agent/developer re-run). Delegate to the reviewer "
@@ -431,7 +431,7 @@ def _migration_nodes(source: str) -> list[dict]:
             "same rev-<number> suffix. Report pass_rate + reruns to the gate.",
             info=[
                 "Read-only scorer: never fixes or publishes — a deviation is a screen FAIL for the design-fidelity gate",
-                "Delegates to the reviewer; scores ONLY via Skill ui-exactness (claim tables SOT)",
+                "Delegates to the reviewer; scores ONLY via Skill outsystems-ui-exactness (claim tables SOT)",
                 "Scores claim tables — claim files win over rollup scores; screenshots are evidence only",
                 "Checks design parity both ways — missing designs get authored in the session's design medium (use_figma on the option's page, or a mockup file in the option's directory)",
                 "Scores layout/viewport per Exactness Viewport policy — no dead space, no arbitrary max-width",
@@ -558,7 +558,7 @@ def _migration_nodes(source: str) -> list[dict]:
 def _design_fidelity_gate_instructions() -> str:
     return (
         f"The gate PASSES when at least {DESIGN_PASS_THRESHOLD_PCT}% of the "
-        "built screens PASS Skill `ui-exactness` claim-file scoring — a "
+        "built screens PASS Skill `outsystems-ui-exactness` claim-file scoring — a "
         "DIFFERENT metric from the validator gate (journeys). LOOP ACCOUNTING "
         "(mandatory, its OWN counter separate from the validator gate's): "
         "track this gate's reruns_used — it starts at 0 and increments by "
@@ -774,7 +774,7 @@ program with nothing skipped, so the spec is complete. When `analysis` is
 incomplete: say so plainly in the report and name the causes listed in
 `analysis_incomplete` (on the result when it carries them, otherwise in the
 published `manifest.json`).
-Supported stacks: Notes (.dxl), AB Suite (.pmodel exports), MS Access,
+Extraction currently reads these stacks: Notes (.dxl), AB Suite (.pmodel exports), MS Access,
 AS/400 (DDS, RPG and CL source), AS/400 with CA 2E / Synon model exports,
 COBOL, Java, .NET and Node.js.
 

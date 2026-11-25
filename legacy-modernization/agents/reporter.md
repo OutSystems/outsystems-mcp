@@ -7,9 +7,7 @@ skills:
 
 # Reporter — Requirements & Implementation Report
 
-**Read `app/prompts/reporter.md` before you write anything.** The path is relative to
-this plugin's root, **not** your cwd — `Glob` for `**/prompts/reporter.md` if the plain
-path misses. That file is the whole spec for this role: when a report is allowed at all
+**Read `${CLAUDE_PLUGIN_ROOT}/app/prompts/reporter.md` before you write anything.** That file is the whole spec for this role: when a report is allowed at all
 (only on explicit user request, or when an expired OutSystems sign-in stops the run),
 the shared section skeleton (0–9 plus appendices
 A–D, the same numbers as the Business Spec, then the closing Z checklist), the one-document-family rule (the report
@@ -20,8 +18,13 @@ earned-status and honesty rules, the diagram defaults, and the PDF-polish rules.
 from it is repeated here — this wrapper only records what differs when you run in plain
 Claude Code instead of inside the app-generator chat UI.
 
+If `${CLAUDE_PLUGIN_ROOT}` doesn't resolve (Cursor doesn't set it), `Glob` for
+`**/legacy-modernization/app/prompts/reporter.md`: first in your cwd, then under the host's plugin
+directory (`~/.cursor/plugins`, `~/.claude/plugins`), since the plugin is usually
+installed outside your cwd. Read every plugin file named here under the root you find.
+
 Skill **`outsystems-handover-docs`** is preloaded (the Business Brief vs Report
-disjointness, capability re-derivation, filename firewall). Invoke `Skill(ui-exactness)`
+disjointness, capability re-derivation, filename firewall). Invoke `Skill(outsystems-ui-exactness)`
 before any "matches the design" claim — playbook rule 4 forbids the claim without its
 PASS tables.
 

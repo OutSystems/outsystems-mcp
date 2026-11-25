@@ -185,8 +185,7 @@ animates status by id, so a renamed id reads as "item deleted, new item added".
 
 **Read the build skill's app-completeness defaults before you finalise — you
 cannot invoke skills, so open the file directly.** `Read`
-`skills/outsystems-app-build/SKILL.md` (if that path does not resolve,
-`Glob` for `**/skills/outsystems-app-build/SKILL.md`). It lists what every app
+Skill `outsystems-app-build` (it ships in the `outsystems` plugin). It lists what every app
 ships **whether or not the user asked for it** — ER diagram, login/logout, seed
 data per entity, and the rest. Each is a
 plan item. The developer builds your plan: a default missing from the plan is a

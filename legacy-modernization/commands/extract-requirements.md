@@ -16,6 +16,14 @@ The same workflow id, step order and gate as `extract-requirements` in
 full node text — read it there if a step below is ambiguous. This file records only what
 differs when you run in plain Claude Code instead of inside the app-generator chat UI.
 
+## Limited availability
+
+**Limited availability: check access first.** Legacy modernization isn't generally
+available yet. Before anything else, sign in to the OutSystems MCP (see the plugin
+README's [Authorize before you run](../README.md#authorize-before-you-run)) and read
+its tool list. If `modernize_session_start` isn't listed, tell the user, word for
+word: *"Legacy modernization is in limited availability and isn't enabled for your tenant yet. Contact OutSystems if you'd like access."* Then stop.
+
 ## User input
 
 ```text
@@ -173,8 +181,8 @@ MCP**. Check that MCP's tool list at runtime and call the tools by their bare na
 
 Treat the session `token`, `upload_url` and `os_spec_url` as credentials: use them, never
 print them or put them in a report. Errors the tools return by name:
-- `tenant_not_enabled`: don't retry. Tell the user their tenant isn't enabled for
-  extraction and to ask the legacy modernization team.
+- `tenant_not_enabled`: don't retry. Give the user the limited-availability
+  message below, word for word.
 - `stack_not_enabled`: this service doesn't take that stack yet. Say which stack, then use
   the fallbacks below.
 - `too_many_sessions` (on start): retry shortly.
@@ -232,16 +240,17 @@ signed in → say so, tell the user how to sign in (Claude Code: `/mcp`, pick th
 to start a new session afterwards, and stop. See
 [Authorize before you run](../README.md#authorize-before-you-run). Only when the MCP is
 signed in, in a session started after sign-in, and still lists no `modernize_*` tools is
-the tenant not enabled for legacy extraction: the extraction isn't missing from this host,
-it runs as those tools. Say that plainly, tell the user to ask their OutSystems contact to
-enable it, then fall back in this order:
+the tenant without access yet: the extraction isn't missing from this host, it runs as
+those tools. Tell the user, in these words: *"Legacy modernization is in limited availability and isn't enabled for your tenant yet. Contact OutSystems if you'd like access."* Then stop: without access,
+don't fall back to a prior spec collection or a draft.
 
-1. **The user's tenant gets enabled** → once the `modernize_*` tools are listed (a new
-   session may be needed), run the extraction through them as above.
-2. **The user already has an extracted spec collection** (the 13 domain slices +
+**If the service doesn't take the source's stack** (`stack_not_enabled`), fall back in
+this order:
+
+1. **The user already has an extracted spec collection** (the 13 domain slices +
    `manifest.json` + `requirements.json` + Business Spec, from a prior run). Point the
    `review` step at it and continue.
-3. **Neither** → stop and say so. Do NOT hand-write a spec collection: a fabricated
+2. **Neither** → stop and say so. Do NOT hand-write a spec collection: a fabricated
    `requirements.json` is worse than no extraction, because the next workflow trusts
    it. What you MAY offer instead is a plainly-labelled **agent-derived requirements
    draft**: read the sources yourself and produce requirements where every single item
@@ -265,8 +274,8 @@ directory that holds both.
 If it is ambiguous or absent, stop and tell the user exactly what to
 attach — do not proceed on a guess.
 
-**2. `extract`** — Run it through the `modernize_*` tools (above), or, when they are absent,
-the user supplies a prior run's output (fallback 2) and you read it. On the remote path the service authors every step itself; the notes below apply
+**2. `extract`** — Run it through the `modernize_*` tools (above), or, when the service doesn't
+take the stack, the user supplies a prior run's output (fallback 1) and you read it. On the remote path the service authors every step itself; the notes below apply
 when you author the steps yourself. With `modernize_run_start` and `caller_authored=true`, a run
 that needs you ends `status=input_required` with a `request` to author and an opaque
 `pending_step` token (`step-1`, `step-2`, and so on). Call `modernize_run_start` again with
@@ -378,7 +387,7 @@ finding, not a failing check: it is not in the pass rate and is never a reason t
 | `mcp__workflow__update_workflow` (the live flowchart) | a **Progress** checklist you restate in every reply, one line per step with its state |
 | `mcp__plan__update_plan` | the native `TodoWrite` tool |
 | `mcp__preview__show_file` | print the absolute path, and open the Business Spec (PDF preferred) on the host's canvas-equivalent when one exists — most harnesses put this on the right-hand side of the window (a side canvas, an IDE preview panel, an artifact-publishing tool), not just a chat-inline preview |
-| `mcp__extractor__*` | the **`modernize_*`** tools on the user's OutSystems MCP (above). If those are absent too, check sign-in first (above); signed in, in a session started after sign-in, and still absent means the tenant isn't enabled for extraction: the user asks their OutSystems contact, or supplies a prior run's output |
+| `mcp__extractor__*` | the **`modernize_*`** tools on the user's OutSystems MCP (above). If those are absent too, check sign-in first (above); signed in, in a session started after sign-in, and still absent means the tenant has no access yet: give the limited-availability message (above) and stop |
 
 Keep the checklist honest: a step that was skipped says skipped, and the gate's
 `pass_rate_pct` is a number you computed, not a vibe.

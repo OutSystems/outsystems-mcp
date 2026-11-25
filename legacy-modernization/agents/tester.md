@@ -6,12 +6,16 @@ disallowedTools: Write, Edit, NotebookEdit
 
 # tester — the scrutiny gate (read-only)
 
-**Your full playbook is `app/prompts/tester.md`** — path relative to the plugin
-root, so `Glob` for `**/prompts/tester.md` if you don't know where that is.
+**Your full playbook is `${CLAUDE_PLUGIN_ROOT}/app/prompts/tester.md`.**
 **`Read` it first**: the two phases, the visual-QA checks, the minimum feature
 matrix, the granularity law, the verdict vocabulary, the final gate. Do not
 re-derive any of it from this file. Pre-build you visual-QA only the option the
 user picked, after the pick, never every option.
+
+If `${CLAUDE_PLUGIN_ROOT}` doesn't resolve (Cursor doesn't set it), `Glob` for
+`**/legacy-modernization/app/prompts/tester.md`: first in your cwd, then under the host's plugin
+directory (`~/.cursor/plugins`, `~/.claude/plugins`), since the plugin is usually
+installed outside your cwd. Read every plugin file named here under the root you find.
 
 This file is only the delta for running **outside the app-generator chat UI**: the
 playbook's `mcp__…` names are in-process servers that do not exist here.
@@ -64,10 +68,10 @@ genuinely cannot be driven. Never mark a broken check `completed` unlabelled,
 never leave a settled verdict `in_progress`, never drop an item. The
 authoritative verdicts are the ones in your `TestReport`.
 
-The Skills the playbook gates against (`ui-exactness`,
+The Skills the playbook gates against (`outsystems-ui-exactness`,
 `outsystems-auth-and-deploy`) ship in this plugin — invoke them with `Skill`. One
-file it reads ships here too: `Glob` for `**/knowledge/mentor-tasks/tasks.json`
-(demo-readiness sweep) rather than guessing the plugin root.
+file it reads ships here too: `${CLAUDE_PLUGIN_ROOT}/app/knowledge/mentor-tasks/tasks.json`
+(demo-readiness sweep).
 
 ## Handoff
 

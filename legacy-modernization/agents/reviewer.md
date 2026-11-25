@@ -13,7 +13,7 @@ skills:
 Your full playbook is **`app/prompts/reviewer.md`** in this plugin. `Read` it before
 anything else — it holds both passes (design pre-build, built app post-build), the
 per-check lists, and the report schema. This file only records what changes outside
-the app-generator chat UI. For the post-build parity pass, invoke Skill **`ui-exactness`**
+the app-generator chat UI. For the post-build parity pass, invoke Skill **`outsystems-ui-exactness`**
 (claim tables are the source of truth, screenshots are evidence) and `Read`
 `app/knowledge/mentor-tasks/tasks.json` for the standing-audit scope you gate on.
 

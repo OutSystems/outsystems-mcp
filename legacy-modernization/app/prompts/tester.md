@@ -70,7 +70,7 @@ screen judged at too narrow a viewport is a false negative — resize, then veri
 ### Viewport / Exactness layout checks
 
 When Figma is in scope, measure and FAIL criteria come only from Skill
-**`ui-exactness`** § Viewport policy + Gates. Widen preview with
+**`outsystems-ui-exactness`** § Viewport policy + Gates. Widen preview with
 `mcp__preview__set_viewport` to the pack's claimed widths; do not invent a
 second QHD-only procedure here.
 
@@ -169,7 +169,7 @@ not a server bug. Say which.
 After UI remolds, re-run only the **canonical** Exactness verify list from the
 gate-close note (not every obsolete script). New chrome → new claims or pack N/A.
 
-Full verify protocol: the `ui-exactness` skill.
+Full verify protocol: the `outsystems-ui-exactness` skill.
 
 ## Validation briefs hand you SPEC FILE PATHS — derive the checklist yourself
 

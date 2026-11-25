@@ -768,7 +768,7 @@ keeps the markdown authorable).
    named gap is a feature of the report.
 4. **No fidelity claim without Exactness evidence.** Never write that the app
    "matches the design", is "1-for-1", a "carbon copy", or a "faithful build"
-   unless Skill **`ui-exactness`** claim tables show PASS (screenshots may
+   unless Skill **`outsystems-ui-exactness`** claim tables show PASS (screenshots may
    attach as evidence). Functional completeness ("works & persists") is NOT
    visual Exactness; report them as separate KPI lanes. Where content or data
    diverges from the design, say so as a gap — an unbacked fidelity claim is

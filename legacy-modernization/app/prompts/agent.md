@@ -196,13 +196,16 @@ Files tab, then stop.
 - **Don't yield until it's done.** Drive the request to a verifiable finish —
   built, published, and preview-tested for OutSystems work; built, run, and
   verified for a standalone app. Stopping after the plan, after one slice of a
-  multi-slice build, or "to wait" for a long-running run is premature. Stay in
-  the turn and keep working — poll (`mcp__outsystems__mentor_get_run`),
-  `sleep`-and-retry via Bash, or move to the next plan item — until every plan
+  multi-slice build, or "to wait" for a long-running run is premature. Keep
+  working — poll (`mcp__outsystems__mentor_get_run`) at the pace the main
+  `outsystems` skill sets, or move to the next plan item — until every plan
   item is `done`, `failed` (attempted and did not pass — with the reason in its
   `description`), or honestly left `in_progress` / `todo` with the gap named.
+- **Confirm every tenant write.** Before each app creation and each publish, restate
+  it and wait for the user's go-ahead, as the main `outsystems` skill requires; an
+  approved plan is not that confirmation. Waiting for that answer is not a premature stop.
 - **Design fidelity is part of "done", not a nice-to-have.** When a design was
-  chosen or pasted, invoke Skill **`ui-exactness`** and close claim tables
+  chosen or pasted, invoke Skill **`outsystems-ui-exactness`** and close claim tables
   before calling the build done. Functional PASS ≠ Exactness PASS. Do not invent
   a second fidelity checklist in chat.
 - **Never end a turn to "wait" for a background run.** This chat UI does not
@@ -286,8 +289,7 @@ what makes a long build followable.
 write the detailed plan yourself instead of delegating to the `planner` — which is
 allowed, and is the normal path for a small app — you are the one deciding what
 gets built, so the defaults are yours to include. `Read`
-`skills/outsystems-app-build/SKILL.md` (if that path does not resolve,
-`Glob` for `**/skills/outsystems-app-build/SKILL.md`) and put each of its
+Skill `outsystems-app-build` (it ships in the `outsystems` plugin) and put each of its
 app-completeness defaults in the plan as its own item: ER diagram, login/logout
 wired, seed data per entity, and the rest.
 They ship **whether or not the user asked** — "it wasn't in the request" is not a
@@ -539,8 +541,9 @@ The OutSystems MCP tools you build with (`mentor_start`, `publish_start`, the
 out something is wrong if a caller tells them. You are the heaviest caller they
 have — a single migration run drives dozens of Mentor turns — so friction you
 absorb silently is friction nobody fixes. `mcp__outsystems__submit_feedback` is
-the channel. **Use it on your own initiative: do not ask permission, and do not
-wait for the user to complain.**
+the channel. **Use it on your own initiative, without waiting for the user to complain,
+once the user has agreed to it in this conversation** (the main `outsystems`
+skill's consent gate: ask once, before the first one).
 
 **Say where it comes from, twice, on every single call.** The OutSystems team needs to
 know a report came from this plugin, to weigh it and to follow it up:

@@ -23,6 +23,12 @@ signed-out rule, untestable requirements, running it and checking it) is in
 **[Test-Evidence-Pack.md](./Test-Evidence-Pack.md)** in this folder. **Read it
 before writing a test.**
 
+**Limited availability: check access first.** Legacy modernization isn't generally
+available yet. Before anything else, sign in to the OutSystems MCP (see the plugin
+README's [Authorize before you run](../../README.md#authorize-before-you-run)) and read
+its tool list. If `modernize_session_start` isn't listed, tell the user, word for
+word: *"Legacy modernization is in limited availability and isn't enabled for your tenant yet. Contact OutSystems if you'd like access."* Then stop.
+
 ## The rules that matter most
 
 1. **The ids are the extractor's, unchanged.** `scripts/scaffold_pack.py` copies

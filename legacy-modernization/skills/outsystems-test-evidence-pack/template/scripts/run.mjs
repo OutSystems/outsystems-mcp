@@ -10,9 +10,14 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
-const known = new Set(
-  JSON.parse(readFileSync('requirements/requirements.json', 'utf8')).requirements.flatMap((r) => [r.id, ...(r.merged ?? [])]),
-);
+// Every id, canonical or merged, maps to its requirement's whole id group: a test is
+// tagged with the canonical id, so asking for a merged id must select it too.
+const groups = new Map();
+for (const r of JSON.parse(readFileSync('requirements/requirements.json', 'utf8')).requirements) {
+  const group = [r.id, ...(r.merged ?? [])];
+  for (const id of group) groups.set(id, group);
+}
+const known = new Set(groups.keys());
 const ids = process.argv.slice(2);
 // A test's own id (TEST-007) picks that one test; its tag is matched the same way.
 const unknown = ids.filter((id) => !known.has(id) && !/^TEST-\d{3,}$/.test(id));
@@ -33,7 +38,9 @@ for (const f of ['results.json', 'summary.json', 'traceability-matrix.html', 'tr
 // A tag ends where the id does, so REQ-001 doesn't also pick up REQ-001-V2.
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const cli = createRequire(import.meta.url).resolve('@playwright/test/cli');
-const grep = ids.length ? ['--grep', ids.map((id) => `@${escape(id)}(?![\\w.-])`).join('|')] : [];
+// A test id (TEST-007) has no group: it is its own tag.
+const tags = [...new Set(ids.flatMap((id) => groups.get(id) ?? [id]))];
+const grep = ids.length ? ['--grep', tags.map((id) => `@${escape(id)}(?![\\w.-])`).join('|')] : [];
 const run = spawnSync(process.execPath, [cli, 'test', ...grep], { stdio: 'inherit', env });
 const matrix = spawnSync(process.execPath, ['scripts/build-matrix.mjs'], { stdio: 'inherit', env });
 // Green tests with no matrix is no evidence: a failed or crashed matrix build fails the run too.

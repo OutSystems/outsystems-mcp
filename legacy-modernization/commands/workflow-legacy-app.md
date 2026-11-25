@@ -7,14 +7,26 @@ argument-hint: spec paths + target app name (optional figma URL, tenant, run slu
 # /workflow-legacy-app
 
 Same workflow id, **same node ids**, and same gate policy as `workflow-legacy-app` in
-**`app/lib/workflows.py`** (plugin-relative — `Glob` for `**/lib/workflows.py` if you
-don't know the plugin root). **That file is the source of truth: `Read` it first** and
+**`${CLAUDE_PLUGIN_ROOT}/app/lib/workflows.py`**. **That file is the source of truth: `Read` it first** and
 follow each node's `instructions` and each gate's `instructions` as written — the
 preamble's input contract, the item-granularity law, the checklist derivation and the
 verdict accounting all live there and are not restated here. This command carries only
 the delta for running **outside the app-generator chat UI**: no canvases, no in-process MCP
 servers, and the six roles as real Claude Code subagents. Design on its own, with no
 build, is `/generate-design-options`.
+
+If `${CLAUDE_PLUGIN_ROOT}` doesn't resolve (Cursor doesn't set it), `Glob` for
+`**/legacy-modernization/app/lib/workflows.py`: first in your cwd, then under the host's plugin
+directory (`~/.cursor/plugins`, `~/.claude/plugins`), since the plugin is usually
+installed outside your cwd. Read every plugin file named here under the root you find.
+
+## Limited availability
+
+**Limited availability: check access first.** Legacy modernization isn't generally
+available yet. Before anything else, sign in to the OutSystems MCP (see the plugin
+README's [Authorize before you run](../README.md#authorize-before-you-run)) and read
+its tool list. If `modernize_session_start` isn't listed, tell the user, word for
+word: *"Legacy modernization is in limited availability and isn't enabled for your tenant yet. Contact OutSystems if you'd like access."* Then stop.
 
 ## User input
 
@@ -64,7 +76,7 @@ link step below is skipped.
 | `mcp__preview__show_app` | no built-in canvas — **print the published URL**, and when this host has a canvas-equivalent surface (an IDE simple browser / preview panel, a browser MCP page, an artifact-publishing tool), **open the running app there too** so the user sees it without leaving the harness |
 | `mcp__preview__show_file` | no built-in canvas — **print the absolute path** so the user can open it, and render the artifact on the host's canvas-equivalent when one exists (e.g. publish the report as an artifact page, or open it in the IDE preview) |
 | `mcp__preview__render_pdf` | Playwright print-to-PDF, or local `mmdc`/`pandoc` via `Bash`; if neither exists, deliver the markdown and **say so** |
-| `mcp__outsystems__*` | the user's own **OutSystems MCP** — discover at runtime, call **bare** names (`mentor_start`, `mentor_get_run`, `publish_start`, `app_list`, `context_*`) |
+| `mcp__outsystems__*` | the user's own **OutSystems MCP** — discover at runtime, call **bare** names (for example `mentor_get_run`, `app_list`, `context_*`; publishing is whatever the catalog advertises) |
 | `mcp__figma__*` | the user's own **Figma MCP**, bare names (`get_design_context`, `get_metadata`, `get_variable_defs`, `use_figma`) |
 | `mcp__extractor__*` | not part of this run. If specs are missing, run `/extract-requirements` first: it extracts through the **`modernize_*`** tools on the user's OutSystems MCP |
 | `mcp__knowledge__*` | **in-app only** — the tool does not exist here. The `/create-or-update-skill-knowledge` **command DOES ship in this plugin**: offer it at the end of the run for the candidate lessons; it produces a reviewable bundle and the user opens the PR with `gh`/git |
@@ -100,6 +112,13 @@ never report PASS for behaviour you could not drive.
   applied inline; if the browser MCP truly isn't registered, record
   `NOT OBSERVABLE (tooling)` honestly and tell the user the install line. Say
   in the reports which of the two it was.
+- **A subagent's completion message is a claim about its work, not evidence of
+  it.** Before you act on a `handoff`, list the files it says it produced and
+  confirm they exist at the paths given; for a scoring handoff (`reviewer`,
+  `tester`), check a sample of its verdicts against the thing it scored. A
+  handoff can read as successful while the files it names are missing or hold
+  less than it claims: a populated report, an existing file and a file holding
+  what was claimed are three different facts.
 
 `<rev>` in every filename is the app's current published revision number.
 
@@ -146,7 +165,7 @@ never report PASS for behaviour you could not drive.
    says for `render_pdf` and `show_file`. Write one on every validator pass, including each
    loop.
 3. **`design_qa`** — **read-only** design-artifact scoring: `Task` `reviewer` with the
-   claim tables + app URL, scoring via Skill **`ui-exactness`** (claim files are the
+   claim tables + app URL, scoring via Skill **`outsystems-ui-exactness`** (claim files are the
    source of truth; screenshots are evidence). In the code-mockup medium the chosen
    option's mockup files are the design artifact — derive the claims from them and score
    the built app against them the same way. You write `design-qa-report-rev-<rev>.md`
@@ -206,7 +225,7 @@ Two gates, **separate counters**, both re-running the same step. Full text:
 | Gate | After | Passes at | Re-runs | Max re-runs |
 |---|---|---|---|---|
 | Functional | `validator` | **≥95%** of the validator's combined checklist PASS **and** ≥95% "REQs implemented" in the intermediate report | `agent` | **5** |
-| Design fidelity | `design_qa` | **≥95%** of built screens PASS `ui-exactness` claim scoring | `agent` | **5** |
+| Design fidelity | `design_qa` | **≥95%** of built screens PASS `outsystems-ui-exactness` claim scoring | `agent` | **5** |
 
 - **The functional gate's pass rate is the LOWER of** your `pass_rate_pct` and the
   intermediate report's `REQS IMPLEMENTED` percentage (when the input has a

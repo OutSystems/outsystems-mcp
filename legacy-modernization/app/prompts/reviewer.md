@@ -145,8 +145,8 @@ completeness here.
 ## Reviewing the built app (post-build) — per screen, against the design
 
 For **every** screen in the `DesignBrief` / design pack, score design parity
-**only** via Skill **`ui-exactness`**
-([UI-Exactness.md](../../skills/ui-exactness/UI-Exactness.md)):
+**only** via Skill **`outsystems-ui-exactness`**
+(its `UI-Exactness.md`, in the `outsystems` plugin):
 Gates + Component-detail checklist + Viewport policy. Claim tables are SOT;
 screenshots are evidence attachments only (no PNG↔PNG, no soft "looks close
 enough").
@@ -216,7 +216,7 @@ reviewed, each with its verdict and (on failure) the exact fixes. Emit it LAST:
   `"FAIL"`. Every `FAIL` carries a `fixes` array of specific, actionable items.
 - `suggestions` (optional, per screen) carries **non-blocking** improvement notes
   — most importantly stock OSUI patterns that would replace a hand-rolled clone
-  (**invoke Skills `ui-exactness` and `outsystems-osui-idioms`**). A screen can be
+  (**invoke Skills `outsystems-ui-exactness` and `outsystems-osui-idioms`**). A screen can be
   `PASS` and still carry suggestions; the orchestrator surfaces them to the user
   and the developer applies the ones the user wants. Reserve `fixes` for
   ship-blocking deviations; use `suggestions` for "works, but the platform pattern
