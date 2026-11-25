@@ -1,0 +1,102 @@
+/*
+ * Gives Playwright's HTML report the traceability matrix's look (the generator's Tests tab):
+ * slate surfaces, indigo accent, emerald pass, rose fail, amber skip, 8px cards, chips.
+ * build-matrix.mjs copies this beside evidence/html-report/index.html and links it after
+ * every run. It only restyles the report's own classes and Primer colour variables, so
+ * the report works the same without it. Written against Playwright 1.56 (pinned).
+ */
+:root, :root.light-mode {
+  --pack-bg: #f8fafc; --pack-surface: #fff; --pack-soft: #f1f5f9; --pack-hover: #f8fafc;
+  --pack-ink: #1e293b; --pack-ink2: #334155; --pack-muted: #64748b; --pack-faint: #94a3b8; --pack-line: #e2e8f0;
+  --pack-accent: #4f46e5; --pack-accent-ink: #4338ca; --pack-accent-bg: #eef2ff;
+  --pack-pass: #10b981; --pack-fail: #f43f5e; --pack-fail-ink: #be123c; --pack-fail-bg: #fff1f2; --pack-fail-chip: #ffe4e6;
+  --pack-warn: #d97706; --pack-warn-ink: #b45309; --pack-warn-bg: #fffbeb; --pack-teal-ink: #0f766e; --pack-teal-bg: #f0fdfa;
+}
+:root.dark-mode {
+  --pack-bg: #0f172a; --pack-surface: #111827; --pack-soft: #1e293b; --pack-hover: #172033;
+  --pack-ink: #f1f5f9; --pack-ink2: #cbd5e1; --pack-muted: #94a3b8; --pack-faint: #64748b; --pack-line: #1f2937;
+  --pack-accent: #6366f1; --pack-accent-ink: #a5b4fc; --pack-accent-bg: #1e1b4b;
+  --pack-pass: #34d399; --pack-fail: #fb7185; --pack-fail-ink: #fda4af; --pack-fail-bg: #3b0d17; --pack-fail-chip: #4c0519;
+  --pack-warn: #fbbf24; --pack-warn-ink: #fcd34d; --pack-warn-bg: #3a2a07; --pack-teal-ink: #5eead4; --pack-teal-bg: #042f2e;
+}
+:root, :root.light-mode, :root.dark-mode {
+  --color-canvas-default: var(--pack-surface); --color-canvas-subtle: var(--pack-soft); --color-canvas-inset: var(--pack-soft);
+  --color-canvas-overlay: var(--pack-surface);
+  --color-fg-default: var(--pack-ink); --color-fg-muted: var(--pack-muted); --color-fg-subtle: var(--pack-faint);
+  --color-border-default: var(--pack-line); --color-border-muted: var(--pack-soft); --color-neutral-muted: var(--pack-soft);
+  --color-accent-fg: var(--pack-accent); --color-accent-emphasis: var(--pack-accent); --color-accent-subtle: var(--pack-accent-bg);
+  --color-success-fg: var(--pack-pass); --color-danger-fg: var(--pack-fail); --color-attention-fg: var(--pack-warn);
+  --color-attention-subtle: var(--pack-warn-bg);
+  --color-btn-bg: var(--pack-surface); --color-btn-border: var(--pack-line); --color-btn-text: var(--pack-ink2);
+  --color-btn-hover-bg: var(--pack-hover); --color-btn-hover-border: var(--pack-line);
+  --color-primer-border-active: var(--pack-accent); --color-control-transparent-bg-hover: var(--pack-hover);
+}
+
+html, body { background: var(--pack-bg); }
+body, .htmlreport { font: 14px/1.5 ui-sans-serif, system-ui, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--pack-ink); }
+.htmlreport { background: var(--pack-bg); }
+
+/* The bar the theme adds on top: app name and the way back to the matrix. */
+.pack-bar { max-width: 1024px; margin: 0 auto; padding: 20px 24px 4px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pack-bar b { font-size: 15px; font-weight: 600; color: var(--pack-ink); }
+.pack-bar a { font-size: 12px; font-weight: 500; color: var(--pack-accent-ink); background: var(--pack-accent-bg); border-radius: 4px; padding: 3px 8px; text-decoration: none; }
+.pack-bar a:hover { filter: brightness(.95); }
+
+/* Search, and the All / Passed / Failed filter as count chips. */
+.subnav-search-input, .form-control { background: var(--pack-surface); border: 1px solid var(--pack-line); border-radius: 6px; box-shadow: none; }
+.subnav-search-input:focus, .form-control:focus { border-color: var(--pack-accent); box-shadow: 0 0 0 3px var(--pack-accent-bg); outline: none; }
+.subnav-item { background: var(--pack-surface); border-color: var(--pack-line); color: var(--pack-ink2); font-size: 12px; font-weight: 500; }
+.subnav-item:hover { background: var(--pack-hover); }
+.subnav-item.selected { background: var(--pack-accent); border-color: var(--pack-accent); color: #fff; }
+.subnav-item.selected .counter { background: rgba(255, 255, 255, .2); color: #fff; }
+.counter { background: var(--pack-soft); color: var(--pack-ink2); border-radius: 4px; font-weight: 500; }
+
+/* File groups and sections as the matrix's sections: an uppercase heading over cards. */
+.chip { border: 0; background: transparent; margin-bottom: 18px; }
+.chip-header { background: transparent; border: 0; padding: 0 0 6px 2px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--pack-muted); }
+.chip-header .octicon { color: var(--pack-faint); }
+.chip-body { background: transparent; border: 0; padding: 0; display: grid; gap: 6px; }
+.chip-body-no-insets { padding: 0; }
+.test-file-test, .test-result, .test-error-view, .tree-item, .metadata-view {
+  background: var(--pack-surface); border: 1px solid var(--pack-line) !important; border-radius: 8px;
+}
+.test-file-test { padding: 8px 12px; }
+.test-file-test:hover { background: var(--pack-hover); }
+.test-file-title { font-size: 14px; font-weight: 500; color: var(--pack-ink2); }
+.test-file-details-row, .test-file-path, .test-case-location, .test-case-duration, .test-case-run-duration { color: var(--pack-faint); font-size: 11px; }
+.test-file-path-link, .trace-link, .link-badge { color: var(--pack-muted); }
+.test-file-path-link:hover, .trace-link:hover, .link-badge:hover { color: var(--pack-accent-ink); }
+
+/* Status icons. */
+.color-icon-success, .test-file-test-status-icon.color-icon-success { color: var(--pack-pass) !important; }
+.color-text-danger { color: var(--pack-fail) !important; }
+.color-text-warning, .test-file-test-outcome-skipped { color: var(--pack-warn) !important; }
+
+/* Tags as the matrix's chips: requirement ids indigo and monospace, the browser slate, other tags teal. */
+.label { border: 0 !important; border-radius: 4px; font-size: 10px; font-weight: 500; padding: 1px 6px; line-height: 1.6; }
+.label, .label.pack-tag { color: var(--pack-teal-ink) !important; background: var(--pack-teal-bg) !important; }
+.label.pack-id { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--pack-accent-ink) !important; background: var(--pack-accent-bg) !important; }
+.label.pack-project { color: var(--pack-ink2) !important; background: var(--pack-soft) !important; }
+
+/* A test's page: title, tabs, errors and steps. */
+.test-case-path { color: var(--pack-muted); font-size: 12px; }
+.test-case-title, .test-case-column h1 { color: var(--pack-ink); font-weight: 600; }
+.tabbed-pane-tab-strip { border-bottom: 1px solid var(--pack-line); }
+.tabbed-pane-tab-element.selected { border-bottom-color: var(--pack-accent) !important; color: var(--pack-ink); }
+.tabbed-pane-tab-element { color: var(--pack-muted); }
+.expandable-summary, .test-result > .chip > .chip-header { color: var(--pack-muted); }
+.test-error-view { background: var(--pack-fail-bg); border-color: transparent !important; }
+.test-error-text, .test-error-view pre { color: var(--pack-fail-ink); font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace; background: transparent; }
+.test-error-container { background: transparent; }
+.tree-item { border: 0 !important; border-radius: 4px; background: transparent; }
+.tree-item-title:hover { background: var(--pack-hover); border-radius: 4px; }
+.tree-item-title { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--pack-ink2); }
+.pack-kw { color: #7c3aed; font-weight: 600; }
+:root.dark-mode .pack-kw { color: #c4b5fd; }
+.attachment-body, .screenshot { border-radius: 4px; border: 1px solid var(--pack-line); }
+.metadata-view { padding: 10px 12px; color: var(--pack-muted); }
+.header-view { border-bottom: 0; }
+.header-superheader, .header-view-status-container { color: var(--pack-faint); }
+.button, button.button { background: var(--pack-surface); border: 1px solid var(--pack-line); border-radius: 6px; color: var(--pack-ink2); }
+.button:hover { background: var(--pack-hover); }
+a { color: var(--pack-accent); }
