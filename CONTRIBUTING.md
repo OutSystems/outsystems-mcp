@@ -317,8 +317,10 @@ The second plugin in both marketplaces has a version of its own, independent of 
 - `legacy-modernization/.claude-plugin/plugin.json` → `version`
 - `legacy-modernization/.cursor-plugin/plugin.json` → `version`
 - `legacy-modernization/skills/legacy-requirements-extraction/SKILL.md` → the "Plugin version of this copy" line, which the skill compares with the released version to tell the user when their copy is older
+- the `legacy-modernization` entry of `.claude-plugin/marketplace.json` → `version`
+- the `legacy-modernization` entry of `.cursor-plugin/marketplace.json` → `version`
 
-and the `legacy-modernization` entry of both `marketplace.json` files. `.github/tests/plugin-version-lockstep.test.sh` checks them against the source. A PR that changes a file under `legacy-modernization/` raises this version, not the `outsystems` one: `.github/tests/plugin-version-bump.sh` fails it otherwise. The same SemVer rules apply.
+`.github/tests/plugin-version-lockstep.test.sh` checks them against the source. A PR that changes a file under `legacy-modernization/` raises this version, not the `outsystems` one: `.github/tests/plugin-version-bump.sh` fails it otherwise. The same SemVer rules apply.
 
 ## License
 
