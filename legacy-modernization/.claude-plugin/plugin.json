@@ -1,0 +1,20 @@
+{
+  "name": "legacy-modernization",
+  "displayName": "OutSystems Legacy Modernization",
+  "version": "3.0.0",
+  "description": "[Limited availability] Modernize legacy applications onto OutSystems on a live ODC tenant: extract the requirements from legacy sources (/extract-requirements), design the replacement app (/generate-design-options), build and verify it (/workflow-legacy-app), the migration close-out documents, the test evidence pack, a toolkit overview (/how-it-works), and the planner, designer, developer, reviewer, tester and reporter roles. Uses the outsystems plugin's MCP server and its Mentor build skills.",
+  "author": {
+    "name": "OutSystems"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/OutSystems/outsystems-mcp",
+  "repository": "https://github.com/OutSystems/outsystems-mcp",
+  "keywords": [
+    "outsystems",
+    "odc",
+    "mentor",
+    "legacy-migration",
+    "legacy-modernization",
+    "requirements-extraction"
+  ]
+}
