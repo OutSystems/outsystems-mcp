@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 build.py — build the tenant-architecture HTML from MCP responses.
 
@@ -300,7 +299,7 @@ def _cache_dir_command(argv) -> int:
 
 
 # Small read-only helpers, so the skill's steps run as this script (the one
-# command its allowed-tools grant) instead of model-written `python3 -c`.
+# command the skill doc names) instead of model-written `python3 -c`.
 PEEK_MAX = 5000
 
 
