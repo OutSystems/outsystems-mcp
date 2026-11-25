@@ -185,7 +185,8 @@ skill doc, to the README, to the Claude plugin's hook, or to a file that
 carries the plugin version.
 `skills-tests.yml` runs one of its suites, `skill-platform-check.test.sh`, on
 its own, on pull requests that touch the skill docs, the README, `lib.sh` or
-that suite; the same workflow also runs the Beta skills' Python suites.
+that suite; the same workflow also runs the Beta skills' Python suites and
+the legacy-modernization plugin's script suites.
 `plugin-version.yml` runs `plugin-version-lockstep.test.sh` on its own on
 every pull request and on every push to `main`. On every pull request, it
 also runs `plugin-version-bump.test.sh` and then `plugin-version-bump.sh`.
@@ -260,13 +261,18 @@ the suites pin down:
   output. Each script must reject a value with a character outside SemVer,
   and the `sh` script must read a manifest of 3000 objects in under 10 s.
   The PowerShell script runs when `powershell` or `pwsh` is on PATH, else
-  its checks report a skip. A self-test proves that each check fails on a
-  mutated copy.
+  its checks report a skip. The `legacy-modernization` plugin's version,
+  in its two manifests, its marketplace entries and its extraction skill's
+  "Plugin version of this copy" line, agrees with
+  `legacy-modernization/.claude-plugin/plugin.json`. A self-test proves
+  that each check fails on a mutated copy.
 - `plugin-version-bump.test.sh` - `plugin-version-bump.sh` fails a pull
   request that changes a file under `claude/`, `cursor/` or
   `kiro/outsystems/` and does not raise the version by SemVer precedence,
-  pre-release and build metadata included. A change elsewhere, or a bump
-  alone, passes.
+  pre-release and build metadata included, and one that changes a file
+  under `legacy-modernization/` without raising that plugin's own
+  version. A new plugin needs only a SemVer version. A change elsewhere,
+  or a bump alone, passes.
 - `status-watcher-hook.test.sh` - the Claude plugin's status-watcher
   hook, run from the command in `claude/hooks/hooks.json` under `sh -c`
   with `CLAUDE_PLUGIN_ROOT` set and the working directory outside the
