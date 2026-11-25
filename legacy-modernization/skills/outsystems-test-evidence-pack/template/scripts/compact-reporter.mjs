@@ -97,5 +97,8 @@ export default class CompactReporter {
       lines.push(`INCOMPLETE (${run.status}): ${ran} test(s) reported; the run ended before the rest.`);
     }
     console.log(lines.join('\n'));
+    // Exit as the verdict reads: a test.fail() test whose body failed is 'expected' to Playwright,
+    // which would exit 0 although a screen is broken.
+    return failing ? { status: 'failed' } : undefined;
   }
 }

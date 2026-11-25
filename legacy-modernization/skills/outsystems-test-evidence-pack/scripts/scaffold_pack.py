@@ -89,8 +89,18 @@ def merge(fresh: List[dict], existing: dict) -> Tuple[List[dict], List[str]]:
     return out, dropped
 
 
-def fill(text: str, values: Dict[str, str]) -> str:
+def fill(text: str, values: Dict[str, str], suffix: str = "") -> str:
+    """The template with each `{{KEY}}` replaced, escaped for the file it lands in.
+
+    A `.json` file gets a JSON string body, a `.ts`/`.js` file a single-quoted JavaScript string
+    body, so an app name like `Orders "EU"` or `O'Brien` still makes a valid package.json and config.
+    """
     for key, value in values.items():
+        if suffix == ".json":
+            value = json.dumps(value, ensure_ascii=False)[1:-1]
+        elif suffix in (".ts", ".js", ".mjs"):
+            value = (value.replace("\\", "\\\\").replace("'", "\\'")
+                     .replace("\n", "\\n").replace("\r", "\\r"))
         text = text.replace("{{" + key + "}}", value)
     return text
 
@@ -203,7 +213,7 @@ def main(argv: List[str] = None) -> int:
             except UnicodeDecodeError:
                 shutil.copyfile(source, dest)
                 continue
-            filled = fill(text, values)
+            filled = fill(text, values, dest.suffix)
             write_lf(dest, filled)
 
     target.parent.mkdir(parents=True, exist_ok=True)

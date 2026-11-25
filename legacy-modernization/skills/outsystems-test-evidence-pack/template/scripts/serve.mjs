@@ -60,8 +60,10 @@ async function rerun(total, ids) {
     // npm_execpath is set when this was started with npm start; the npm CLI is a Node script.
     const npm = process.env.npm_execpath;
     code = npm ? await step(npm, ['ci', '--no-audit', '--no-fund']) : (say('Run npm ci once in this folder, then try again.'), 1);
-    if (code === 0) code = await step(path.join('node_modules', '@playwright', 'test', 'cli.js'), ['install', 'chromium']);
   }
+  // Every run, not only the first: a browser download that failed (or a manual npm ci) is
+  // retried here, and an installed browser makes this a quick check.
+  if (code === 0) code = await step(path.join('node_modules', '@playwright', 'test', 'cli.js'), ['install', 'chromium']);
   if (code === 0 && !existsSync('.env') && existsSync('.env.example')) {
     copyFileSync('.env.example', '.env');
     say('Created .env from .env.example.');
@@ -76,7 +78,12 @@ const server = createServer((req, res) => {
   // at 127.0.0.1 gets nothing.
   const host = req.headers.host ?? '';
   if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host)) return res.writeHead(403).end();
-  const url = new URL(req.url, `http://${host}`);
+  let url;
+  try {
+    url = new URL(req.url, `http://${host}`);
+  } catch {
+    return res.writeHead(400).end('Bad request path.');
+  }
 
   if (url.pathname === '/api/status') {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });

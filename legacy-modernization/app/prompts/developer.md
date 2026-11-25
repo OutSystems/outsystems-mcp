@@ -964,9 +964,8 @@ canvas Tests tab.
     all of its tests, and for a rename save them again for the new screen. Never delete a test
     to get past a screen that broke: fix the screen.
 - **Every test you save passes: the build ends 100% green.** A screen is done, a build is
-  done and the report goes out only when the last `run_screen_tests` (and any
-  `testing_run` you cite) shows 0 `FAIL`, 0 flaky and 0 skipped: 24 of 24 passed, never 22 of
-  24.
+  done and the report goes out only when the last `run_screen_tests` shows 0 `FAIL`, 0 flaky
+  and 0 skipped: 24 of 24 passed, never 22 of 24.
   - **Fix the screen, not the test.** Never get to green by deleting a test, dropping or
     weakening a step (an `is visible` in place of a check on the loaded data, a looser text),
     or by running only the tests that pass. Change a test only when the screen changed on

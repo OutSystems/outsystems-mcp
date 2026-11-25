@@ -129,6 +129,16 @@ class ScaffoldTest(Base):
         self.assertEqual(scripts["start"], "node scripts/serve.mjs")
         self.assertEqual(scripts["handover"], "node scripts/handover.mjs")
 
+    def test_values_are_escaped_for_the_file_they_land_in(self):
+        args = [str(self.extraction), str(self.pack), "--app-name", 'Orders "EU" O\'Brien',
+                "--base-url", "https://tenant.example/O'Brien/"]
+        code, _ = quiet(scaffold_pack.main, args)
+        self.assertEqual(code, 0)
+        package = json.loads((self.pack / "package.json").read_text(encoding="utf-8"))
+        self.assertIn('Orders "EU" O\'Brien', package["description"])
+        config = (self.pack / "playwright.config.ts").read_text(encoding="utf-8")
+        self.assertIn("'https://tenant.example/O\\'Brien'", config)
+
     def test_refuses_to_overwrite_a_pack(self):
         self.scaffold()
         code, out = self.scaffold()
@@ -698,6 +708,7 @@ class MatrixTest(Base):
             return conn.getresponse().status
 
         self.assertEqual(status("GET", "/%E0%A4%A"), 400)
+        self.assertEqual(status("GET", "//["), 400)
         self.assertEqual(status("GET", "/api/status", host="evil.example"), 403)
         self.assertEqual(status("POST", "/api/run"), 403)
         self.assertEqual(status("GET", "/..%2fpackage.json"), 403)
@@ -927,6 +938,19 @@ r.onEnd({ status: 'passed' });
         self.assertEqual(lines, ["Screen tests: 1/2 PASS, 1 FAIL.",
                                  "FAIL Orders › lists orders (marked test.fail()): Error: boom",
                                  "PASS 1/2: Orders › approves"])
+
+    def test_the_reporter_fails_the_run_when_it_reports_a_failure(self):
+        # Playwright takes onEnd's returned status as the run's, so the exit code agrees with the verdict.
+        out = self.report("""
+r.onTestEnd(t('1', 'Orders', 'lists orders', 'expected'), { status: 'failed', steps: [], attachments: [], error: { message: 'boom' } });
+console.log('RESULT', JSON.stringify(r.onEnd({ status: 'passed' }) ?? null));
+""")
+        self.assertIn('RESULT {"status":"failed"}', out)
+        out = self.report("""
+r.onTestEnd(t('1', 'Orders', 'lists orders', 'expected'), { status: 'passed', steps: [], attachments: [] });
+console.log('RESULT', JSON.stringify(r.onEnd({ status: 'passed' }) ?? null));
+""")
+        self.assertIn("RESULT null", out)
 
     def test_the_pass_line_stays_short_however_many_tests_pass(self):
         [verdict, line] = self.report("""
