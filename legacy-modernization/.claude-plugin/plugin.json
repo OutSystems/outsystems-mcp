@@ -16,5 +16,7 @@
     "legacy-migration",
     "legacy-modernization",
     "requirements-extraction"
-  ]
+  ],
+  "skills": "./skills/",
+  "commands": "./commands/"
 }

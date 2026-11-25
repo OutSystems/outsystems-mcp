@@ -6,5 +6,6 @@
     "name": "OutSystems"
   },
   "license": "MIT",
-  "displayName": "OutSystems Legacy Modernization"
+  "displayName": "OutSystems Legacy Modernization",
+  "skills": "./skills/"
 }
