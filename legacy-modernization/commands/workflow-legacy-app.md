@@ -79,10 +79,9 @@ link step below is skipped.
 | `mcp__outsystems__*` | the user's own **OutSystems MCP** — discover at runtime, call **bare** names (for example `mentor_get_run`, `app_list`, `context_*`; publishing is whatever the catalog advertises) |
 | `mcp__figma__*` | the user's own **Figma MCP**, bare names (`get_design_context`, `get_metadata`, `get_variable_defs`, `use_figma`) |
 | `mcp__extractor__*` | not part of this run. If specs are missing, run `/extract-requirements` first: it extracts through the **`modernize_*`** tools on the user's OutSystems MCP |
-| `mcp__knowledge__*` | **in-app only** — the tool does not exist here. The `/create-or-update-skill-knowledge` **command DOES ship in this plugin**: offer it at the end of the run for the candidate lessons; it produces a reviewable bundle and the user opens the PR with `gh`/git |
 
 Never hunt for an `mcp__preview__*` / `mcp__plan__*` / `mcp__workflow__*` /
-`mcp__extractor__*` / `mcp__knowledge__*` tool — they exist only inside the app. When a
+`mcp__extractor__*` tool — they exist only inside the app. When a
 *substitute* is also missing: degrade and **tell the user**, never silently skip and
 never report PASS for behaviour you could not drive.
 

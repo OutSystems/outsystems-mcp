@@ -58,7 +58,7 @@ wait to be explicitly asked to design, and don't jump straight into building.
 
 | Flow | Options | Pick |
 |---|---|---|
-| `/outsystems-app-generation`, or any plain "build me an app" request | **ONE** | none — show it and keep going |
+| A plain "build me an app" request | **ONE** | none — show it and keep going |
 | `/workflow-legacy-app`, `/extract-requirements` → migration | **~3** | **stop and wait for the user to pick** |
 | The user explicitly asks to choose / compare / see alternatives | ~3 | stop and wait |
 

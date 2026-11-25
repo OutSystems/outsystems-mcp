@@ -1,7 +1,7 @@
 ---
 name: legacy-requirements-extraction
 description: >-
-  Extract a requirements spec collection (13 domain slices, manifest.json, requirements.json and a Business Spec) from a legacy application's source code (Lotus Notes .dxl, AB Suite .pmodel, MS Access, AS/400 (DDS, RPG and CL source), AS/400 with CA 2E / Synon model exports, COBOL, Java, .NET or Node.js) through the modernize_* tools on the user's OutSystems MCP. Use whenever the user points at legacy source and asks to extract, generate, derive or write its specs, requirements, business specification, documentation or "what the app does", or to analyse it before a migration, even if they never type /extract-requirements. Not for: building a new app from a brief -> outsystems-app-generation; an already-extracted spec collection to build from -> the /workflow-legacy-app command.
+  Extract a requirements spec collection (13 domain slices, manifest.json, requirements.json and a Business Spec) from a legacy application's source code (Lotus Notes .dxl, AB Suite .pmodel, MS Access, AS/400 (DDS, RPG and CL source), AS/400 with CA 2E / Synon model exports, COBOL, Java, .NET or Node.js) through the modernize_* tools on the user's OutSystems MCP. Use whenever the user points at legacy source and asks to extract, generate, derive or write its specs, requirements, business specification, documentation or "what the app does", or to analyse it before a migration, even if they never type /extract-requirements. Not for: building a new app from a brief or a design, with no legacy source -> outsystems-spec-driven-build or outsystems-design-to-app (outsystems plugin); an already-extracted spec collection to build from -> the /workflow-legacy-app command.
 license: MIT
 compatibility: Any Agent Skills host with an OutSystems MCP whose tenant is enabled for legacy extraction (the modernize_* tools). Needs a shell to zip a source tree and HTTP PUT a presigned upload. No scripts — pure guidance.
 allowed-tools: Read Glob Bash Write Skill TodoWrite mcp__outsystems__auth_status mcp__plugin_outsystems_outsystems__auth_status mcp__outsystems__authenticate mcp__plugin_outsystems_outsystems__authenticate mcp__outsystems__modernize_session_start mcp__plugin_outsystems_outsystems__modernize_session_start mcp__outsystems__modernize_upload_url_create mcp__plugin_outsystems_outsystems__modernize_upload_url_create mcp__outsystems__modernize_source_upload mcp__plugin_outsystems_outsystems__modernize_source_upload mcp__outsystems__modernize_run_start mcp__plugin_outsystems_outsystems__modernize_run_start mcp__outsystems__modernize_run_get mcp__plugin_outsystems_outsystems__modernize_run_get mcp__outsystems__modernize_session_close mcp__plugin_outsystems_outsystems__modernize_session_close
@@ -24,7 +24,7 @@ reading the code and writing the spec yourself.
 |---|---|
 | Legacy source code (a tree, a zip, a `.dxl`) and wants its specs or requirements | **this skill** |
 | A spec collection that is already extracted, to build from | the `/workflow-legacy-app` command |
-| A request or brief for a new app, no legacy source | Skill `outsystems-app-generation` |
+| A request, brief or design for a new app, no legacy source | the `outsystems` plugin's Skill `outsystems-spec-driven-build` (a written brief) or `outsystems-design-to-app` (a design) |
 
 When the plugin's `extract-requirements` command is installed, **follow its
 steps exactly** (`detect`, `extract`, `review`, `report`, and its gate): it is

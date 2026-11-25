@@ -29,10 +29,11 @@ Two files in this folder help:
 
 ## Steps
 
-1. **Find the plugin root.** It's the folder holding `plugin.json` with
-   `"name": "legacy-modernization"`. This skill sits two levels below it, in
+1. **Find the plugin root.** It's `${CLAUDE_PLUGIN_ROOT}` on Claude Code: the
+   folder whose `.claude-plugin/plugin.json` (or `.cursor-plugin/plugin.json`)
+   has `"name": "legacy-modernization"`. This skill sits two levels below it, in
    `skills/legacy-modernization-overview/`. Some installs copy only the skill
-   folders (Codex, Kiro, a hand-wired Cursor), so there is no `plugin.json`
+   folders (Codex, Kiro, a hand-wired Cursor), so there is no plugin manifest
    above them. In that case, treat the folder that holds this skill's folder
    as the root, and take what you can't read there from
    `references/overview.md` (the skills-only case in step 2).
@@ -40,7 +41,7 @@ Two files in this folder help:
 
    | Fact on the page | Read it from |
    |---|---|
-   | Skills and what each does | every `skills/*/SKILL.md` except the presenter tool below: its `name` and the job in its `description` |
+   | Skills and what each does | every `skills/*/SKILL.md` except the presenter tool below: its `name` and the job in its `description`. The Design, Build and Fix skills the roles use ship in the `outsystems` plugin, not here: take them from `overview.md`'s "Which skill" table (the rows it marks `outsystems`), and keep one only when it's available in this session |
    | Commands and what each does | every `commands/*.md` except the presenter tool below: the file name and its `description` |
    | Specialist roles and their count | every `agents/*.md` |
    | Gate thresholds and fix rounds | `app/lib/workflows.py`: `PASS_THRESHOLD_PCT`, `DESIGN_PASS_THRESHOLD_PCT`, `MAX_RERUNS` |
@@ -180,6 +181,9 @@ Rules for the content:
   why. The KPI note and the legend say so in a few words.
 - **Languages other than Lotus Notes are "Per tenant".** Never mark one as
   available on the user's tenant.
+- **Limited availability.** Until general availability, the yellow "What it
+  needs" note says access is per tenant and is requested from OutSystems, and
+  so does any chat answer about running the toolkit.
 
 ## Look
 
@@ -246,8 +250,8 @@ its script; the template already wires it.
   from the template.
 - The skills and commands on the page are exactly the ones that ship: the
   same count as `skills/*/SKILL.md` (minus this skill and every skill whose
-  name ends with `-demo`) and `commands/*.md` (minus every command whose name
-  ends with `-demo`).
+  name ends with `-demo`) plus the `outsystems` plugin skills kept in step 2,
+  and `commands/*.md` (minus every command whose name ends with `-demo`).
   In a skills-only install, the skills are the ones `overview.md` lists that
   are present, and the commands are the ones `overview.md` lists.
 - Look at the rendered page once if the host can show it. Check that no label

@@ -89,7 +89,10 @@ checked and resumed.
 
 - An OutSystems Developer Cloud tenant with Mentor available to the AI agent,
   reached through the OutSystems MCP server.
-- Legacy extraction enabled on that tenant for the source language. Lotus
+- The `outsystems` plugin installed beside this one: its MCP server reaches the
+  tenant, and the Design, Build and Fix skills under "Which skill" ship in it.
+- Access on that tenant: legacy modernization is in limited availability, and
+  access is per tenant, requested from OutSystems. Once a tenant has it, Lotus
   Notes is on by default; other languages are enabled on request.
 - A frontier AI model for generation. Smaller models finish too, with more
   cleanup.
@@ -119,8 +122,6 @@ Either way, the agent runs that workflow with the skills below.
 | `/extract-requirements` | Turn legacy source into requirements: publishes the requirements collection and the Business Specification, every item cited to its source lines. |
 | `/generate-design-options` | Design the migration only: about three options, a pause for a pick, then the design gate on the picked option. Does not build or publish. |
 | `/workflow-legacy-app` | Run a full migration: design options and the user's pick, the build on the tenant, both 95% gates with their fix rounds, then the Implementation Report and the re-runnable test toolkit. |
-| `/outsystems-app-generation` | Build something new from a brief: one design, a build in small published steps, a test after each one. |
-| `/create-or-update-skill-knowledge` | Keep what a project taught: turns the lessons from a finished run into proposed skill updates, for a person to review. |
 | `/how-it-works` | This explanation, or the answer to one question about the toolkit. |
 
 ## Which skill
@@ -128,21 +129,22 @@ Either way, the agent runs that workflow with the skills below.
 Each skill is a playbook the agent loads when the work calls for it,
 including the traps that pass every visible check and still break.
 
-| Stage | Skill | What it covers |
-|---|---|---|
-| Extract | `legacy-requirements-extraction` | legacy source into requirements and a Business Specification |
-| Design | `figma-design-source` | colours, spacing and geometry from Figma |
-| Design | `ui-exactness` | built screens measurably faithful to the design |
-| Design | `outsystems-osui-idioms` | standard OutSystems UI blocks before custom styling |
-| Build | `outsystems-app-build` | data, seed, screens, publish and verify |
-| Build | `outsystems-app-generation` | a new app from a short brief |
-| Build | `outsystems-ui-recipes` | sorting, paging, filters, wizards, languages |
-| Build | `outsystems-agentic-app` | an in-app AI assistant on the app's own data |
-| Fix | `outsystems-block-editing` | shared navigation, header and footer |
-| Fix | `outsystems-css-theming` | why a style shows nothing, fixed at the cause |
-| Fix | `outsystems-auth-and-deploy` | real sign-in and deploy failures with no visible cause |
-| Prove | `outsystems-test-evidence-pack` | the re-runnable test toolkit: one browser test per requirement |
-| Prove | `outsystems-handover-docs` | Business Specification and Implementation Report |
+The Design, Build and Fix skills ship in the `outsystems` plugin; the others
+ship in this one.
+
+| Stage | Skill | Ships in | What it covers |
+|---|---|---|---|
+| Extract | `legacy-requirements-extraction` | legacy-modernization | legacy source into requirements and a Business Specification |
+| Design | `outsystems-figma-design-source` | outsystems | colours, spacing and geometry from Figma |
+| Design | `outsystems-ui-exactness` | outsystems | built screens measurably faithful to the design |
+| Design | `outsystems-osui-idioms` | outsystems | standard OutSystems UI blocks before custom styling |
+| Build | `outsystems-app-build` | outsystems | data, seed, screens, publish and verify |
+| Build | `outsystems-ui-recipes` | outsystems | sorting, paging, filters, wizards, languages |
+| Fix | `outsystems-block-editing` | outsystems | shared navigation, header and footer |
+| Fix | `outsystems-css-theming` | outsystems | why a style shows nothing, fixed at the cause |
+| Fix | `outsystems-auth-and-deploy` | outsystems | real sign-in and deploy failures with no visible cause |
+| Prove | `outsystems-test-evidence-pack` | legacy-modernization | the re-runnable test toolkit: one browser test per requirement |
+| Prove | `outsystems-handover-docs` | legacy-modernization | Business Specification and Implementation Report |
 
 ## Licence
 

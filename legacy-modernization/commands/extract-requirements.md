@@ -12,9 +12,14 @@ triggers on its own whenever the user asks for the specs or requirements of some
 source code. Either way, run the steps below.
 
 The same workflow id, step order and gate as `extract-requirements` in
-[`app/lib/workflows.py`](../app/lib/workflows.py), which stays the **source of truth** for the
+**`${CLAUDE_PLUGIN_ROOT}/app/lib/workflows.py`**, which stays the **source of truth** for the
 full node text — read it there if a step below is ambiguous. This file records only what
 differs when you run in plain Claude Code instead of inside the app-generator chat UI.
+
+If `${CLAUDE_PLUGIN_ROOT}` doesn't resolve (Cursor doesn't set it), `Glob` for
+`**/legacy-modernization/app/lib/workflows.py`: first in your cwd, then under the host's plugin
+directory (`~/.cursor/plugins`, `~/.claude/plugins`), since the plugin is usually
+installed outside your cwd. Read every plugin file named here under the root you find.
 
 ## Limited availability
 

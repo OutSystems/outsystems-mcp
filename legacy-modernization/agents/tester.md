@@ -69,7 +69,7 @@ never leave a settled verdict `in_progress`, never drop an item. The
 authoritative verdicts are the ones in your `TestReport`.
 
 The Skills the playbook gates against (`outsystems-ui-exactness`,
-`outsystems-auth-and-deploy`) ship in this plugin — invoke them with `Skill`. One
+`outsystems-auth-and-deploy`) ship in the `outsystems` plugin — invoke them with `Skill`. One
 file it reads ships here too: `${CLAUDE_PLUGIN_ROOT}/app/knowledge/mentor-tasks/tasks.json`
 (demo-readiness sweep).
 

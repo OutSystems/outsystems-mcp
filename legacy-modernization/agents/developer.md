@@ -55,10 +55,12 @@ The playbook's "Reach screen tests only through the `mcp__tests__*` tools, never
 writing their files" is the in-app rule. Here the files are the tests: read and write
 `tests/screens/<Screen>.spec.ts` directly.
 
-The Skills the playbook invokes all ship in this plugin — call them with `Skill`,
-unchanged: `outsystems-ui-exactness`, `outsystems-osui-idioms`, `outsystems-css-theming`,
-`outsystems-block-editing`, `outsystems-auth-and-deploy`, `outsystems-handover-docs`.
-`outsystems-app-build` and `outsystems-ui-recipes` are already preloaded above.
+Call the Skills the playbook invokes with `Skill`, unchanged. `outsystems-handover-docs`
+ships in this plugin. `outsystems-ui-exactness`, `outsystems-osui-idioms`,
+`outsystems-css-theming`, `outsystems-block-editing` and `outsystems-auth-and-deploy` ship in
+the `outsystems` plugin, as do `outsystems-app-build` and `outsystems-ui-recipes`, which are
+already preloaded above. If one of them isn't in your context, say so in your handoff rather
+than guessing its rules.
 
 ## The plan: TodoWrite instead of the plan canvas
 

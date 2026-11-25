@@ -14,6 +14,21 @@ Mentor, or publish.
 Building the chosen design is `/workflow-legacy-app`, with the same spec paths and the
 chosen design passed in as the supplied design (see "After the pick").
 
+Every plugin file named here (`commands/`, `agents/`, `app/prompts/`) is under
+`${CLAUDE_PLUGIN_ROOT}`.
+If `${CLAUDE_PLUGIN_ROOT}` doesn't resolve (Cursor doesn't set it), `Glob` for
+`**/legacy-modernization/commands/generate-design-options.md`: first in your cwd, then under the host's plugin
+directory (`~/.cursor/plugins`, `~/.claude/plugins`), since the plugin is usually
+installed outside your cwd. Read every plugin file named here under the root you find.
+
+## Limited availability
+
+**Limited availability: check access first.** Legacy modernization isn't generally
+available yet. Before anything else, sign in to the OutSystems MCP (see the plugin
+README's [Authorize before you run](../README.md#authorize-before-you-run)) and read
+its tool list. If `modernize_session_start` isn't listed, tell the user, word for
+word: *"Legacy modernization is in limited availability and isn't enabled for your tenant yet. Contact OutSystems if you'd like access."* Then stop.
+
 ## User input
 
 ```text
@@ -33,7 +48,7 @@ happen. (To build a design you already have, skip this command and pass it to
 
 - **Frontier model recommended.** If this session is not already on the strongest
   model the harness offers, say so once. Do not refuse a cheaper model.
-- **No OutSystems MCP is required.** This command does not build.
+- **It does not build.** The OutSystems MCP is needed only for the access check above.
 - **Design medium.** A Figma MCP is used when one is already connected. When it is
   not, the same three options are HTML/CSS mockups, one directory per option. Do not
   register a new server. The host substitutions are the table in
@@ -79,6 +94,6 @@ Re-emit this block on every transition:
   three screens the option drew. Its `designer` role shows a supplied design rather than
   generating new options (`agents/designer.md`, and "Show a pasted design" in
   `app/prompts/designer.md`), and draws the remaining screens in the chosen direction.
-- `/outsystems-app-generation` is the light path for a new app from a brief. It sends an
-  extracted spec collection to `/workflow-legacy-app` (its own description says so), so
-  don't use it to build from these specs.
+- The `outsystems` plugin's `outsystems-design-to-app` and `outsystems-spec-driven-build`
+  build from a design or a written spec with no legacy context. They don't score the build
+  against the extracted requirements, so don't use them to build from these specs.

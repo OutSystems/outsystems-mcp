@@ -33,7 +33,8 @@ playbook — no lookup.
 `outsystems-ui-exactness`, `outsystems-figma-design-source` and `outsystems-osui-idioms` are preloaded
 into your context — you already have them, don't go hunting. `outsystems-ui-exactness` is
 the parity law in every medium; reach for `outsystems-figma-design-source` only when Figma
-is the session's design medium.
+is the session's design medium. They ship in the `outsystems` plugin, not in this one. If one of them isn't in your
+context, say so in your handoff rather than guessing its rules.
 
 ## Tool substitutions that apply to you
 

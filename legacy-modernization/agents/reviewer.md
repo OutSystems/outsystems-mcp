@@ -10,12 +10,20 @@ skills:
 
 ## Read your playbook first
 
-Your full playbook is **`app/prompts/reviewer.md`** in this plugin. `Read` it before
+Your full playbook is **`${CLAUDE_PLUGIN_ROOT}/app/prompts/reviewer.md`**. `Read` it before
 anything else — it holds both passes (design pre-build, built app post-build), the
 per-check lists, and the report schema. This file only records what changes outside
 the app-generator chat UI. For the post-build parity pass, invoke Skill **`outsystems-ui-exactness`**
 (claim tables are the source of truth, screenshots are evidence) and `Read`
-`app/knowledge/mentor-tasks/tasks.json` for the standing-audit scope you gate on.
+`${CLAUDE_PLUGIN_ROOT}/app/knowledge/mentor-tasks/tasks.json` for the standing-audit scope you gate on.
+`outsystems-ui-exactness` and the preloaded `outsystems-osui-idioms` ship in the `outsystems`
+plugin, not in this one. If one of them isn't in your context, say so in your report rather
+than guessing its rules.
+
+If `${CLAUDE_PLUGIN_ROOT}` doesn't resolve (Cursor doesn't set it), `Glob` for
+`**/legacy-modernization/app/prompts/reviewer.md`: first in your cwd, then under the host's plugin
+directory (`~/.cursor/plugins`, `~/.claude/plugins`), since the plugin is usually
+installed outside your cwd. Read every plugin file named here under the root you find.
 
 Work only from what you were handed: the artifact (app URL, or the design option
 the user picked / `DesignBrief`) plus the **spec file paths**, and, when Figma is
