@@ -258,8 +258,7 @@ class CheckReportIdsTest(unittest.TestCase):
     def test_capability_ids_from_the_brief(self) -> None:
         report = GOOD.replace("| IN-01 |", "| CAP-01 |")
         self.assertFlags(report, "cites CAP-01")
-        brief = self.dir / "brief.md"
-        brief.write_text("| CAP-01 | Capture an order | REQ-001 | NewOrder |\n", encoding="utf-8")
+        brief = self.with_capabilities(report, "| CAP-01 | Capture an order | REQ-001 | NewOrder |\n")
         self.assertEqual(self.run_check(report, [brief]), [])
 
     def test_respelling_in_another_row_cell(self) -> None:
@@ -268,8 +267,7 @@ class CheckReportIdsTest(unittest.TestCase):
 
     def test_brief_respelling_is_not_admitted(self) -> None:
         report = GOOD.replace("REQ-001 and REQ-002 are built", "REQ-01 and REQ-002 are built")
-        brief = self.dir / "brief.md"
-        brief.write_text("| CAP-01 | Capture an order | REQ-01 | NewOrder |\n", encoding="utf-8")
+        brief = self.with_capabilities(report, "| CAP-01 | Capture an order | REQ-01 | NewOrder |\n")
         problems = self.run_check(report, [brief])
         self.assertTrue(any("respells spec id REQ-001 as REQ-01" in p for p in problems), problems)
 
@@ -328,9 +326,8 @@ class CheckReportIdsTest(unittest.TestCase):
 
     def test_brief_admits_only_capability_ids(self) -> None:
         report = GOOD.replace("| IN-01 |", "| FR-900 |")
-        brief = self.dir / "brief.md"
-        brief.write_text("| FR-900 | Invented | REQ-001 | NewOrder |\n| CAP-01 | Capture | REQ-001 | NewOrder |\n",
-                         encoding="utf-8")
+        brief = self.with_capabilities(GOOD.replace("| IN-01 |", "| CAP-01 |"), "| FR-900 | Invented | REQ-001 | NewOrder |\n"
+                                             "| CAP-01 | Capture | REQ-001 | NewOrder |\n")
         self.assertTrue(any("cites FR-900" in p for p in self.run_check(report, [brief])))
         self.assertEqual(self.run_check(GOOD.replace("| IN-01 |", "| CAP-01 |"), [brief]), [])
 
@@ -562,6 +559,12 @@ class CheckReportIdsTest(unittest.TestCase):
         # The running number is not a spec id, so it never reads as a respelling of REQ-001.
         self.assertFalse(any("respells" in p for p in self.run_check(GOOD)))
 
+    def with_capabilities(self, report: str, rows: str) -> Path:
+        """A brief whose section 5 matches `report`, plus a capability table after it."""
+        brief = self.write_brief(report)
+        brief.write_text(brief.read_text(encoding="utf-8") + "\n## 6. Capabilities\n\n" + rows, encoding="utf-8")
+        return brief
+
     def write_brief(self, report: str) -> Path:
         """A Business Brief whose section 5 is the report's numbered table, minus the build columns."""
         rows = [line for line in report.split("## A.")[0].split("### Additions")[0].splitlines()
@@ -588,6 +591,21 @@ class CheckReportIdsTest(unittest.TestCase):
         longer = self.write_brief(with_rule(GOOD, "BR-418"))
         self.assertTrue(any("lists 6 requirements but Northwind-business-brief.md section 5 lists 7" in p
                             for p in self.run_check(GOOD, specs=[longer])))
+
+    def test_a_brief_without_a_section_5_table_fails(self) -> None:
+        brief = self.write_brief(GOOD)
+        good = brief.read_text(encoding="utf-8")
+        table = good.split("## 5. Requirements\n\n")[1]
+        for text in (good.replace("## 5. Requirements", "## 6. Requirements"),
+                     good.replace("## 5. Requirements", "## Requirements"),
+                     good.replace("## 5. Requirements", "### 5. Requirements"),
+                     "# Northwind\n\nNo requirements yet.\n",
+                     "",
+                     good.replace(table, table.splitlines()[0] + "\n" + table.splitlines()[1] + "\n")):
+            with self.subTest(text=text[:60]):
+                brief.write_text(text, encoding="utf-8")
+                problems = self.run_check(GOOD, specs=[brief])
+                self.assertTrue(any("no section-5 requirements table" in p for p in problems), problems)
 
     def test_the_brief_is_numbered_too(self) -> None:
         brief = self.write_brief(GOOD)

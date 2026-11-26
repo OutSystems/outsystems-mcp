@@ -51,7 +51,8 @@ Passed beside them anyway, it is skipped with a note in the OK line.
 
 `--spec` passes the Business Brief. Its section 5 is numbered the same way
 (checked too), and the report's section 5 must list exactly its rows, in its
-order. It also adds the re-derived capability ids (`CAP-nn`) the brief defines
+order; a brief with no section-5 requirements table fails rather than passing
+unmapped. It also adds the re-derived capability ids (`CAP-nn`) the brief defines
 beyond `requirements.json`, so the report may cite them too. It admits no other
 family: the reporter writes the brief and the report in the same turn, so a
 brief must not be able to legitimise an id the spec doesn't have.
@@ -609,9 +610,15 @@ def _check(requirements: Path, report: Path, specs: Iterable[Path] = (), busines
                 problems.append(str(exc))
                 continue
             brief_rows, brief_headers, _ = table_rows(brief_lines)
+            before = len(problems)
             planned = requirement_list(spec.name, brief_lines, brief_rows, brief_headers, problems)
-            if planned is not None:
+            if planned:
                 problems += same_list(name, numbered, spec.name, planned)
+            elif len(problems) == before:
+                # --spec promises the 1:1 mapping: a brief it can't read that from must not pass quietly.
+                problems.append("{}: no section-5 requirements table (`## 5.` heading, then `| Req ID | Type | "
+                                "Source id | Description |` with rows); the report could not be mapped to it".format(
+                                    spec.name))
     if "Z" in spec_rows:
         found, figure = checklist(name, lines, headers, spec_rows.get("5", {}), spec_rows["Z"], expected_set)
         problems += found
