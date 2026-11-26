@@ -252,8 +252,9 @@ the suites pin down:
   version agrees with `claude/.claude-plugin/plugin.json`: the five
   manifests and the `X-OutSystems-Plugin-Version` header value in each
   Cursor and Kiro setup recipe and config. The source value is SemVer 2.0
-  and at most 64 bytes, no file outside the list sets the header, and the
-  Claude plugin's `claude/.mcp.json` holds no header at all. A self-test
+  and at most 64 bytes, no file outside the list sets the header, the Claude
+  plugin's manifest declares its server inline with no header at all, and
+  the plugin ships no `claude/.mcp.json`. A self-test
   proves that each check fails on a mutated copy.
 - `plugin-version-bump.test.sh` - `plugin-version-bump.sh` fails a pull
   request that changes a file under `claude/`, `cursor/` or

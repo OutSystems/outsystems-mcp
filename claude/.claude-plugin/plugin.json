@@ -25,6 +25,12 @@
   "termsOfServiceUrl": "https://www.outsystems.com/legal/outsystems-msa/master-subscription-agreement",
   "skills": "./skills/",
   "commands": "./commands/",
+  "mcpServers": {
+    "outsystems": {
+      "type": "http",
+      "url": "https://${user_config.tenant_hostname}/mcp"
+    }
+  },
   "userConfig": {
     "tenant_hostname": {
       "type": "string",
