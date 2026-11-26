@@ -305,6 +305,18 @@ class CheckTest(Base):
                             for f in fails), fails)
         self.assertEqual(counts["tiers"]["functional"]["not_covered"], 1)
 
+    def test_a_tag_in_a_comment_is_not_coverage(self):
+        uncovered = GOOD_SPEC.replace("'@REQ-002'", "'@REQ-001'").replace("...req('REQ-002')", "")
+        for comment in ("// TODO: add req('REQ-002') here\n", "/* test('x', { tag: '@REQ-002' }) */\n"):
+            self.finish(comment + uncovered)
+            fails, counts = self.check()
+            self.assertTrue(any("REQ-002" in f and "no test" in f for f in fails), (comment, fails))
+            self.assertEqual(counts["tiers"]["functional"]["not_covered"], 1)
+        # A tag inside a string is still a tag, and line numbers still count comment lines.
+        self.finish("// header\n/* two\n lines */\n" + GOOD_SPEC.replace("test('a user enters an order'", "test.only('a user enters an order'"))
+        fails, _ = self.check()
+        self.assertTrue(any("orders.spec.ts:7: test.only" in f for f in fails), fails)
+
     def test_other_tiers_may_stay_not_covered(self):
         self.finish()
         data = self.pack_spec()
@@ -580,6 +592,18 @@ class MatrixTest(Base):
         self.assertEqual((summary["summary"]["flaky"], summary["tests"]["flaky"]), (1, 1))
         self.assertEqual(summary["byTier"]["functional"]["pass"], 1)
 
+    def test_a_test_fail_test_whose_body_failed_is_a_fail(self):
+        # test.fail() + a failing body: Playwright reports 'expected', but the screen is broken.
+        summary, _ = self.build([
+            _result("enters", ["@REQ-001"], "expected", [{"status": "failed", "errors": [{"message": "Error: boom"}]}],
+                    annotations=[{"type": "fail"}]),
+            _result("times out", ["@REQ-002"], "expected", [{"status": "timedOut", "errors": [{"message": "Timeout"}]}],
+                    annotations=[{"type": "fail"}]),
+        ])
+        verdicts = {r["id"]: r["verdict"] for r in summary["requirements"]}
+        self.assertEqual((verdicts["REQ-001"], verdicts["REQ-002"]), ("Fail", "Fail"))
+        self.assertEqual(summary["tests"]["passed"], 0)
+
     def test_every_output_names_each_test_by_its_test_id(self):
         summary, md = self.build([
             _result("enters", ["@TEST-007", "@REQ-001"], "expected", [{"status": "passed"}]),
@@ -691,6 +715,37 @@ class MatrixTest(Base):
         self.assertIn("evidence/traceability-matrix.html", names)
         self.assertFalse(any(n.startswith("evidence/screens/") for n in names), names)
 
+    def test_a_failed_setup_is_reported_as_one(self):
+        # No node_modules and no npm_execpath: the install can't run, and no test ran either.
+        self.build([_result("enters", ["@REQ-001"], "expected", [{"status": "passed"}])])
+        import http.client
+        import socket
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        env = {k: v for k, v in os.environ.items() if k != "npm_execpath"}
+        server = subprocess.Popen(["node", "scripts/serve.mjs", "--no-open"], cwd=self.pack,
+                                  env=dict(env, PORT=str(port)), stdout=subprocess.PIPE, text=True)
+        self.addCleanup(server.kill)
+        server.stdout.readline()
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/api/status")
+        token = json.loads(conn.getresponse().read())["token"]
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("POST", "/api/run?total=1", headers={"x-pack-token": token})
+        self.assertEqual(conn.getresponse().status, 202)
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        conn.request("GET", "/api/events?token=" + token)
+        events = conn.getresponse()
+        finished = None
+        while finished is None:
+            line = events.fp.readline().decode("utf-8")
+            if line.startswith("data: ") and '"finished"' in line:
+                finished = json.loads(line[6:])
+        self.assertEqual((finished["code"], finished["setupFailed"]), (1, True))
+        html = (self.pack / "evidence/traceability-matrix.html").read_text(encoding="utf-8")
+        self.assertIn("m.setupFailed", html)
+
     def test_the_rerun_server_refuses_bad_requests_and_stays_up(self):
         import http.client
         import socket
@@ -731,13 +786,13 @@ class MatrixTest(Base):
         self.assertEqual(run("&id=REQ-001"), 500)
         self.assertIsNone(server.poll())
 
-    def run_pack(self, playwright_status, matrix_crashes=False):
+    def run_pack(self, playwright_status, matrix_crashes=False, specs=None):
         """Runs scripts/run.mjs with a stub Playwright CLI that exits with `playwright_status`."""
         stub = self.pack / "node_modules/@playwright/test"
         stub.mkdir(parents=True, exist_ok=True)
         (stub / "package.json").write_text(json.dumps(
             {"name": "@playwright/test", "exports": {"./cli": "./cli.js"}}), encoding="utf-8")
-        results = {"stats": {"startTime": "2026-10-27T10:00:00.000Z"}, "suites": [{"title": "orders.spec.ts", "specs": [
+        results = {"stats": {"startTime": "2026-10-27T10:00:00.000Z"}, "suites": [{"title": "orders.spec.ts", "specs": specs or [
             _result("enters", ["@REQ-001"], "expected", [{"status": "passed"}])]}]}
         (stub / "cli.js").write_text(
             "const fs = require('fs'); const dir = process.env.EVIDENCE_DIR;\n"
@@ -752,6 +807,13 @@ class MatrixTest(Base):
         self.assertEqual(self.run_pack(0).returncode, 0)
         self.assertTrue((self.pack / "evidence/summary.json").exists())
         self.assertEqual(self.run_pack(1).returncode, 1)
+
+    def test_a_test_fail_test_whose_body_failed_fails_the_run(self):
+        # Playwright exits 0 for it; the matrix calls it a failure, and so must the run.
+        broken = [_result("enters", ["@REQ-001"], "expected", [{"status": "failed"}], annotations=[{"type": "fail"}])]
+        run = self.run_pack(0, specs=broken)
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertIn("1 test(s) failed", run.stderr)
 
     def test_green_tests_with_a_crashed_matrix_fail_the_run(self):
         run = self.run_pack(0, matrix_crashes=True)

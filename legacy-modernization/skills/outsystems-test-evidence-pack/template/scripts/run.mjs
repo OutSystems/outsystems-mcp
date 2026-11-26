@@ -45,4 +45,12 @@ const run = spawnSync(process.execPath, [cli, 'test', ...grep], { stdio: 'inheri
 const matrix = spawnSync(process.execPath, ['scripts/build-matrix.mjs'], { stdio: 'inherit', env });
 // Green tests with no matrix is no evidence: a failed or crashed matrix build fails the run too.
 const code = run.status ?? 1;
-process.exit(code !== 0 ? code : (matrix.status ?? 1));
+if (code !== 0) process.exit(code);
+if (matrix.status !== 0) process.exit(matrix.status ?? 1);
+// Playwright exits 0 for a test.fail() test whose body failed; the matrix counts it as a
+// failure, so the run exits as the matrix reads.
+const failed = JSON.parse(readFileSync(`${dir}/summary.json`, 'utf8')).tests?.failed ?? 0;
+if (failed) {
+  console.error(`${failed} test(s) failed (a test.fail() test whose body failed counts): see ${dir}/traceability-matrix.html`);
+  process.exit(1);
+}

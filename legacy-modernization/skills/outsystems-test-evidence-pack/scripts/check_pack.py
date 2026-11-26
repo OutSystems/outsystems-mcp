@@ -72,6 +72,8 @@ TAG_LIST = re.compile(r"\btag\s*:\s*(\[[^\]]*\]|['\"`][^'\"`\n]*['\"`])")
 ACCESS = "ACCESS"
 ONLY = re.compile(r"\b(?:test|describe)(?:\.describe)?\.only\(")
 REQUIRED_TIERS = ("functional",)
+# A string or a comment; a comment is blanked before any tag is read (see uncommented).
+COMMENT_OR_STRING = re.compile(r"""('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`)|//[^\n]*|/\*.*?\*/""", re.S)
 
 
 def key(token: str) -> Tuple[str, ...]:
@@ -94,6 +96,12 @@ def literal(argument: str) -> str:
     m = STRING.fullmatch(argument.strip())
     found = next((g for g in m.groups() if g is not None), "") if m else ""
     return "" if "${" in found else found
+
+
+def uncommented(source: str) -> str:
+    """The source with every comment blanked, newlines kept, so a tag in `// TODO req('REQ-002')` or a
+    commented-out test is no coverage and line numbers still hold. Strings are kept as they are."""
+    return COMMENT_OR_STRING.sub(lambda m: m.group(1) or re.sub(r"[^\n]", " ", m.group(0)), source)
 
 
 def is_test_family(tag: str) -> bool:
@@ -259,7 +267,7 @@ def check(pack: Path, extractor: Path = None, required_tiers: Iterable[str] = RE
     specs = sorted((pack / "tests").rglob("*.spec.ts")) if (pack / "tests").is_dir() else []
     if not specs:
         fails.append("tests/ holds no *.spec.ts files")
-    sources = {f.relative_to(pack).as_posix(): f.read_text(encoding="utf-8") for f in specs}
+    sources = {f.relative_to(pack).as_posix(): uncommented(f.read_text(encoding="utf-8")) for f in specs}
     for name, text in sources.items():
         for line in tests_without_steps(text):
             fails.append("{}:{}: the test names no Given / When / Then step".format(name, line))

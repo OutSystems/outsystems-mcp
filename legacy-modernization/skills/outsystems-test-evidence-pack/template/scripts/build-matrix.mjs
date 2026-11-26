@@ -57,8 +57,12 @@ const walk = (suite, titles) => {
         title: [...titles, s.title].filter(Boolean).join(' › '),
         file: `${s.file}:${s.line}`,
         tags,
-        // Flaky (failed, then passed on retry) is its own result, never a pass.
-        status: t.status === 'flaky' ? 'flaky' : last.status === 'skipped' ? 'skipped' : t.status === 'expected' ? 'passed' : 'failed',
+        // Flaky (failed, then passed on retry) is its own result, never a pass. A test.fail() test
+        // whose body failed is 'expected' to Playwright, but the screen is broken: only a body that
+        // passed is a pass, as in compact-reporter.mjs.
+        status: t.status === 'flaky' ? 'flaky'
+          : last.status === 'skipped' ? 'skipped'
+          : t.status === 'expected' && last.status === 'passed' ? 'passed' : 'failed',
         error: firstLine(shown.errors?.[0]?.message ?? shown.error?.message ?? ''),
         skipReason,
         attachments: (last.attachments ?? []).filter((a) => a.name !== 'trace').length,
@@ -490,6 +494,8 @@ ${strayTags.length ? `<p class="meta">Tagged with ids requirements.json doesn't 
     if (back) { back.querySelector('details').open = true; back.scrollIntoView({ block: 'center' }); }
 
     const watch = (ids, label) => {
+      const target = ids.length ? label : button;
+      const was = target?.textContent;
       busy(label);
       if (ids.length) {
         const row = document.querySelector('.row[data-id="' + CSS.escape(ids[0]) + '"]');
@@ -500,6 +506,15 @@ ${strayTags.length ? `<p class="meta">Tagged with ids requirements.json doesn't 
       const events = new EventSource('/api/events?token=' + status.token);
       events.onmessage = (e) => {
         const m = JSON.parse(e.data);
+        if (m.finished && m.setupFailed) {
+          // Nothing ran: keep the log in view, give the buttons back, and don't reload.
+          events.close();
+          document.getElementById('progress-title').textContent = 'Setup failed. The log below says why; fix it, then try again.';
+          button.disabled = false;
+          for (const b of document.querySelectorAll('.rerun-one')) b.disabled = false;
+          if (target && was) target.textContent = was;
+          return;
+        }
         if (m.finished) {
           events.close();
           document.getElementById('progress-title').textContent = m.code === 0 ? 'Every test passed. Loading the new results…' : 'Run finished. Loading the new results…';

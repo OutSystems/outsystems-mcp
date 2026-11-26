@@ -53,7 +53,7 @@ function send(event) {
 // ids: [] reruns everything into evidence/; a few requirement ids rerun just their tests into
 // evidence/subset/ (scripts/run.mjs), so the full run's results stay as they were.
 async function rerun(total, ids) {
-  run = { log: [], done: 0, total, ids, code: null, listeners: run?.listeners ?? new Set() };
+  run = { log: [], done: 0, total, ids, code: null, setupFailed: false, listeners: run?.listeners ?? new Set() };
   let code = 0;
   if (!setUp()) {
     say('First run on this machine: installing the pack (npm ci) and its browser. This takes a few minutes.');
@@ -68,9 +68,13 @@ async function rerun(total, ids) {
     copyFileSync('.env.example', '.env');
     say('Created .env from .env.example.');
   }
-  if (code === 0) code = await step(path.join('scripts', 'run.mjs'), ids);
+  // A failed install never ran a test: the page keeps the log open instead of reloading.
+  if (code !== 0) {
+    run.setupFailed = true;
+    say('Setup failed, so no test ran. Fix the error above (often a proxy or no network), then try again.');
+  } else code = await step(path.join('scripts', 'run.mjs'), ids);
   run.code = code;
-  send({ finished: true, code, ids });
+  send({ finished: true, code, ids, setupFailed: run.setupFailed });
 }
 
 const server = createServer((req, res) => {
@@ -111,7 +115,7 @@ const server = createServer((req, res) => {
     if (url.searchParams.get('token') !== token || !run) return res.writeHead(403).end();
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' });
     for (const line of run.log) res.write(`data: ${JSON.stringify({ line, done: run.done, total: run.total })}\n\n`);
-    if (run.code !== null) res.write(`data: ${JSON.stringify({ finished: true, code: run.code, ids: run.ids })}\n\n`);
+    if (run.code !== null) res.write(`data: ${JSON.stringify({ finished: true, code: run.code, ids: run.ids, setupFailed: run.setupFailed })}\n\n`);
     run.listeners.add(res);
     req.on('close', () => run.listeners.delete(res));
     return;
