@@ -2,8 +2,7 @@
   "mcpServers": {
     "outsystems": {
       "type": "http",
-      "url": "https://${user_config.tenant_hostname}/mcp",
-      "headersHelper": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/plugin-version-header.sh\" || powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/plugin-version-header.ps1\""
+      "url": "https://${user_config.tenant_hostname}/mcp"
     }
   }
 }
