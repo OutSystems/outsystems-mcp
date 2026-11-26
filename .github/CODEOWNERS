@@ -1,1 +1,16 @@
-*       @OutSystems/rd-ai-platform
+*       @OutSystems/ide-team
+
+# AI Platform keeps these three skills: one copy per harness, plus each
+# skill's offline tests. A later line wins over the line above.
+/claude/skills/outsystems-app-architecture/               @OutSystems/rd-ai-platform
+/claude/skills/outsystems-dependency-impact/              @OutSystems/rd-ai-platform
+/claude/skills/outsystems-tenant-architecture/            @OutSystems/rd-ai-platform
+/cursor/skills/outsystems-app-architecture/               @OutSystems/rd-ai-platform
+/cursor/skills/outsystems-dependency-impact/              @OutSystems/rd-ai-platform
+/cursor/skills/outsystems-tenant-architecture/            @OutSystems/rd-ai-platform
+/kiro/outsystems/skills/outsystems-app-architecture/      @OutSystems/rd-ai-platform
+/kiro/outsystems/skills/outsystems-dependency-impact/     @OutSystems/rd-ai-platform
+/kiro/outsystems/skills/outsystems-tenant-architecture/   @OutSystems/rd-ai-platform
+/tests/skills/app-architecture/                           @OutSystems/rd-ai-platform
+/tests/skills/dependency-impact/                          @OutSystems/rd-ai-platform
+/tests/skills/tenant-architecture/                        @OutSystems/rd-ai-platform
