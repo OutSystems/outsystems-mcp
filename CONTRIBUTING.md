@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately via Desktop's plugin-install flow), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the Claude plugin folder `claude/` (its `.claude-plugin/plugin.json`, `.mcp.json`, `skills/`, `commands/`, `README.md`, and `LICENSE`) plus the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, and `cursor/`. There is no compiled artifact and no build step.
+This is a distribution-only repository. It packages the OutSystems MCP integration for multiple AI assistant harnesses — Claude Code (via a plugin), Claude Desktop (via the same plugin, installed separately via Desktop's plugin-install flow), Kiro (via a Power), GitHub Copilot (via mcp.json + skill doc), and Cursor (via a plugin for the app, CLI support via mcp.json) — plus a generic `SKILL.md` for other harnesses. The MCP server itself is hosted by OutSystems and is not part of this repo. The deliverables here are the Claude plugin folder `claude/` (its `.claude-plugin/plugin.json`, which also declares the MCP server, plus `skills/`, `commands/`, `agents/`, `README.md`, and `LICENSE`) plus the manifests and markdown files under `.claude-plugin/`, `.cursor-plugin/`, `kiro/`, `copilot/`, and `cursor/`. There is no compiled artifact and no build step.
 
 ## Prerequisites
 
