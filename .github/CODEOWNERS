@@ -17,3 +17,4 @@
 
 # Legacy Modernization owns its plugin. A later line wins over the line above.
 /legacy-modernization/                                    @OutSystems/legacy-modernization
+/tests/legacy-modernization/                              @OutSystems/legacy-modernization
