@@ -119,7 +119,7 @@ For every manifest file changed in the diff - in this repo that means `claude/.c
 2. **Version format**: Verify the version follows `MAJOR.MINOR.PATCH`. Check for obvious format
    errors.
 3. **Cross-file version consistency**: per CONTRIBUTING.md's "Versioning and Releases", every
-   listed file (the five manifests and the `X-OutSystems-Plugin-Version` header values) tracks
+   listed file (the five manifests, the `X-OutSystems-Plugin-Version` header values and the `plugin_version` argument in the Claude skill doc) tracks
    the same version and must be bumped together in the same diff. Read them all and flag any
    divergence.
 

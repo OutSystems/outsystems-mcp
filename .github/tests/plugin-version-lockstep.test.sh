@@ -52,6 +52,10 @@ key="[\"']?${name}[\"']?[[:space:]]*[:=]"
 argname=plugin_version
 argshape="${argname}:[[:space:]]*\""
 argkey="[\"']?${argname}[\"']?[[:space:]]*[:=]"
+# The argument as a key in any syntax, backticks included, for the skill
+# doc only: a prose mention in another file, such as `plugin_version` in
+# backticks before a colon, must not fail the completeness check.
+argkey_md="[\"'\`]?${argname}[\"'\`]?[[:space:]]*[:=]"
 
 # Runs a boolean jq filter, with `$s` bound to the JSON-encoded source value
 # and `$h` to the header name. Every comparison with the source happens in
@@ -61,10 +65,11 @@ jq_true() { # file or "-" for stdin, filter
   jq -e --argjson s "$srcjson" --arg h "$name" "$2" "$1" >/dev/null 2>&1 && echo yes
 }
 
-# The raw JSON string literals of the header values a Markdown file sets,
-# one per line.
-md_literals() { # file
-  grep -oE "${shape}[^\"]*\"" "$1" | sed -E "s/^\"$name\":[[:space:]]*//"
+# The raw JSON string literals of the values a Markdown file sets for the
+# header, or for the argument with its shape, one per line. Neither name
+# holds a `:`, so the first colon is always the key's.
+md_literals() { # file, shape (the header's by default)
+  grep -oE "${2:-$shape}[^\"]*\"" "$1" | sed -E 's/^[^:]*:[[:space:]]*//'
 }
 
 # The server entry that holds each header the Markdown file sets, one per
@@ -91,12 +96,6 @@ md_servers() { # file
         rest = substr(rest, i + length(key))
       }
     }' "$1"
-}
-
-# The raw JSON string literals of the argument values a Markdown file
-# sets, one per line.
-arg_literals() { # file
-  grep -oE "${argshape}[^\"]*\"" "$1" | sed -E "s/^${argname}:[[:space:]]*//"
 }
 
 # The `## ` section that holds each argument the Markdown file sets, one
@@ -127,7 +126,7 @@ LISTED="CONTRIBUTING.md lists exactly the files that carry the version"
 ARG_COUNT="$ARG_MD: argument count"
 ARG_SECTION="$ARG_MD: every argument sits in the Authenticating section"
 ARG_VALUE="$ARG_MD: argument value 1"
-ARG_SEMVER="$ARG_MD: argument value 1 is SemVer 2.0"
+ARG_KEYS="$ARG_MD: argument key count, in any syntax"
 
 # The paths at the start of the list items in "Versioning and Releases".
 contributing_list() { # file
@@ -193,15 +192,14 @@ check_root() { # dir, command that lists the files of the dir NUL-separated
   done
 
   section "version argument in the Claude skill doc"
-  check "$ARG_COUNT" "$(arg_literals "$dir/$ARG_MD" | wc -l | tr -d ' ')" 1
+  check "$ARG_COUNT" "$(md_literals "$dir/$ARG_MD" "$argshape" | wc -l | tr -d ' ')" 1
   check "$ARG_SECTION" "$(arg_sections "$dir/$ARG_MD" | grep -cvx Authenticating)" 0
+  check "$ARG_KEYS" "$(grep -oiE -- "$argkey_md" "$dir/$ARG_MD" | wc -l | tr -d ' ')" 1
   n=0
   while IFS= read -r v; do
     n=$((n + 1))
     check "$ARG_MD: argument value $n" "$(jq_true - '. == $s' <<<"$v")" yes
-    check_match "$ARG_MD: argument value $n is SemVer 2.0" \
-      "$(jq -r . <<<"$v" 2>/dev/null)" "$SEMVER"
-  done < <(arg_literals "$dir/$ARG_MD")
+  done < <(md_literals "$dir/$ARG_MD" "$argshape")
 
   section "completeness"
   check "$COMPLETE" "$("$list" "$dir" | key_files "$dir" "$key")" \
@@ -290,8 +288,7 @@ sed_edit() { # file, sed script
 sed_escape() { printf '%s' "$1" | sed 's/[\\&|]/\\&/g'; }
 
 # Writes the value into all eleven files. Every equality check then
-# passes, so only the source-value checks and the argument's own SemVer
-# check can fail.
+# passes, so only the source-value checks can fail.
 set_everywhere() { # value
   local f quoted
   jq_edit "$SOURCE" --arg v "$1" '.version = $v'
@@ -392,12 +389,16 @@ done
 sed_edit "$ARG_MD" "s|\\($argshape\\)[^\"]*\"|\\1$(sed_escape "$drift")\"|"
 expect_failure "$ARG_MD: changed argument value" "$ARG_VALUE"
 sed_edit "$ARG_MD" "s|${argshape}[^\"]*\"||"
-expect_failure "$ARG_MD: argument removed" "$ARG_COUNT" "$COMPLETE_ARG"
+expect_failure "$ARG_MD: argument removed" "$ARG_COUNT" "$ARG_KEYS" "$COMPLETE_ARG"
 sed_edit "$ARG_MD" "s|${argname}:[[:space:]]*\"[^\"]*\"|${argname}:$TAB\"$(sed_escape "$drift")\"|"
 expect_failure "$ARG_MD: tab before a changed argument value" "$ARG_VALUE"
 printf '%s: "%s"\n' "$argname" "$drift" >> "$MUT/$ARG_MD"
 expect_failure "$ARG_MD: second argument with another value" \
-  "$ARG_COUNT" "$ARG_SECTION" "$ARG_MD: argument value 2"
+  "$ARG_COUNT" "$ARG_KEYS" "$ARG_SECTION" "$ARG_MD: argument value 2"
+printf 'Example: `%s`: `%s`\n' "$argname" "$drift" >> "$MUT/$ARG_MD"
+expect_failure "$ARG_MD: second argument as a backtick key" "$ARG_KEYS"
+printf '{"%s": "%s"}\n' "$argname" "$drift" >> "$MUT/$ARG_MD"
+expect_failure "$ARG_MD: second argument as a JSON key" "$ARG_KEYS"
 sed_edit "$ARG_MD" 's/^## Authenticating$/## Signing in/'
 expect_failure "$ARG_MD: argument outside the Authenticating section" "$ARG_SECTION"
 
@@ -465,14 +466,14 @@ for v in "$long" "1.0.0-rc.1+build.5" "1.0.0+20130313144700"; do
 done
 
 set_everywhere ""
-expect_failure 'empty source value "" in all eleven files' "$NONEMPTY" "$SEMVER_CHECK" "$ARG_SEMVER"
+expect_failure 'empty source value "" in all eleven files' "$NONEMPTY" "$SEMVER_CHECK"
 set_everywhere "${long}a"
 expect_failure "source value of 65 bytes in all eleven files" "$LENGTH"
 set_everywhere $'1.7.1\n'
 expect_failure 'source value "1.7.1\n" in all eleven files' "$NEWLINE"
 for v in "1.7" "1.0.0-01" "v1.0.0" "01.0.0" "1.0.0+" "1.0.0-a..b"; do
   set_everywhere "$v"
-  expect_failure "invalid source value \"$v\" in all eleven files" "$SEMVER_CHECK" "$ARG_SEMVER"
+  expect_failure "invalid source value \"$v\" in all eleven files" "$SEMVER_CHECK"
 done
 
 section "self-test: the git listings"

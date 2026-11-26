@@ -274,7 +274,7 @@ This section is the one list of the files that carry the plugin version. The ver
 - `README.md` → Step 2 of the Kiro Chat recipe and Step 2 of the Cursor CLI prompt
 
 **Plugin version argument** (`plugin_version` on the `auth_status` tool), as a literal value:
-- `claude/skills/outsystems/SKILL.md` → the argument of the `auth_status` call in the "Authenticating" section, which the agent passes once per session on Claude Code and Claude Desktop
+- `claude/skills/outsystems/SKILL.md` → the argument of the `auth_status` call in the "Authenticating" section
 
 The Claude plugin sends no header: with a literal value in `claude/.mcp.json`, the server config would change at each release and Claude Code would ask every user to sign in again, and the `headersHelper` that used to send it without that cost is accepted by the Claude plugin directory only from a Verified organization (see AGENTS.md, "The Claude plugin declares the MCP server"). Its version reaches the server as the `plugin_version` argument on the `auth_status` tool instead: the skill doc tells the agent to make that call first in each session, with the version as a literal, and the server reads the argument in place of the header when no header arrives. The bump commit edits only the files in this list.
 
