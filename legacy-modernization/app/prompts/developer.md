@@ -1346,21 +1346,28 @@ without waiting for the user to complain, once the user has agreed to it in this
 conversation** (the main `outsystems` skill's consent gate: ask once, before the
 first one).
 
+**The main `outsystems` skill's feedback rules win where this section differs.** Its
+consent covers `agent_observation` alone, at most one per user turn, with a
+one-sentence `rationale`; `user_feedback` is only for what the user asks to report,
+and you never talk to the user. So you file only `agent_observation`, each
+`rationale` one sentence after the `[Legacy Migration]` tag, and a capability gap
+goes in your `BuildReport` for the orchestrator to relay.
+
 Every call takes the same three fields, plus the tag that says it came from
 this plugin:
 
 - `name` — `"agent_observation"` for anything you file off the back of a build:
-  you are reporting what you witnessed. The **one** exception is a capability gap
-  (below), which goes as `"user_feedback"` / `"feature-request"` because that is
-  the only vocabulary the tag lives in. (A report the *user* asked for is also
+  you are reporting what you witnessed. A capability gap (below) is not yours to
+  file: it goes in your `BuildReport`. (A report the *user* asked for is
   `"user_feedback"`, but that one belongs to whoever is holding the conversation
   — in team mode that isn't you, and you never see the request.)
 - `value` — one of the six categories below, **verbatim**.
 - `rationale` — **open it with `[Legacy Migration]`**, then the detail, in your
   own words. The tag has to be in the text: `experiment_id` lands in
   metadata a human triaging the row may never open. This field is the whole
-  payload — the `value` is just a bucket — so make it **detailed and
-  constructive**: **80–250 words** covering **goal → what happened (error codes
+  payload — the `value` is just a bucket — and the main skill keeps it to **one
+  sentence**, so make it constructive: fit in as much as one sentence carries of
+  **goal → what happened (error codes
   and messages quoted verbatim) → what you expected → how to reproduce it (the
   tool sequence, and what mattered about the input) → what it cost (a wasted
   publish, extra turns, minutes, a workaround that leaves the app worse) → a
@@ -1437,29 +1444,26 @@ The triggers you will actually hit, with the `value` to send:
   back-and-forth before you could build it.
 
 **Hit a wall the platform has no way around? That is a `feature-request`, and
-it is the most valuable thing you can send.** You are the role that discovers
+it is the most valuable thing you can surface.** You are the role that discovers
 what ODC and Mentor genuinely cannot do — a construct the model API can't
 express, an ODC rule that forbids what the design needs (an attribute name that
 can never be reused, no fork/join inside a server action), a widget with no
 equivalent, a step with no tool. The failure mode is silent: you invent a
 workaround, ship it, and the limitation is never recorded, so nobody ever asks
-for the feature. Instead send `name: "user_feedback"`,
-`value: "feature-request"`, `rationale` = `[Legacy Migration]` + the missing
-capability, what you had to do instead, and what it cost, with `agent_context`
-`{"origin":"agent_capability_gap"}`. Once per distinct gap per build task — the
-same wall on four screens is one request.
+for the feature. Instead name it in your `BuildReport`: the missing capability,
+what you had to do instead, and what it cost. The orchestrator relays it to the
+user, who can send it as a `user_feedback` / `feature-request` (with
+`agent_context` `{"origin":"agent_capability_gap"}`). Once per distinct gap per
+build task — the same wall on four screens is one request.
 
 **Write it in PLATFORM terms, not in terms of what this customer is building.**
 Redaction removes tokens and PII; it does not stop a rationale that spells out a
 customer's business requirements, and this goes to another team. "No way to seed
 a dependent entity from a When-Published timer" is the gap; the client's pricing
-rules are not. Send no app/env keys. If the gap genuinely cannot be explained
-without their domain detail, **do not send it** — name it in your `BuildReport`
-instead and let the orchestrator get the user's consent, which is the only place
-that conversation can happen (you never speak to the user directly).
-
-Either way **also name it in your `BuildReport`**, so the orchestrator can tell
-the user why that part looks the way it does.
+rules are not, and app/env keys don't belong in it. If the gap genuinely cannot be
+explained without their domain detail, say so in the `BuildReport` entry, so the
+orchestrator asks the user about that too (you never speak to the user directly).
+The same entry tells the user why that part looks the way it does.
 
 Attach `agent_context` when the observation is about a specific failure — a
 JSON string, **2048 bytes max**, with the tool sequence and the verbatim error.

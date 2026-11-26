@@ -1,10 +1,10 @@
 ---
 name: outsystems-handover-docs
 description: >-
-  Close-out docs for a migration — re-derive extractor REQs ("Manage X records") into business capabilities with traceability, then author the two disjoint client documents: a forward-looking Business Specification (no build or design-tool language) and the build-state Implementation Report. Use when finishing a migration, re-deriving requirements into business terms, or writing/scrubbing the client document pair. Not for: report structure or PDF mechanics -> the reporter role playbook, in whole-repo installs.
+  Close-out docs for a migration — re-derive extractor REQs ("Manage X records") into business capabilities with traceability, then author the two disjoint client documents: a forward-looking Business Specification (no build or design-tool language) and the build-state Implementation Report. Use when finishing a migration, re-deriving requirements into business terms, or writing/scrubbing the client document pair. Not for: report structure or PDF mechanics -> the reporter role playbook (app/prompts/reporter.md, shipped with this plugin).
 license: MIT
-compatibility: Designed for Claude Code driving the `preview` MCP (Files canvas + render_pdf) with read access to the extractor spec collection. Needs no tenant tools — the app revision arrives in the BuildReport handoff. One script, scripts/check_report_ids.py (Python 3.8+, standard library only), checks the Report cites the spec's ids unchanged.
-allowed-tools: Read Write Glob Grep Bash mcp__preview__render_pdf mcp__preview__show_file
+compatibility: Designed for Claude Code with read access to the extractor spec collection. Uses the tenant only for the access check (sign in, read the tool list); the app revision arrives in the BuildReport handoff. One script, scripts/check_report_ids.py (Python 3.8+, standard library only), checks the Report cites the spec's ids unchanged.
+allowed-tools: Read Write Glob Grep Bash
 metadata:
   version: "1.1.0"
   author: outsystems-r-and-d
@@ -22,6 +22,13 @@ derived-rule provenance law, the disjointness contract, the scrub proof, and the
 filename firewall — is in
 **[OutSystems-Handover-Docs.md](./OutSystems-Handover-Docs.md)** in this folder.
 **Read it before writing either document.**
+
+The role playbooks this skill and that file name as `app/prompts/<role>.md` ship with
+the plugin, not with this folder: read them as `${CLAUDE_PLUGIN_ROOT}/app/prompts/<role>.md`.
+If `${CLAUDE_PLUGIN_ROOT}` doesn't resolve (Cursor doesn't set it), `Glob` for
+`**/legacy-modernization/app/prompts/reporter.md`: first in your cwd, then under the
+host's plugin directory (`~/.cursor/plugins`, `~/.claude/plugins`). A copy of this skill
+on its own, outside the plugin, has no playbooks: say so rather than guessing their rules.
 
 **Limited availability: check access first.** Legacy modernization isn't generally
 available yet. Before anything else, sign in to the OutSystems MCP (see the plugin

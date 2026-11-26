@@ -53,8 +53,15 @@ happen. (To build a design you already have, skip this command and pass it to
   not, the same three options are HTML/CSS mockups, one directory per option. Do not
   register a new server. The host substitutions are the table in
   `commands/workflow-legacy-app.md`.
-- Delegate `designer`, then `reviewer`, then `tester`. A role that fails to launch
-  runs inline from `app/prompts/<role>.md` — say which mode you used.
+- Delegate `designer`, then `reviewer`, then `tester`, launched by their plugin
+  names (`Task(subagent_type: "legacy-modernization:designer")`, and so on); the bare
+  role name doesn't resolve. A role that fails to launch runs inline from
+  `app/prompts/<role>.md` — say which mode you used. An inline `reviewer` or `tester`
+  can write, so it isn't the read-only gate: report that gate as degraded.
+- **HTML/CSS mockups are served, not opened as files.** A Playwright MCP refuses
+  `file://` by default and the roles can't start a server, so once the options are
+  written, run `python3 -m http.server <port> --bind 127.0.0.1` in the background from
+  their folder and hand the `reviewer` and `tester` `http://127.0.0.1:<port>/...` URLs.
 
 ## Steps
 

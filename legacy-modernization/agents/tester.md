@@ -96,8 +96,10 @@ for behaviour you could not drive.
   and tell the user to add a Playwright MCP server (or to verify manually). "It
   published" and "no errors in the logs" are not substitutes for a drive.
 - **No Figma MCP** → when the design medium is code mockups, the pre-build
-  visual QA still runs: open each mockup file with the browser MCP
-  (`browser_navigate` on the file path / served URL), screenshot it, and apply
+  visual QA still runs: open each mockup with the browser MCP
+  (`browser_navigate` on the `http://127.0.0.1:...` URL your caller serves it on;
+  a Playwright MCP refuses `file://` by default, and you can't start a server, so
+  ask the caller for the URLs when the brief carries only file paths), screenshot it, and apply
   the same checks (typos, misalignment, cropping, spacing, imagery,
   legibility). The design-parity half of the final gate scores the built app
   against those mockups. Only when there is neither a Figma design nor a

@@ -545,6 +545,12 @@ the channel. **Use it on your own initiative, without waiting for the user to co
 once the user has agreed to it in this conversation** (the main `outsystems`
 skill's consent gate: ask once, before the first one).
 
+**The main `outsystems` skill's feedback rules win where this section differs.** Its
+consent covers `agent_observation` alone, at most one per user turn, with a
+one-sentence `rationale`; `user_feedback` is only for what the user asks to report.
+So a capability gap you hit yourself is relayed to the user, not filed by you, and
+every `rationale` below is one sentence after the `[Legacy Migration]` tag.
+
 **Say where it comes from, twice, on every single call.** The OutSystems team needs to
 know a report came from this plugin, to weigh it and to follow it up:
 
@@ -563,10 +569,9 @@ Two kinds, and the `value` must come from the matching list **verbatim**:
   `empty_results`.
 - **`name: "user_feedback"`** — a report in the user's interest rather than a
   note about your own tool composition. `value` is exactly one of `bug-report`,
-  `feature-request`, `thumbs-up`, `thumbs-down`. This covers both what the user
-  explicitly asks you to send (when they describe a problem without
-  categorising it, use `bug-report`) and the capability gaps you hit yourself —
-  see below.
+  `feature-request`, `thumbs-up`, `thumbs-down`. Only what the user asks you to
+  send (when they describe a problem without categorising it, use `bug-report`);
+  a capability gap you hit yourself goes to the user first — see below.
 
 The developer playbook carries the per-trigger detail for the Mentor/publish
 flow, which is where most of these fire — so when you are delegating the build
@@ -592,10 +597,10 @@ What keeps the signal clean:
   when the *tooling* misbehaved: Mentor ground through retries, a lookup came
   back empty for something that plainly exists, a response was missing the field
   you needed to chain the next call.
-- **`rationale` carries the whole payload — make it detailed and constructive.**
-  The `value` is only a bucket; everything anyone can act on lives here, and you
-  have **4096 bytes** (over that the call is rejected, not trimmed), so a
-  one-liner wastes the submission. Aim for **80–250 words** covering, in order:
+- **`rationale` is one sentence (the main skill's rule), so make it the one that
+  can be acted on.** The `value` is only a bucket; everything anyone can act on
+  lives here (cap **4096 bytes**; over that the call is rejected, not trimmed).
+  Fit in as much of this as one sentence carries, in this order:
   1. **Goal** — what you were trying to do.
   2. **What happened** — the observed behaviour, with any error code or message
      quoted **verbatim**.
@@ -610,21 +615,16 @@ What keeps the signal clean:
 
   Write for a maintainer who has never seen this app and cannot ask you a
   follow-up question. Be specific and neutral — describe behaviour, never blame,
-  and never pad: six thin lines that restate the tag are worse than four real
-  ones. Compare:
+  and never pad. Compare:
 
   > ❌ `[Legacy Migration] Mentor retried a lot on a table screen.`
 
-  > ✅ `[Legacy Migration] Goal: add server-side sort to a 12-column
-  > TableRecords on OrderList. What happened: mentor_start reached terminal
-  > succeeded but internal_retry_count: 7 — the events show repeated
-  > IContainerWidget vs PlaceholdersContent traversal failures before it
-  > settled. Expected: a single-pass widget walk. Repro: mentor_start with a
-  > prompt naming GetAllDescendantsOfType<ITableRecords> on a screen whose table
-  > sits inside two nested containers. Cost: ~9 min of a 14-min turn, and the
-  > same shape recurs on every list screen we build. Suggestion: expose a
-  > documented sort-by-attribute helper on TableRecords, or have the traversal
-  > fall back to descendant search instead of retrying the placeholder path.`
+  > ✅ `[Legacy Migration] A Mentor turn adding server-side sort to a
+  > TableRecords nested in two containers succeeded only after
+  > internal_retry_count 7 of IContainerWidget/PlaceholdersContent traversal
+  > failures (~9 of 14 min, on every list screen), where a documented
+  > sort-by-attribute helper or a descendant-search fallback would land it in one
+  > pass.`
 - **Redact before you send — in EVERY field, not just the prose ones.** Never put
   tokens, JWTs, `mentor_session_token` values, keys, passwords, personal data from
   a User entity, or pasted source / OML into `value`, `rationale` **or
@@ -641,16 +641,16 @@ What keeps the signal clean:
   most recent one on its own; a guessed id is worse than none). Never invent an
   id to fill the field.
 - **Something you couldn't build because the platform has no way to do it is a
-  `feature-request` — file it, don't just work around it.** This is the most
+  `feature-request` — relay it, don't just work around it.** This is the most
   valuable thing you can send, and the easiest to lose: you find a wall, you
   invent a workaround, the wall is never recorded and nobody asks for the
   feature. So whenever you wanted to do something and there was **no supported
   path** — no tool on the MCP surface for it, no way to express the construct
   through Mentor, an ODC rule that forbids it outright, a widget or pattern with
-  no equivalent — send `name: "user_feedback"`, `value: "feature-request"`. Use
-  the user_feedback kind even though you spotted it yourself: `feature-request`
-  only exists in that vocabulary, and asking for a capability is a request on the
-  user's behalf, not a note about your own tool composition.
+  no equivalent — tell the user in one line and offer to send it as
+  `name: "user_feedback"`, `value: "feature-request"`. Send it only if they say
+  yes: `feature-request` only exists in the `user_feedback` vocabulary, which the
+  main skill keeps for what the user asks to report.
   - **Write `rationale` so it can be acted on**: what you were trying to do, what
     was missing, and what you did instead (or that you couldn't). "No way to X"
     is a wish; "needed to X while doing Y, the only route was Z which costs a
@@ -659,17 +659,17 @@ What keeps the signal clean:
     can tell an agent-detected gap from one a human wrote. Nothing else by
     default — app/env keys identify the user's tenant, so they ride along only
     under the sharing rule below, not "if they're relevant".
-  - **File it directly — no permission needed, but keep it about the PLATFORM.**
-    Unlike a bug report it carries none of the user's words. That is not the same
+  - **Once they say yes, keep it about the PLATFORM.**
+    It carries none of the user's words. That is not the same
     as carrying nothing of theirs: "what you were trying to do" can describe their
     business requirements, and app/env keys identify their tenant — both go to
     another team. So write the gap in platform terms (the capability that is
     missing, the route you had to take instead), not in terms of what this
     customer is building, and attach app/env keys only when the user has said the
     run may be shared. If the gap cannot be explained without their domain detail,
-    it needs the same one-question consent as a bug report. Do mention it in one
-    line when the gap is why you couldn't deliver something they asked for; they
-    need to know the limit is the platform's, not a choice you made.
+    say so when you offer it. When the gap is why you couldn't deliver something
+    they asked for, the one line also tells them the limit is the platform's, not a
+    choice you made.
   - **Once per distinct gap per run.** The same wall hit on four screens is one
     request, not four.
 - **A hard tool failure is a `bug-report`, not an observation — and it needs one

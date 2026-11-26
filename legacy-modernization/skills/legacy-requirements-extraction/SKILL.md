@@ -161,7 +161,12 @@ step, so a skills-only install can still run the extraction.
    user). The default is headless: the service authors the whole spec, so nothing
    comes back for you to write.
 4. Poll `modernize_run_get` every 15 to 30 seconds, passing back its `cursor`,
-   until `done`. `succeeded` and `gates_failed` both publish a spec; anything
+   until `done`.
+   Between polls, wait with the host's background mechanism and end the turn (the
+   main `outsystems` skill's rule: no bare `sleep`), and give the user one line per
+   pause. Poll from this conversation: the `status-watcher` agent has no
+   `modernize_*` tools.
+   `succeeded` and `gates_failed` both publish a spec; anything
    else is an error to report with its `code`. Then read `analysis` and
    `analysis_complete`. `standard` means standard analysis (the extractor's own
    parsers plus the LLM) wrote the spec; with AWS Transform off, every COBOL, Java,

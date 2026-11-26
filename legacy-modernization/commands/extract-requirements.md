@@ -115,7 +115,12 @@ MCP**. Check that MCP's tool list at runtime and call the tools by their bare na
    authors the whole spec, Business Spec included, so no authoring round trip comes back to
    you. There is no engine choice to pass; the service picks the analysis for the stack.
 4. Poll `modernize_run_get` every 15 to 30 seconds, passing back its `cursor`, until `done`.
-   A run takes about 10 minutes, so polling faster only adds tool calls. When it is done,
+   A run takes about 10 minutes, so polling faster only adds tool calls.
+   Between polls, wait with the host's background mechanism and end the turn (the
+   main `outsystems` skill's rule: no bare `sleep`), and give the user one line per
+   pause. Poll from this conversation: the `status-watcher` agent has no
+   `modernize_*` tools.
+   When it is done,
    read `status`: `succeeded` and `gates_failed` both go to step 5 (a `gates_failed`
    collection is still published, and `review` needs it). `input_required` happens only
    with `caller_authored=true`: it is a checkpoint, not an error, so keep the session open,

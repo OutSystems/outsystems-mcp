@@ -88,10 +88,16 @@ never report PASS for behaviour you could not drive.
 ## Roles: what this plugin actually ships
 
 `agents/` carries **six** subagents — `planner`, `designer`, `developer`,
-`reviewer`, `tester`, `reporter`.
+`reviewer`, `tester`, `reporter`. They are plugin-namespaced: launch each as
+**`legacy-modernization:<role>`** (`Task(subagent_type: "legacy-modernization:planner")`);
+the bare role name doesn't resolve. Every "`Task` the `<role>`" below means that name.
 
-- **Delegate `planner` and `reporter` too.** If `Task(subagent_type: "planner")`
-  or `"reporter"` fails to launch on your host, fall back to running that role
+- **A role run inline is not its subagent.** An inline `reviewer` or `tester` has
+  `Write`/`Edit`, so it is not the read-only gate: report that gate as **degraded**
+  (inline, not read-only) in the checklist and the reports.
+- **Delegate `planner` and `reporter` too.** If `Task(subagent_type:
+  "legacy-modernization:planner")` or `"legacy-modernization:reporter"` fails to
+  launch on your host, fall back to running that role
   **yourself on the main thread** from `app/prompts/planner.md` /
   `app/prompts/reporter.md` (`Read` them, apply the substitutions above) — and
   say which mode you used. Note `app/prompts/reporter.md` opens with "only when
@@ -121,13 +127,25 @@ never report PASS for behaviour you could not drive.
 
 `<rev>` in every filename is the app's current published revision number.
 
+## Approval before the first build
+
+The `developer` stops before each app creation and each publish unless its brief
+carries the user's approval for that change (`agents/developer.md`), and the main
+`outsystems` skill doesn't count a generic "go ahead" as one. So before the first
+`developer` dispatch, name to the user the app(s) the run will create (name, tenant)
+and the publishes it will make (one per chunk, and one per fix loop, up to the
+loop limit), and ask. Quote their answer in every `developer` brief. Ask again
+before anything beyond it: another app, a rollback, publishing over a revision
+someone else made. A run with nobody to ask stops at the first creation and says so.
+
 ## Steps — run in this order, keep these node ids
 
 1. **`agent`** — build the app from the specs (+ design pack when Figma is in scope) via
    the Mentor flow. `Task` the real roles: `designer` → design-selection pause for the
    user (no QA before the pick) → **mandatory pre-build design gate** on the **picked**
    option (`reviewer` for spec/screen coverage and UX principles, *and* `tester` for
-   visual QA, looping fixes back to `designer`) →
+   visual QA, looping fixes back to `designer`; code mockups go to them over
+   localhost, see "Code mockups over localhost") →
    **`planner` (delegate; inline fallback)** → `developer` (**one at a time, never in parallel** —
    single tenant, one mentor session), then loop `reviewer`(app) → `tester`(app). This
    step owns all fixes: smoke it yourself before marking it done.
@@ -164,7 +182,8 @@ never report PASS for behaviour you could not drive.
    says for `render_pdf` and `show_file`. Write one on every validator pass, including each
    loop.
 3. **`design_qa`** — **read-only** design-artifact scoring: `Task` `reviewer` with the
-   claim tables + app URL, scoring via Skill **`outsystems-ui-exactness`** (claim files are the
+   claim tables + app URL (in the code-mockup medium, plus the mockups' localhost URLs:
+   see "Code mockups over localhost" below), scoring via Skill **`outsystems-ui-exactness`** (claim files are the
    source of truth; screenshots are evidence). In the code-mockup medium the chosen
    option's mockup files are the design artifact — derive the claims from them and score
    the built app against them the same way. You write `design-qa-report-rev-<rev>.md`
@@ -194,9 +213,18 @@ never report PASS for behaviour you could not drive.
    diagrams, site map and (with two or more apps) app landscape drawn the way the spec
    draws them, the per-item requirements list in the fixed status vocabulary (tested? why
    not?), the pass-rate progression across any
-   loops, gaps and next steps. Print its absolute path. Close the **chat** message (never
-   the report file) with the lesson-capture offer from the substitution table, naming 1-3
-   concrete candidate lessons from this run.
+   loops, gaps and next steps. Print its absolute path.
+
+## Code mockups over localhost
+
+A Playwright MCP refuses `file://` pages unless it was started with
+`--allow-unrestricted-file-access`, and neither the `designer` nor the `tester` can
+start a server (no `Bash`, or read-only `Bash`). So in the code-mockup medium you serve
+them: once the `designer` has written the options, run
+`python3 -m http.server <port> --bind 127.0.0.1` in the background from the options
+folder, and brief the `tester`, `reviewer` and any later `designer` round with
+`http://127.0.0.1:<port>/<option>/<screen>.html` URLs instead of file paths. Stop it
+when the run ends.
 
 ## Link the build to its extraction
 
