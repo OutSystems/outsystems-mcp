@@ -250,7 +250,7 @@
     <ul class="whys">
       <li><b>High fidelity.</b> Every requirement comes from the code and cites the lines it came from, so the new app keeps the old rules.</li>
       <li><b>Top-class UI.</b> A modern design you choose, built from standard OutSystems UI blocks and matched screen by screen.</li>
-      <li><b>High quality, proven.</b> 95% of requirements and 95% of the design, or it goes back to the build, with a test for every requirement.</li>
+      <li><b>High quality, proven.</b> Checked against every requirement and the design you approved, or it goes back to the build, with a test for every requirement.</li>
       <li><b>Minimal human intervention.</b> Agents build, test and fix on their own. You validate the requirements, approve the design and review the result.</li>
     </ul>
     <div class="intro-meta">
@@ -260,12 +260,12 @@
   </div>
 
   <section class="block" id="summary">
-    <div class="block-head cap-head"><div><p class="eyebrow">Overview</p><h2 class="summary-headline" style="margin:0">An app is done when it meets <em>95%</em> of its requirements and matches <em>95%</em> of its approved design</h2><p>Anything short goes back to the build, with the list of what failed. After the fifth round, what still fails is reported as a gap.</p></div><div class="copy-bar"><button type="button" class="copy-btn" data-target="summary"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>Copy image</button></div></div>
+    <div class="block-head cap-head"><div><p class="eyebrow">Overview</p><h2 class="summary-headline" style="margin:0">An app is done when it meets <em>its requirements</em> and matches <em>its approved design</em></h2><p>Anything short goes back to the build, with the list of what failed. What still fails at the end is reported as a gap.</p></div><div class="copy-bar"><button type="button" class="copy-btn" data-target="summary"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>Copy image</button></div></div>
     <div class="kpis">
-      <div class="kpi"><div class="k">Requirements gate</div><div class="v">95%</div><div class="d">functional coverage, scored against the extracted requirements</div></div>
-      <div class="kpi"><div class="k">Design gate</div><div class="v">95%</div><div class="d">screen-by-screen match to the design you picked; skipped, with the reason, when there is no design to score against</div></div>
-      <div class="kpi"><div class="k">Fix rounds per gate</div><div class="v">5</div><div class="d">each failure goes back to the build with what failed; after the fifth, gaps are reported</div></div>
+      <div class="kpi"><div class="k">Stages</div><div class="v">5</div><div class="d">Extract, Design, Generate, Verify, Hand over</div></div>
+      <div class="kpi"><div class="k">Human decisions</div><div class="v">2</div><div class="d">you validate the requirements and pick the design</div></div>
       <div class="kpi"><div class="k">Specialist roles</div><div class="v">6</div><div class="d">planner, designer, developer, reviewer, tester, reporter</div></div>
+      <div class="kpi"><div class="k">Tests per requirement</div><div class="v">1+</div><div class="d">browser tests your team can re-run, with traces and screenshots</div></div>
     </div>
     <div class="summary-bottom">
       <div class="whatsnew" role="note">
@@ -299,17 +299,17 @@
       <div class="card"><span class="k">3 · Generate</span><span class="t">Builds on the tenant through Mentor, one small piece at a time.</span>
         <span class="self-loop"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.6 1.8v3h-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>publish → test → fix, every piece</span>
         <span class="o">A running app that grows step by step</span></div>
-      <div class="card"><span class="k">4 · Verify</span><span class="t">Drives the app in a browser against every requirement, then compares each screen with the design.</span><span class="o">Two scores against the 95% bar, with any gaps listed</span></div>
+      <div class="card"><span class="k">4 · Verify</span><span class="t">Drives the app in a browser against every requirement, then compares each screen with the design.</span><span class="o">Results against the requirements and the design, with any gaps listed</span></div>
       <div class="card"><span class="k">5 · Hand over</span><span class="t">Writes the Implementation Report and packages every test run during the build into a toolkit your team can re-run.</span><span class="o">Implementation Report and re-runnable test toolkit</span></div>
       <p class="fwd-note">Each stage hands the next one a reviewable file, so you can stop, check and resume.</p>
-      <div class="back-loop" aria-hidden="true"><div class="u"></div><div class="lbl">a gate fails → back to Generate with what failed, up to 5 rounds</div></div>
+      <div class="back-loop" aria-hidden="true"><div class="u"></div><div class="lbl">a check fails → back to Generate with what failed</div></div>
       <div class="up-loop" aria-hidden="true"><div class="lbl">a design problem found while building → back to Design, with the same checks</div><div class="n"></div></div>
     </div>
     <div class="loop-legend">
       <span><b>Human gates.</b> Extraction and the build are separate commands, so you check the extracted requirements and correct anything missing or wrong before the build starts. No screen is built until you pick a design, and you can ask for changes first. The app, its data model and seed data can start while you choose.</span>
       <span><b>Back to design.</b> If Generate or Verify finds the design can't work as drawn (a missing screen, a rule it can't show), the designer extends or revises it in the style you picked, and the new screens pass the same reviewer and tester checks as the first ones.</span>
       <span><b>Inner loop.</b> After each published piece the agent opens the app, checks it and fixes it before moving on.</span>
-      <span><b>Outer loop.</b> Below 95% on requirements or design, the failures go back to Generate and Verify runs again, up to 5 rounds. After that, what still fails is listed as a gap in the report. With no design to score against, the design gate is skipped and the report says why.</span>
+      <span><b>Outer loop.</b> When the app falls short on requirements or design, the failures go back to Generate and Verify runs again. What still fails at the end is listed as a gap in the report. With no design to score against, the design gate is skipped and the report says why.</span>
       <span><b>Nothing is lost.</b> Every check from both loops ends up in the test toolkit, so you can re-run it after your own changes.</span>
     </div>
     <p class="cap-caption">Legacy Modernization Toolkit · How it works</p>
@@ -366,7 +366,7 @@
     <div class="cmds">
       <div class="cmd"><code>/extract-requirements</code><b>Turn legacy source into requirements</b><span>Reads the code you upload and publishes the requirements collection and the Business Specification, every item cited to its source lines.</span></div>
       <div class="cmd"><code>/generate-design-options</code><b>Design the migration only</b><span>About three options, a pause for a pick, then the design gate on the picked option. Does not build or publish.</span></div>
-      <div class="cmd"><code>/workflow-legacy-app</code><b>Run a full migration</b><span>Design options and your pick, the build on your tenant, both 95% gates with their fix rounds, then the Implementation Report and the re-runnable test toolkit.</span></div>
+      <div class="cmd"><code>/workflow-legacy-app</code><b>Run a full migration</b><span>Design options and your pick, the build on your tenant, the requirements and design checks, then the Implementation Report and the re-runnable test toolkit.</span></div>
       <div class="cmd"><code>/how-it-works</code><b>Explain the toolkit</b><span>Builds this page, or answers one question about the toolkit with the matching section.</span></div>    </div>
     <p class="cap-caption">Legacy Modernization Toolkit · Commands</p>
   </section>

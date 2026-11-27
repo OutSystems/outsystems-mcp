@@ -15,26 +15,30 @@ requirements and picking the design, and reviews the result.
   it came from, so the new app keeps the old rules.
 - **Top-class UI.** A modern design the user chooses, built from standard
   OutSystems UI blocks and matched screen by screen.
-- **High quality, proven.** 95% of requirements and 95% of the design, or the
-  app goes back to the build, with a test for every requirement.
+- **High quality, proven.** Checked against every requirement and the
+  approved design, or the app goes back to the build, with a test for every
+  requirement.
 - **Minimal human intervention.** Agents build, test and fix on their own. The
   user validates the requirements, approves the design and reviews the result.
 
 ## When an app is done
 
-An app is done when it meets **95% of its requirements** and matches **95% of
-its approved design**. Anything short goes back to the build with the list of
-what failed.
+An app is done when it meets **its requirements** and matches **its approved
+design**. Anything short goes back to the build with the list of what failed.
 
 | | |
 |---|---|
-| Requirements gate | 95% functional coverage, scored against the extracted requirements, business rules and user journeys |
-| Design gate | 95% of screens match the design the user picked; skipped, with the reason recorded, when there is no design artifact (no Figma and no mockups) |
-| Fix rounds per gate | up to 5; each failure goes back to the build with what failed |
+| Stages | 5: Extract, Design, Generate, Verify, Hand over |
+| Human decisions | 2: validate the requirements, pick the design |
 | Specialist roles | 6: planner, designer, developer, reviewer, tester, reporter |
+| Tests | one per requirement, re-runnable by the team |
 
-If a gate still fails after its last round, the run finishes and the
-Implementation Report records the gaps.
+Without a design to check against (no Figma and no mockups), the design check
+is skipped and the report says why. What still fails at the end is recorded as
+a gap in the Implementation Report.
+
+Don't state gate percentages, fix-round counts or how the checks are scored:
+the product docs leave them out on purpose.
 
 ## The five stages
 
@@ -52,8 +56,8 @@ Implementation Report records the gaps.
    time. After each published piece the agent opens the app, checks it and
    fixes it before moving on. Output: a running app that grows step by step.
 4. **Verify.** Drives the app in a browser against every requirement, then
-   compares each screen with the design. Output: two scores against the 95%
-   bar, with any remaining gaps listed.
+   compares each screen with the design. Output: the results against the
+   requirements and the design, with any remaining gaps listed.
 5. **Hand over.** Writes the Implementation Report and packages every test run
    during the build into a toolkit the team can re-run. Output: the
    Implementation Report and the re-runnable test toolkit.
@@ -64,9 +68,9 @@ checked and resumed.
 ## The loops
 
 - **Inner loop (every piece):** publish, test, fix, during Generate.
-- **Outer loop (the gates):** below 95% on requirements or design, the
-  failures go back to Generate and Verify runs again, up to 5 rounds. After
-  that, what still fails is listed as a gap in the Implementation Report.
+- **Outer loop (the checks):** when the app falls short on requirements or
+  design, the failures go back to Generate and Verify runs again. What still
+  fails at the end is listed as a gap in the Implementation Report.
 - **Back to design:** if Generate or Verify finds the design can't work as
   drawn (a missing screen, a rule it can't show), the designer extends or
   revises it in the style the user picked. The new screens pass the same
@@ -121,7 +125,7 @@ Either way, the agent runs that workflow with the skills below.
 |---|---|
 | `/extract-requirements` | Turn legacy source into requirements: publishes the requirements collection and the Business Specification, every item cited to its source lines. |
 | `/generate-design-options` | Design the migration only: about three options, a pause for a pick, then the design gate on the picked option. Does not build or publish. |
-| `/workflow-legacy-app` | Run a full migration: design options and the user's pick, the build on the tenant, both 95% gates with their fix rounds, then the Implementation Report and the re-runnable test toolkit. |
+| `/workflow-legacy-app` | Run a full migration: design options and the user's pick, the build on the tenant, the requirements and design checks, then the Implementation Report and the re-runnable test toolkit. |
 | `/how-it-works` | This explanation, or the answer to one question about the toolkit. |
 
 ## Which skill
