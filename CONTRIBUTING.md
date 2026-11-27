@@ -72,8 +72,12 @@ kiro/
       outsystems/
         SKILL.md          # Agent-facing skill loaded into Kiro Chat
       outsystems-*/       # Byte-identical copies of the six Beta skills under claude/skills/
+legacy-modernization/     # Second plugin in both marketplaces: the legacy migration skills, commands, roles and playbooks (own version, own README)
+  .claude-plugin/plugin.json   # Its Claude manifest, the source of its version
+  .cursor-plugin/plugin.json   # Its Cursor manifest
 tests/
   skills/                 # Offline pytest suites for the Beta skills' scripts, with anonymised fixtures
+  legacy-modernization/   # Offline suites for the legacy-modernization skills' scripts
 SKILL.md                  # Generic skill content for other harnesses
 README.md                 # Install instructions for each supported harness
 ```
@@ -256,11 +260,11 @@ This section is the one list of the files that carry the plugin version. The ver
 
 **Claude:**
 - `claude/.claude-plugin/plugin.json` → `version`
-- `.claude-plugin/marketplace.json` → `plugins[0].version`
+- `.claude-plugin/marketplace.json` → the `outsystems` entry's `version`
 
 **Cursor:**
 - `cursor/.cursor-plugin/plugin.json` → `version`
-- `.cursor-plugin/marketplace.json` → `plugins[0].version`
+- `.cursor-plugin/marketplace.json` → the `outsystems` entry's `version`
 
 **Kiro:**
 - `kiro/outsystems/plugin.json` → `version`
@@ -297,6 +301,17 @@ Versioning follows [Semantic Versioning](https://semver.org/):
 - **PATCH** — fixes and clarifications that don't change how a user installs or invokes the integration.
 
 There is no automated release pipeline yet. After the version-bump commit lands on `main`, users pick up the change on their next `claude plugin install` or Claude Code auto-update, Claude Desktop plugin install or reinstall, Cursor Team Marketplace refresh, or Kiro Power re-fetch. Cursor and Kiro users then also run the refresh prompt in README.md, so that the plugin version header in their MCP config matches the new version.
+
+### The `legacy-modernization` plugin
+
+The second plugin in both marketplaces has a version of its own, independent of the `outsystems` one, and sends no header. The source of truth is `legacy-modernization/.claude-plugin/plugin.json` → `version`. The version lives in five places, which must stay in sync:
+- `legacy-modernization/.claude-plugin/plugin.json` → `version`
+- `legacy-modernization/.cursor-plugin/plugin.json` → `version`
+- `legacy-modernization/skills/legacy-requirements-extraction/SKILL.md` → the "Plugin version of this copy" line, which the skill compares with the released version to tell the user when their copy is older
+- the `legacy-modernization` entry of `.claude-plugin/marketplace.json` → `version`
+- the `legacy-modernization` entry of `.cursor-plugin/marketplace.json` → `version`
+
+`.github/tests/plugin-version-lockstep.test.sh` checks them against the source. A PR that changes a file under `legacy-modernization/` raises this version, not the `outsystems` one: `.github/tests/plugin-version-bump.sh` fails it otherwise. The same SemVer rules apply.
 
 ## License
 

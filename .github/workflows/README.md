@@ -185,7 +185,8 @@ skill doc, to the README, to the Claude plugin's hook, or to a file that
 carries the plugin version.
 `skills-tests.yml` runs one of its suites, `skill-platform-check.test.sh`, on
 its own, on pull requests that touch the skill docs, the README, `lib.sh` or
-that suite; the same workflow also runs the Beta skills' Python suites.
+that suite; the same workflow also runs the Beta skills' Python suites and
+the legacy-modernization plugin's script suites.
 `plugin-version.yml` runs `plugin-version-lockstep.test.sh` on its own on
 every pull request and on every push to `main`. On every pull request, it
 also runs `plugin-version-bump.test.sh` and then `plugin-version-bump.sh`.
@@ -254,13 +255,18 @@ the suites pin down:
   Cursor and Kiro setup recipe and config. The source value is SemVer 2.0
   and at most 64 bytes, no file outside the list sets the header, the Claude
   plugin's manifest declares its server inline with no header at all, and
-  the plugin ships no `claude/.mcp.json`. A self-test
-  proves that each check fails on a mutated copy.
+  the plugin ships no `claude/.mcp.json`. The `legacy-modernization`
+  plugin's version, in its two manifests, its marketplace entries and its
+  extraction skill's "Plugin version of this copy" line, agrees with
+  `legacy-modernization/.claude-plugin/plugin.json`. A self-test proves that
+  each check fails on a mutated copy.
 - `plugin-version-bump.test.sh` - `plugin-version-bump.sh` fails a pull
   request that changes a file under `claude/`, `cursor/` or
   `kiro/outsystems/` and does not raise the version by SemVer precedence,
-  pre-release and build metadata included. A change elsewhere, or a bump
-  alone, passes.
+  pre-release and build metadata included, and one that changes a file
+  under `legacy-modernization/` without raising that plugin's own
+  version. A new plugin needs only a SemVer version. A change elsewhere,
+  or a bump alone, passes.
 - `skill-withheld-graph.test.sh` - the Caveats bullet for a deployment
   that does not serve the app model graph, byte-identical in the five skill
   docs, and the matching refusal rule in Branch B of the dependency-impact

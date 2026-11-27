@@ -1,0 +1,27 @@
+{
+  "name": "{{PACKAGE_NAME}}",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Re-runnable Playwright tests and requirement evidence for {{APP_NAME}}.",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "setup": "playwright install chromium",
+    "test": "node scripts/run.mjs",
+    "test:req": "node scripts/run.mjs",
+    "screens": "node scripts/screens.mjs",
+    "list": "node scripts/list-tests.mjs",
+    "matrix": "node scripts/build-matrix.mjs",
+    "report": "playwright show-report evidence/html-report",
+    "handover": "node scripts/handover.mjs",
+    "typecheck": "tsc -p ."
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "^22.10.2",
+    "dotenv": "^16.4.7",
+    "typescript": "^5.6.3"
+  }
+}

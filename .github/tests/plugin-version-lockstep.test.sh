@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Every file that carries the plugin version agrees with
-# `claude/.claude-plugin/plugin.json`: the five manifests, and the
+# `claude/.claude-plugin/plugin.json`: the five manifests (in the two
+# marketplaces, the `outsystems` entry), and the
 # `X-OutSystems-Plugin-Version` header value in the five files that set it
 # as a literal. The Claude plugin sets no header at all: the server entry
 # its manifest declares holds no header key, because Claude Code keys the
@@ -13,6 +14,12 @@
 # applies the same rule to the header it receives. A new manifest fails the
 # suite, and so does a file other than those where the header name, in any
 # letter case and optionally quoted, is followed by `:` or `=`.
+#
+# The `legacy-modernization` plugin, the second entry in each marketplace,
+# has a version of its own and sends no header. Its source is
+# `legacy-modernization/.claude-plugin/plugin.json`; its Cursor manifest,
+# its entry in each marketplace and the "Plugin version of this copy" line
+# of the skill that checks for updates must agree with it.
 
 set -uo pipefail
 # A caller's environment must not point the git calls at another repository.
@@ -36,6 +43,13 @@ HEADER_MD=(
   cursor/README.md
   README.md
 )
+# The marketplace entries, in order, and the second plugin's files.
+ENTRIES='["outsystems","legacy-modernization"]'
+LM=legacy-modernization
+LM_SOURCE=$LM/.claude-plugin/plugin.json
+LM_PLUGINS=($LM/.cursor-plugin/plugin.json)
+LM_STAMPS=($LM/skills/legacy-requirements-extraction/SKILL.md)
+STAMP='Plugin version of this copy: '
 
 # Built from parts so that this file never carries the shapes it looks for.
 # `shape` is the JSON key with its opening value quote. `key` is the name in
@@ -51,6 +65,12 @@ key="[\"']?${name}[\"']?[[:space:]]*[:=]"
 # accept a consumer value of "1.8.0\n".
 jq_true() { # file or "-" for stdin, filter
   jq -e --argjson s "$srcjson" --arg h "$name" "$2" "$1" >/dev/null 2>&1 && echo yes
+}
+
+# The same, with `$l` bound to the JSON-encoded version of the
+# legacy-modernization plugin.
+lm_true() { # file, filter
+  jq -e --argjson l "$lmjson" "$2" "$1" >/dev/null 2>&1 && echo yes
 }
 
 # The raw JSON string literals of the header values a Markdown file sets,
@@ -100,7 +120,7 @@ COMPLETE="the header appears only in the listed files"
 NO_LITERAL="$SOURCE: no header key in any letter case"
 INLINE="$SOURCE: declares the outsystems server inline"
 NO_MCP_FILE="claude/.mcp.json does not exist"
-MANIFESTS="the manifests are exactly the listed five"
+MANIFESTS="the manifests are exactly the listed seven"
 LISTED="CONTRIBUTING.md lists exactly the files that carry the version"
 
 # The paths at the start of the list items in "Versioning and Releases".
@@ -133,11 +153,9 @@ check_root() { # dir, command that lists the files of the dir NUL-separated
     check "$f: version" "$(jq_true "$dir/$f" '.version == $s')" yes
   done
   for f in "${MARKETPLACES[@]}"; do
-    n=$(jq '.plugins | length' "$dir/$f")
-    check "$f: one plugin entry" "$n" 1
-    for ((i = 0; i < n; i++)); do
-      check "$f: plugins[$i].version" "$(jq_true "$dir/$f" ".plugins[$i].version == \$s")" yes
-    done
+    check "$f: plugin entries" "$(jq -c '[.plugins[].name]' "$dir/$f" 2>/dev/null)" "$ENTRIES"
+    check "$f: outsystems entry version" \
+      "$(jq_true "$dir/$f" '[.plugins[] | select(.name == "outsystems") | .version == $s] == [true]')" yes
   done
 
   section "header in the plugin and template configs"
@@ -171,16 +189,35 @@ check_root() { # dir, command that lists the files of the dir NUL-separated
     done < <(md_literals "$dir/$f")
   done
 
+  section "the legacy-modernization plugin"
+  lmjson=$(jq -c .version "$dir/$LM_SOURCE" 2>/dev/null)
+  lm=$(jq -r .version "$dir/$LM_SOURCE" 2>/dev/null)
+  check "$LM_SOURCE: version is SemVer 2.0" \
+    "$(jq -e --arg re "$SEMVER" '.version | type == "string" and (contains("\n") | not) and test($re)' \
+      "$dir/$LM_SOURCE" >/dev/null 2>&1 && echo yes)" yes
+  for f in "${LM_PLUGINS[@]}"; do
+    check "$f: version" "$(lm_true "$dir/$f" '.version == $l')" yes
+  done
+  for f in "${MARKETPLACES[@]}"; do
+    check "$f: $LM entry version" \
+      "$(lm_true "$dir/$f" '[.plugins[] | select(.name == "legacy-modernization") | .version == $l] == [true]')" yes
+  done
+  for f in "${LM_STAMPS[@]}"; do
+    check "$f: plugin version stamp" \
+      "$(grep -oE "${STAMP}\`[^\`]*\`" "$dir/$f" | sort -u)" "${STAMP}\`$lm\`"
+  done
+
   section "completeness"
   check "$COMPLETE" "$("$list" "$dir" | header_files "$dir")" \
     "$expected_headers"
   check "$LISTED" "$(contributing_list "$dir/CONTRIBUTING.md")" \
-    "$(printf '%s\n' "$expected_headers" "$expected_manifests" | sort)"
+    "$(printf '%s\n' "$expected_headers" "$expected_manifests" "$lm_listed" | sort)"
 }
 
 check_manifests() { # dir, a git work tree
   check "$MANIFESTS" \
-    "$(git -C "$1" ls-files '*plugin.json' '*marketplace.json' | sort)" "$expected_manifests"
+    "$(git -C "$1" ls-files '*plugin.json' '*marketplace.json' | sort)" \
+    "$(printf '%s\n' "$expected_manifests" "$LM_SOURCE" "${LM_PLUGINS[@]}" | sort)"
 }
 
 tracked_files() { git -C "$1" ls-files -z; }
@@ -188,13 +225,15 @@ all_files() { (cd "$1" && find . -type f -print0); }
 
 expected_headers=$(printf '%s\n' "${HEADER_JSON[@]}" "${HEADER_MD[@]}" | sort)
 expected_manifests=$(printf '%s\n' "$SOURCE" "${PLUGINS[@]}" "${MARKETPLACES[@]}" | sort)
+lm_listed=$(printf '%s\n' "$LM_SOURCE" "${LM_PLUGINS[@]}" "${LM_STAMPS[@]}" | sort)
 before=$_checks
 check_root "$REPO_ROOT" tracked_files
 all_checks=$((_checks - before))
 check_manifests "$REPO_ROOT"
 
 section "self-test: each mutation fails exactly the checks it targets"
-ALL=("$SOURCE" "${PLUGINS[@]}" "${MARKETPLACES[@]}" "${HEADER_JSON[@]}" "${HEADER_MD[@]}")
+ALL=("$SOURCE" "${PLUGINS[@]}" "${MARKETPLACES[@]}" "${HEADER_JSON[@]}" "${HEADER_MD[@]}"
+  "$LM_SOURCE" "${LM_PLUGINS[@]}" "${LM_STAMPS[@]}")
 MUT="$WORK/mut"
 PRISTINE="$WORK/pristine"
 for f in "${ALL[@]}" CONTRIBUTING.md; do
@@ -211,6 +250,11 @@ src=$(jq -r .version "$PRISTINE/$SOURCE")
 case "${src:0:1}" in
   [0-8]) drift="$((${src:0:1} + 1))${src:1}" ;;
   *) drift="8${src:1}" ;;
+esac
+lmsrc=$(jq -r .version "$PRISTINE/$LM_SOURCE")
+case "${lmsrc:0:1}" in
+  [0-8]) lmdrift="$((${lmsrc:0:1} + 1))${lmsrc:1}" ;;
+  *) lmdrift="8${lmsrc:1}" ;;
 esac
 
 # The report of the command, run with fresh counters.
@@ -255,13 +299,17 @@ sed_edit() { # file, sed script
 
 sed_escape() { printf '%s' "$1" | sed 's/[\\&|]/\\&/g'; }
 
+# The version of a marketplace's entry for each plugin, as a jq path.
+OS_VERSION='(.plugins[] | select(.name == "outsystems") | .version)'
+LM_VERSION='(.plugins[] | select(.name == "legacy-modernization") | .version)'
+
 # Writes the value into all ten files. Every equality check then
 # passes, so only the source-value checks can fail.
 set_everywhere() { # value
   local f quoted
   jq_edit "$SOURCE" --arg v "$1" '.version = $v'
   for f in "${PLUGINS[@]}"; do jq_edit "$f" --arg v "$1" '.version = $v'; done
-  for f in "${MARKETPLACES[@]}"; do jq_edit "$f" --arg v "$1" '.plugins[0].version = $v'; done
+  for f in "${MARKETPLACES[@]}"; do jq_edit "$f" --arg v "$1" "$OS_VERSION = \$v"; done
   for f in "${HEADER_JSON[@]}"; do
     jq_edit "$f" --arg h "$name" --arg v "$1" '.mcpServers.outsystems.headers[$h] = $v'
   done
@@ -285,7 +333,14 @@ md_value_checks() { # file
 # Every check that compares a value with the source value.
 VALUE_CHECKS=()
 for f in "${PLUGINS[@]}"; do VALUE_CHECKS+=("$f: version"); done
-for f in "${MARKETPLACES[@]}"; do VALUE_CHECKS+=("$f: plugins[0].version"); done
+for f in "${MARKETPLACES[@]}"; do VALUE_CHECKS+=("$f: outsystems entry version"); done
+
+# Every check that compares a value with the legacy-modernization version.
+LM_VALUE_CHECKS=()
+for f in "${LM_PLUGINS[@]}"; do LM_VALUE_CHECKS+=("$f: version"); done
+for f in "${MARKETPLACES[@]}"; do LM_VALUE_CHECKS+=("$f: $LM entry version"); done
+for f in "${LM_STAMPS[@]}"; do LM_VALUE_CHECKS+=("$f: plugin version stamp"); done
+LM_SEMVER="$LM_SOURCE: version is SemVer 2.0"
 for f in "${HEADER_JSON[@]}"; do
   VALUE_CHECKS+=("$f: outsystems header value" "$f: $EVERY_KEY")
 done
@@ -306,14 +361,58 @@ for f in "${PLUGINS[@]}"; do
   expect_failure "$f: corrupt JSON" "$f: version"
 done
 for f in "${MARKETPLACES[@]}"; do
-  jq_edit "$f" --arg d "$drift" '.plugins[0].version = $d'
-  expect_failure "$f: changed version" "$f: plugins[0].version"
+  jq_edit "$f" --arg d "$drift" "$OS_VERSION = \$d"
+  expect_failure "$f: changed version" "$f: outsystems entry version"
   jq_edit "$f" --arg d "$drift" '.plugins += [.plugins[0] + {version: $d}]'
-  expect_failure "$f: second plugin entry with another version" \
-    "$f: one plugin entry" "$f: plugins[1].version"
+  expect_failure "$f: second outsystems entry with another version" \
+    "$f: plugin entries" "$f: outsystems entry version"
+  jq_edit "$f" '.plugins += [{name: "other", version: "1.0.0", source: "./other"}]'
+  expect_failure "$f: an entry for another plugin" "$f: plugin entries"
+  jq_edit "$f" '.plugins |= reverse'
+  expect_failure "$f: entries in another order" "$f: plugin entries"
+  jq_edit "$f" --arg d "$lmdrift" "$LM_VERSION = \$d"
+  expect_failure "$f: changed $LM version" "$f: $LM entry version"
+  jq_edit "$f" 'del(.plugins[1])'
+  expect_failure "$f: $LM entry removed" "$f: plugin entries" "$f: $LM entry version"
   sed_edit "$f" '$d'
-  expect_failure "$f: corrupt JSON" "$f: one plugin entry"
+  expect_failure "$f: corrupt JSON" \
+    "$f: plugin entries" "$f: outsystems entry version" "$f: $LM entry version"
 done
+jq_edit "$LM_SOURCE" --arg d "$lmdrift" '.version = $d'
+expect_failure "$LM_SOURCE: changed version" "${LM_VALUE_CHECKS[@]}"
+sed_edit "$LM_SOURCE" '$d'
+expect_failure "$LM_SOURCE: corrupt JSON" "$LM_SEMVER" "${LM_VALUE_CHECKS[@]}"
+for f in "${LM_PLUGINS[@]}"; do
+  jq_edit "$f" --arg d "$lmdrift" '.version = $d'
+  expect_failure "$f: changed version" "$f: version"
+  jq_edit "$f" --arg v "$lmsrc"$'\n' '.version = $v'
+  expect_failure "$f: version with a trailing newline" "$f: version"
+done
+for f in "${LM_STAMPS[@]}"; do
+  sed_edit "$f" "s|${STAMP}\`[^\`]*\`|${STAMP}\`$(sed_escape "$lmdrift")\`|"
+  expect_failure "$f: changed stamp" "$f: plugin version stamp"
+  sed_edit "$f" "s|${STAMP}\`[^\`]*\`||"
+  expect_failure "$f: stamp removed" "$f: plugin version stamp"
+done
+# An invalid version, written in every file that carries it, fails only
+# the SemVer check.
+set_lm_json() { # value
+  local f
+  jq_edit "$LM_SOURCE" --arg v "$1" '.version = $v'
+  for f in "${LM_PLUGINS[@]}"; do jq_edit "$f" --arg v "$1" '.version = $v'; done
+  for f in "${MARKETPLACES[@]}"; do jq_edit "$f" --arg v "$1" "$LM_VERSION = \$v"; done
+}
+for v in "v3.0.0" "3.0" "03.0.0"; do
+  set_lm_json "$v"
+  for f in "${LM_STAMPS[@]}"; do
+    sed_edit "$f" "s|${STAMP}\`[^\`]*\`|${STAMP}\`$(sed_escape "$v")\`|"
+  done
+  expect_failure "invalid $LM version \"$v\" in every file" "$LM_SEMVER"
+done
+# A trailing newline hides from a shell comparison, and a stamp line can't
+# hold one, so only the JSON files carry it here.
+set_lm_json "$lmsrc"$'\n'
+expect_failure "$LM version with a trailing newline in every JSON file" "$LM_SEMVER"
 for f in "${HEADER_JSON[@]}"; do
   jq_edit "$f" --arg h "$name" --arg d "$drift" '.mcpServers.outsystems.headers[$h] = $d'
   expect_failure "$f: changed header value" "$f: outsystems header value" "$f: $EVERY_KEY"
@@ -384,8 +483,8 @@ for f in "${PLUGINS[@]}"; do
   expect_failure "$f: version with a trailing newline" "$f: version"
 done
 for f in "${MARKETPLACES[@]}"; do
-  jq_edit "$f" --arg v "$src"$'\n' '.plugins[0].version = $v'
-  expect_failure "$f: version with a trailing newline" "$f: plugins[0].version"
+  jq_edit "$f" --arg v "$src"$'\n' "$OS_VERSION = \$v"
+  expect_failure "$f: version with a trailing newline" "$f: outsystems entry version"
 done
 for f in "${HEADER_JSON[@]}"; do
   jq_edit "$f" --arg h "$name" --arg v "$src"$'\n' '.mcpServers.outsystems.headers[$h] = $v'
@@ -437,7 +536,7 @@ check "self-test: a tracked new file with the header fails only the targeted che
 mkdir "$GITREPO/x"
 cp "$PRISTINE/${PLUGINS[0]}" "$GITREPO/x/plugin.json"
 git -C "$GITREPO" add x/plugin.json
-check "self-test: a sixth tracked manifest fails only the targeted checks" \
+check "self-test: an eighth tracked manifest fails only the targeted checks" \
   "$(failed_checks "$(run_checks check_manifests "$GITREPO")")" "$MANIFESTS"
 
 section "self-test: prerequisites"

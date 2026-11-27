@@ -1,0 +1,131 @@
+{
+  "version": "1.0",
+  "notes": "Each task has {id, name, category, description, prompt, vars?}. Variables use {{name}} syntax — the caller substitutes them before passing the prompt to mentor_start.",
+  "tasks": [
+    {
+      "id": "quality-review",
+      "name": "App quality review",
+      "category": "audit",
+      "description": "Review the app for anti-patterns, dead code, unclear naming, and complexity hotspots. Returns ranked findings.",
+      "prompt": "Review this application for code quality issues. Surface the top 10 findings ordered by severity. For each finding include: (1) the exact element name and module path, (2) the issue category (anti-pattern / dead code / naming / complexity / duplication), (3) why it matters, (4) a concrete fix. Focus on actions and screens. Skip cosmetic issues."
+    },
+    {
+      "id": "performance-audit",
+      "name": "Performance audit",
+      "category": "audit",
+      "description": "Identify slow screens, N+1 query patterns, oversized aggregates, heavy widgets.",
+      "prompt": "Audit this application for performance issues. Check specifically: (1) aggregates with N+1 patterns or missing indexes, (2) screens with >50 widgets or unbounded lists, (3) server actions that fetch oversized data, (4) client-side logic that should be server-side (or vice versa). For each issue: exact location, measured or estimated impact, specific fix. Order by likely user-visible impact."
+    },
+    {
+      "id": "security-review",
+      "name": "Security review",
+      "category": "audit",
+      "description": "Auth gaps, missing role checks, exposed endpoints, SQL injection risk in advanced queries.",
+      "prompt": "Run a security audit on this application. Specifically check: (1) screens that bypass role checks (anonymous screens that should not be), (2) REST endpoints with weak or missing auth, (3) advanced SQL queries with concatenated inputs (injection risk), (4) hardcoded credentials, tokens, or connection strings, (5) sensitive data exposed in logs or client-side. For each: severity (critical/high/medium), exact location, exploit description, fix."
+    },
+    {
+      "id": "accessibility-audit",
+      "name": "Accessibility audit (WCAG 2.1 AA)",
+      "category": "audit",
+      "description": "Missing alt text, low contrast, keyboard traps, missing labels — across screens and patterns.",
+      "prompt": "Audit screens in this app for WCAG 2.1 AA compliance. Focus on: missing alt text on images, color contrast violations (text vs. background), keyboard navigation traps, form fields without labels, semantic heading structure. For each issue: screen name, the offending element, the WCAG criterion violated, and the fix. Group by screen."
+    },
+    {
+      "id": "test-generation",
+      "name": "Generate test scaffolds",
+      "category": "build",
+      "description": "Unit + integration test scaffolds for the most-used server actions.",
+      "prompt": "Generate test case scaffolds for the {{count}} most-used or most-critical server actions in this application. For each action provide: (1) happy-path test, (2) two edge cases, (3) one error case. Use the app's existing testing patterns if present; otherwise propose a standard pattern and note the choice. Output as a structured list ready to convert to BDDFramework tests.",
+      "vars": {
+        "count": {
+          "type": "integer",
+          "default": 5,
+          "description": "How many actions to generate tests for"
+        }
+      }
+    },
+    {
+      "id": "doc-gap-fill",
+      "name": "Fill documentation gaps",
+      "category": "docs",
+      "description": "Generate descriptions for entities, actions, screens that lack them.",
+      "prompt": "Identify entities, server actions, and screens in this application that lack a description. For the top {{count}} undocumented elements, generate concise (1-2 sentences) accurate descriptions based on the element's structure, name, and usage in the app. Output as a table: element_path | element_type | suggested_description. Be specific — do not write filler like 'This action does what its name suggests.'",
+      "vars": {
+        "count": {
+          "type": "integer",
+          "default": 20
+        }
+      }
+    },
+    {
+      "id": "refactor-suggestions",
+      "name": "Refactor suggestions",
+      "category": "audit",
+      "description": "Actions to split, screens to simplify, naming to normalize, duplication to extract.",
+      "prompt": "Suggest concrete refactoring opportunities in this application. Look for: (1) server actions longer than 30 nodes that should be split, (2) screens with mixed responsibilities, (3) naming inconsistencies (e.g., GetUser vs FetchAccount), (4) duplicated logic across actions that should be extracted. For each: current state, proposed change, expected maintainability gain. Prioritize by impact, not by count."
+    },
+    {
+      "id": "model-migration",
+      "name": "AI model migration",
+      "category": "build",
+      "description": "Find references to one AIModelConnection and propose migration to another, adjusting prompts.",
+      "prompt": "Find all references to AIModelConnection '{{from_model}}' in this app's actions and agents. Propose a migration to '{{to_model}}' including: (1) the list of affected actions, (2) prompt adjustments needed for '{{to_model}}'s response style and token limits, (3) expected behavior differences, (4) a recommended testing checklist before publishing the migration.",
+      "vars": {
+        "from_model": {
+          "type": "string",
+          "required": true,
+          "description": "Current AIModelConnection name (e.g. TrialClaude3_7Sonnet)"
+        },
+        "to_model": {
+          "type": "string",
+          "required": true,
+          "description": "Target AIModelConnection name (e.g. gpt_5_mini)"
+        }
+      }
+    },
+    {
+      "id": "add-feature",
+      "name": "Add a feature",
+      "category": "build",
+      "description": "Implement a new feature following the app's existing conventions.",
+      "prompt": "Add a {{feature_name}} feature to this application. Requirements: {{requirements}}. Follow existing conventions in this app for screens (layout, components used), actions (naming, error handling), and entities (naming, relationships). Reuse existing patterns where possible — do not introduce new dependencies unless necessary. Output: (1) entities to add/modify, (2) actions to add, (3) screens to add, (4) wiring (menu entries, navigation, role permissions), (5) any data migration steps.",
+      "vars": {
+        "feature_name": {
+          "type": "string",
+          "required": true,
+          "description": "Short feature name (e.g. 'Transfer Funds')"
+        },
+        "requirements": {
+          "type": "string",
+          "required": true,
+          "description": "1-3 sentence functional requirements"
+        }
+      }
+    },
+    {
+      "id": "demo-data",
+      "name": "Generate demo data",
+      "category": "build",
+      "description": "Realistic seed data for entities — sized and themed for a demo.",
+      "prompt": "Generate {{count}} realistic demo records distributed across this application's main entities for a {{industry}} domain. Constraints: (1) names, addresses, and identifiers should look real but be fictional, (2) referential integrity must be preserved (foreign keys point to existing parent records), (3) date ranges should be recent (last 90 days) unless the entity semantics require otherwise, (4) include a small number of edge cases (high values, special characters, null optionals) to make demos visually interesting. Output as a structured seed plan with INSERT-equivalent records or BootstrapData callable specs.",
+      "vars": {
+        "count": {
+          "type": "integer",
+          "default": 100
+        },
+        "industry": {
+          "type": "string",
+          "default": "banking",
+          "description": "banking / retail / healthcare / etc."
+        }
+      }
+    },
+    {
+      "id": "demo-readiness",
+      "name": "Demo readiness check",
+      "category": "audit",
+      "description": "Pre-event audit: broken screens, missing data, console errors, visible-to-audience issues.",
+      "prompt": "This application will be demoed live to an audience in the next 24 hours. Audit it for demo readiness. Check: (1) screens that error or render blank on load, (2) empty states that would be embarrassing on a live demo (zero data, broken images), (3) browser console errors visible to anyone inspecting, (4) accessibility issues a screen-reader user in the audience would catch, (5) deprecated patterns that produce visible warnings. For each: location, severity (showstopper / annoying / cosmetic), fix time estimate. Prioritize showstoppers first."
+    }
+  ]
+}

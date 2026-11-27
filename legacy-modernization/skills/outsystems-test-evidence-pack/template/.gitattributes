@@ -1,0 +1,5 @@
+# Keep LF everywhere so Windows checkouts don't show every file as changed.
+* text=auto eol=lf
+*.xlsx binary
+*.png binary
+*.zip binary
