@@ -3,10 +3,12 @@
 # `claude/.claude-plugin/plugin.json`: the five manifests (in the two
 # marketplaces, the `outsystems` entry), and the
 # `X-OutSystems-Plugin-Version` header value in the five files that set it
-# as a literal. The Claude plugin sets no header at all: `claude/.mcp.json`
-# holds no header key, because Claude Code keys the stored sign-in on the
-# headers, and the directory accepts no header helper command from this
-# organization. CONTRIBUTING.md "Versioning and Releases" lists those
+# as a literal. The Claude plugin sets no header at all: the server entry
+# its manifest declares holds no header key, because Claude Code keys the
+# stored sign-in on the headers, and the directory accepts no header helper
+# command from this organization. The manifest declares that server inline,
+# and the plugin ships no `claude/.mcp.json`: the Claude desktop app's update
+# to 1.13.0 left installs without that file. CONTRIBUTING.md "Versioning and Releases" lists those
 # files, and the suite holds that list to the files it checks. The source
 # value must be SemVer 2.0 and at most 64 bytes, because the MCP server
 # applies the same rule to the header it receives. A new manifest fails the
@@ -35,7 +37,6 @@ SOURCE=claude/.claude-plugin/plugin.json
 PLUGINS=(cursor/.cursor-plugin/plugin.json kiro/outsystems/plugin.json)
 MARKETPLACES=(.claude-plugin/marketplace.json .cursor-plugin/marketplace.json)
 HEADER_JSON=(cursor/mcp.json)
-CLAUDE_MCP=claude/.mcp.json
 HEADER_MD=(
   cursor/skills/outsystems/SKILL.md
   kiro/outsystems/skills/outsystems/SKILL.md
@@ -116,7 +117,9 @@ header_files() { # dir
 
 EVERY_KEY="every header key in any letter case, anywhere in the file"
 COMPLETE="the header appears only in the listed files"
-NO_LITERAL="$CLAUDE_MCP: no header key in any letter case"
+NO_LITERAL="$SOURCE: no header key in any letter case"
+INLINE="$SOURCE: declares the outsystems server inline"
+NO_MCP_FILE="claude/.mcp.json does not exist"
 MANIFESTS="the manifests are exactly the listed seven"
 LISTED="CONTRIBUTING.md lists exactly the files that carry the version"
 
@@ -166,7 +169,12 @@ check_root() { # dir, command that lists the files of the dir NUL-separated
   section "no header in the Claude plugin"
   check "$NO_LITERAL" \
     "$(jq -e --arg h "$name" '[.. | objects | keys[] | ascii_downcase] | index($h | ascii_downcase) | not' \
-      "$dir/$CLAUDE_MCP" >/dev/null 2>&1 && echo yes)" yes
+      "$dir/$SOURCE" >/dev/null 2>&1 && echo yes)" yes
+  # shellcheck disable=SC2016 # the placeholder is literal JSON, not a shell variable
+  check "$INLINE" \
+    "$(jq -e '.mcpServers.outsystems | .type == "http" and .url == "https://${user_config.tenant_hostname}/mcp"' \
+      "$dir/$SOURCE" >/dev/null 2>&1 && echo yes)" yes
+  check "$NO_MCP_FILE" "$([ -e "$dir/claude/.mcp.json" ] || echo yes)" yes
 
   section "header in the setup recipes"
   for f in "${HEADER_MD[@]}"; do
@@ -225,7 +233,7 @@ check_manifests "$REPO_ROOT"
 
 section "self-test: each mutation fails exactly the checks it targets"
 ALL=("$SOURCE" "${PLUGINS[@]}" "${MARKETPLACES[@]}" "${HEADER_JSON[@]}" "${HEADER_MD[@]}"
-  "$CLAUDE_MCP" "$LM_SOURCE" "${LM_PLUGINS[@]}" "${LM_STAMPS[@]}")
+  "$LM_SOURCE" "${LM_PLUGINS[@]}" "${LM_STAMPS[@]}")
 MUT="$WORK/mut"
 PRISTINE="$WORK/pristine"
 for f in "${ALL[@]}" CONTRIBUTING.md; do
@@ -344,7 +352,8 @@ expect_failure "the unmutated copy"
 jq_edit "$SOURCE" --arg d "$drift" '.version = $d'
 expect_failure "$SOURCE: changed version" "${VALUE_CHECKS[@]}"
 sed_edit "$SOURCE" '$d'
-expect_failure "$SOURCE: corrupt JSON" "$NEWLINE" "$NONEMPTY" "$SEMVER_CHECK" "${VALUE_CHECKS[@]}"
+expect_failure "$SOURCE: corrupt JSON" "$NEWLINE" "$NONEMPTY" "$SEMVER_CHECK" "${VALUE_CHECKS[@]}" \
+  "$NO_LITERAL" "$INLINE"
 for f in "${PLUGINS[@]}"; do
   jq_edit "$f" --arg d "$drift" '.version = $d'
   expect_failure "$f: changed version" "$f: version"
@@ -422,12 +431,20 @@ for f in "${HEADER_JSON[@]}"; do
   sed_edit "$f" '$d'
   expect_failure "$f: corrupt JSON" "$f: outsystems header value" "$f: $EVERY_KEY"
 done
-jq_edit "$CLAUDE_MCP" --arg h "$name" --arg v "$src" '.mcpServers.outsystems.headers = {($h): $v}'
-expect_failure "$CLAUDE_MCP: literal header" "$NO_LITERAL" "$COMPLETE"
-jq_edit "$CLAUDE_MCP" --arg h "$name" --arg v "$src" '.other = {headers: {($h | ascii_downcase): $v}}'
-expect_failure "$CLAUDE_MCP: lowercase literal header outside mcpServers" "$NO_LITERAL" "$COMPLETE"
-sed_edit "$CLAUDE_MCP" '$d'
-expect_failure "$CLAUDE_MCP: corrupt JSON" "$NO_LITERAL"
+jq_edit "$SOURCE" --arg h "$name" --arg v "$src" '.mcpServers.outsystems.headers = {($h): $v}'
+expect_failure "$SOURCE: literal header" "$NO_LITERAL" "$COMPLETE"
+jq_edit "$SOURCE" --arg h "$name" --arg v "$src" '.other = {headers: {($h | ascii_downcase): $v}}'
+expect_failure "$SOURCE: lowercase literal header outside mcpServers" "$NO_LITERAL" "$COMPLETE"
+# The corrupt-JSON case for this file is the source's, above: the manifest is
+# also the version source.
+jq_edit "$SOURCE" '.mcpServers.outsystems.url = "https://example.invalid/mcp"'
+expect_failure "$SOURCE: server with a fixed URL" "$INLINE"
+jq_edit "$SOURCE" '.mcpServers.outsystems.type = "sse"'
+expect_failure "$SOURCE: server of another type" "$INLINE"
+jq_edit "$SOURCE" 'del(.mcpServers)'
+expect_failure "$SOURCE: no server in the manifest" "$INLINE"
+mkdir -p "$MUT/claude" && printf '{}\n' > "$MUT/claude/.mcp.json"
+expect_failure "claude/.mcp.json added back" "$NO_MCP_FILE"
 
 for f in "${HEADER_MD[@]}"; do
   # Each edit changes the first header of every line, so it reaches every

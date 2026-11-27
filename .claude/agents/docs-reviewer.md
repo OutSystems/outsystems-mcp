@@ -28,8 +28,8 @@ police style.
 - **Manifest required fields** — missing `name`, `version`, or `description` in the five manifests
   this repo ships: `claude/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`,
   `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`, `kiro/outsystems/plugin.json`
-  (which additionally needs `$schema`, `author.name`, `keywords`, and `license` for the Kiro catalog); and, for the plugin's `claude/.mcp.json`,
-  a `${user_config.<key>}` placeholder whose key is not declared under `userConfig` in `claude/.claude-plugin/plugin.json`.
+  (which additionally needs `$schema`, `author.name`, `keywords`, and `license` for the Kiro catalog); and, for the server under `mcpServers` in `claude/.claude-plugin/plugin.json`,
+  a `${user_config.<key>}` placeholder whose key is not declared under `userConfig` in the same file.
 - **Version format** — version fields that clearly do not match the project's scheme (e.g., not
   semver where semver is used)
 - **Plugin-level documentation** — new plugins added without the supporting documentation that
@@ -109,12 +109,12 @@ Do not propose creating these files if they do not exist.
 
 For every manifest file changed in the diff - in this repo that means `claude/.claude-plugin/plugin.json`,
 `.claude-plugin/marketplace.json`, `cursor/.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`,
-`kiro/outsystems/plugin.json`, and the plugin's `claude/.mcp.json`:
+`kiro/outsystems/plugin.json`:
 
 1. **Required fields**: `name`, `version`, `description` (and `source` for the marketplace entry).
    For `plugin.json`, also confirm `skills` and `commands` point at directories that actually exist.
-   For `.mcp.json`, confirm every `${user_config.<key>}` placeholder names a key declared under
-   `userConfig` in `claude/.claude-plugin/plugin.json`, and that each `userConfig` entry carries `type`,
+   For the `mcpServers` block of `claude/.claude-plugin/plugin.json`, confirm every
+   `${user_config.<key>}` placeholder names a key declared under its `userConfig`, and that each `userConfig` entry carries `type`,
    `title`, and `description`.
 2. **Version format**: Verify the version follows `MAJOR.MINOR.PATCH`. Check for obvious format
    errors.
