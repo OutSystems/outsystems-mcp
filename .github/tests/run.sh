@@ -3,7 +3,7 @@
 # it: run it locally before pushing a change to `ai-review.yml`, whose
 # shell steps only ever execute on a privileged runner otherwise, to any
 # skill doc, whose deployment-impact recipe two suites here check and whose
-# withheld-graph caveat and root-list caveat one suite each checks.
+# withheld-graph caveat, root-list caveat and Application Objects bullet one suite each checks.
 # `skills-tests.yml` runs one suite on its own: skill-platform-check.test.sh.
 # `plugin-version.yml` runs plugin-version-lockstep.test.sh on every pull
 # request and on every push to `main`, and plugin-version-bump.test.sh on

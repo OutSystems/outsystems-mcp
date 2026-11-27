@@ -270,6 +270,12 @@ the suites pin down:
   that does not serve the app model graph, byte-identical in the five skill
   docs, and the matching refusal rule in Branch B of the dependency-impact
   skill, so an agent never reports that refusal as no dependencies.
+- `skill-application-objects.test.sh` - the Rules bullet that says
+  Application Objects apply to ODC, once per doc and byte-identical in the
+  five skill docs, saying that they apply on ODC as well as on O11,
+  forbidding the claim that they do not exist on ODC, saying that the
+  server cannot report AO consumption unless `tools/list` offers a tool for
+  it, and pointing to the Subscription section of the ODC Portal.
 - `skill-platform-check.test.sh` - the platform check near the top of the
   five skill docs (the block that opens with "Platform check, only when both
   OutSystems MCP servers are connected"), once per doc ahead of the first
