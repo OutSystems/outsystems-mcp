@@ -1,5 +1,5 @@
 ---
-description: Migrate a legacy app to OutSystems via the Mentor MCP — agent → validator → design_qa → victory_lap → report, with the ≥95% functional and design-fidelity gates. Out-of-app port of the named workflow.
+description: Migrate a legacy app to OutSystems via the Mentor MCP — agent → validator → design_qa → victory_lap → report, with the functional and design-fidelity gates. Out-of-app port of the named workflow.
 argument-hint: spec paths + target app name (optional figma URL, tenant, run slug)
 ---
 
