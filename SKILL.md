@@ -146,6 +146,15 @@ For what an `app_refs` answer covers (`indexedKinds`, `origin`, `coverage`), rea
 4. Poll the run to terminal. Its events carry the publish outcome, including a conflict or an automatic merge, and the publication key once the platform accepted the publish (see Mentor session round-trip). A publish that timed out may still land. Where you follow it up through the publication status, **a `failed` carrying `indeterminate: true` is not a confirmed failure** either — the server lost sight of the publish, so it may still be building and may yet succeed. Do NOT re-publish on either (a second publish on the same app while the first is still running is what wedges an app); re-poll the publish status with the publication key, or verify via the environment's app info, and only then decide.
 5. Release the session once the publish has landed, if the surface gives you a way to; releasing discards anything unpublished.
 
+**Test the running app after a publish:**
+Mentor's own read-back is not proof that a change works; the running app is. After each successful publish, drive the app in a browser.
+1. Take the app's URL from the environment's app info or from the publish result, never from the app's name. Long names are shortened in URLs, so a URL built from the name can answer 404.
+2. Use whatever browser tool the harness has. Where you can choose, prefer a command-line driver that runs several commands per call, such as agent-browser, over tools that take one action per call: on measured app builds it needed about 70% fewer browser calls. With no browser tool, tell the user which screens and actions to check.
+3. Keep a short test for each screen as you build it (open the screen, act, check what it shows), and replay all of them after every successful publish, not only at the end. Fix a failure before the next change. Tests that only read are safe to replay. A test that writes (create, edit, delete, approve, clone) changes real records: run it only on test data the user agreed to, and only when that data can be put back.
+4. Retry a failed read-only test once, on its own, after the others; don't retry a write until you have checked what its first run changed. Report the first failure either way: a pass on the retry means the test is flaky, not that the publish is clean, and a test that fails twice is a regression.
+5. Dropdowns fill after the screen renders: wait for the options before selecting one.
+6. Screens that need login: don't change a screen's access to test it. Ask the user to sign in, in a browser session you can then use.
+
 **Promote a build across environments:**
 1. Start a deployment with the asset key, the target `env_key`, and `from_env` for the source (or pin with `build_key` + `revision`); it returns an operation key.
 2. Poll the deployment status until terminal.
