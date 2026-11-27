@@ -1,9 +1,11 @@
 name: skills-tests
 
 # Offline tests for the bundled Beta skills' scripts (tests/skills), plus the
-# check that the Cursor and Kiro copies match the Claude source, and the
-# platform-check suite from .github/tests (the O11 exclusions in the skill
-# docs and the README troubleshooting row). Needs no tenant and no secrets.
+# check that the Cursor and Kiro copies match the Claude source, the
+# legacy-modernization plugin's script suites (tests/legacy-modernization),
+# and the platform-check suite from .github/tests (the O11 exclusions in the
+# skill docs and the README troubleshooting row). Needs no tenant and no
+# secrets.
 
 on:
   pull_request:
@@ -12,6 +14,8 @@ on:
       - "cursor/skills/outsystems-*/**"
       - "kiro/outsystems/skills/outsystems-*/**"
       - "tests/skills/**"
+      - "legacy-modernization/skills/**"
+      - "tests/legacy-modernization/**"
       - ".github/workflows/skills-tests.yml"
       - "SKILL.md"
       - "claude/skills/outsystems/SKILL.md"
@@ -28,6 +32,8 @@ on:
       - "cursor/skills/outsystems-*/**"
       - "kiro/outsystems/skills/outsystems-*/**"
       - "tests/skills/**"
+      - "legacy-modernization/skills/**"
+      - "tests/legacy-modernization/**"
       - ".github/workflows/skills-tests.yml"
       - "SKILL.md"
       - "claude/skills/outsystems/SKILL.md"
@@ -63,6 +69,11 @@ jobs:
 
       - name: Run the skill suites
         run: python -m pytest -q -p no:cacheprovider tests/skills
+
+      # The runner's own Node.js runs the test evidence pack's scripts; a
+      # suite that needs it is skipped where Node.js is missing.
+      - name: Run the legacy-modernization suites
+        run: python -m pytest -q -p no:cacheprovider tests/legacy-modernization
 
   platform-check:
     # Bash and git only, so it runs once, outside the Python matrix.

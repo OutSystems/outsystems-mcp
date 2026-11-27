@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Legacy Modernization Toolkit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" referrerpolicy="no-referrer">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" referrerpolicy="no-referrer">
+<style>
+  /* OutSystems report theme: light, Inter, OutSystems red used sparingly, single theme by design. */
+  :root {
+    color-scheme: light;
+    --accent: #ff2400;
+    --accent-soft: rgba(255,36,0,.07);
+    --accent-ink: #cc1d00;  /* red for small text: 5.1:1 on white and on --accent-soft */
+    --ink: #16191d;
+    --gray: #5f6671;
+    --faint: #68707c;
+    --line: #ececef;
+    --line-2: #f4f5f7;
+    --bg: #ffffff;
+    --harness: #16191d;
+    --mentor: #ff2400;
+    --imp: #1a7f37;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+    --maxw: 1080px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  main [id] { scroll-margin-top: calc(58px + env(safe-area-inset-top, 0px) + 16px); }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .lb-seg { transition: none !important; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding-inline: 20px; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--faint); margin: 0 0 14px; }
+
+  header.mast { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .mast-inner { display: flex; align-items: center; gap: 16px; height: 58px; }
+  .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .os-logo { height: 19px; width: auto; color: var(--ink); display: block; }
+  .brand .sep { color: var(--line); font-weight: 300; font-size: 18px; }
+  .brand .mast-title { font-size: 13.5px; font-weight: 600; color: var(--gray); }
+  nav.links { margin-left: auto; display: flex; gap: 22px; }
+  nav.links a { font-size: 13px; color: var(--gray); font-weight: 500; text-decoration: none; }
+  nav.links a:hover, nav.links a:focus-visible { color: var(--ink); }
+  @media (max-width: 820px) { nav.links { display: none; } }
+
+  .intro { padding: 44px 0 10px; }
+  .intro h1 { font-size: clamp(28px, 4vw, 38px); font-weight: 700; letter-spacing: -.022em; margin: 0; line-height: 1.1; text-wrap: balance; }
+  .intro .lead { max-width: 680px; margin: 18px 0 0; font-size: 16px; color: var(--gray); line-height: 1.62; }
+  .intro-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 24px; font-size: 13px; color: var(--gray); }
+  .intro-meta .it { display: inline-flex; align-items: center; gap: 7px; }
+  .intro-meta b { color: var(--ink); font-weight: 650; }
+  .intro-meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+  section.block { padding: 44px 0; border-top: 1px solid var(--line); }
+  .block-head { margin-bottom: 26px; }
+  .block-head h2 { font-size: 20px; font-weight: 680; letter-spacing: -.012em; margin: 0; text-wrap: balance; }
+  .block-head p { margin: 8px 0 0; color: var(--gray); font-size: 14px; max-width: 640px; }
+
+  .summary-headline { font-size: clamp(21px, 3vw, 28px); font-weight: 750; letter-spacing: -.02em; line-height: 1.18; margin: 6px 0 24px; max-width: 900px; text-wrap: balance; }
+  .summary-headline em { font-style: normal; color: var(--accent); }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .kpi { border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .kpi .k { font-size: 12.5px; color: var(--gray); font-weight: 600; }
+  .kpi .v { font-size: 28px; font-weight: 750; letter-spacing: -.02em; margin-top: 8px; font-family: var(--mono); line-height: 1; }
+  .kpi .d { font-size: 12px; font-weight: 600; margin-top: 9px; color: var(--faint); }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+
+  .summary-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .notice, .whatsnew { display: flex; gap: 10px; align-items: flex-start; padding: 12px 15px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+  .notice { border: 1px solid #f0d693; background: #fdf7e7; color: #6b5414; }
+  .notice b { color: #5a4710; }
+  .whatsnew { border: 1px solid #c5dbf7; background: #eef4fe; color: #2b4a7a; }
+  .whatsnew b { color: #0b3d91; }
+  .notice svg, .whatsnew svg { flex: none; margin-top: 2px; }
+  .notice ul, .whatsnew ul { margin: 6px 0 0; padding-left: 18px; }
+  @media (max-width: 820px) { .summary-bottom { grid-template-columns: 1fr; } }
+
+
+
+  .table-scroll { overflow-x: auto; }
+  table.bench { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 13px; }
+  table.bench thead th { text-align: right; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); font-weight: 600; padding: 0 12px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.bench thead th:first-child, table.bench td:first-child, table.bench .l { text-align: left; }
+  table.bench tbody td, table.bench tfoot td { padding: 13px 12px; border-bottom: 1px solid var(--line-2); text-align: right; vertical-align: top; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  table.bench td:first-child, table.bench td.l { font-family: var(--font); }
+  table.bench td:first-child { font-weight: 650; }
+  table.bench tbody tr:hover { background: var(--line-2); }
+  table.bench tfoot td { border-top: 1px solid var(--ink); border-bottom: 0; font-weight: 700; }
+  .pill { display: inline-block; font: 700 10px var(--font); letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .pill.full { background: rgba(26,127,55,.1); color: var(--imp); }
+
+  code { font-family: var(--mono); font-size: .88em; background: var(--line-2); padding: 1px 5px; border-radius: 4px; }
+
+  .cap-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .copy-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--gray); font: 600 12px var(--font); padding: 6px 11px; border-radius: 8px; cursor: pointer; }
+  .copy-btn:hover { color: var(--accent-ink); border-color: var(--accent); }
+  .copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .copy-btn[disabled] { opacity: .6; cursor: progress; }
+  .copy-bar { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  @media (max-width: 640px) { .cap-head { flex-wrap: wrap; } .copy-bar { justify-content: flex-start; } }
+  .capturing .copy-bar { visibility: hidden; }
+  .shot-card textarea { display: block; width: min(860px, 80vw); height: 50vh; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font: 12.5px/1.5 var(--mono); color: var(--ink); background: var(--line-2); resize: vertical; }
+  .cap-caption { display: none; font-size: 11px; color: var(--faint); margin-top: 14px; }
+  .capturing { padding: 28px 32px !important; }
+  .capturing .cap-caption { display: block; }
+  .capturing .copy-btn { visibility: hidden; }
+  .capturing .table-scroll { overflow: visible; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: #fff; font-size: 13px; padding: 9px 14px; border-radius: 8px; z-index: 200; }
+  dialog.shot-card { border: 0; background: var(--bg); color: inherit; border-radius: 12px; padding: 16px; max-width: min(1100px, calc(100% - 40px)); max-height: calc(100% - 40px); overflow: auto; }
+  dialog.shot-card::backdrop { background: rgba(22,25,29,.55); }
+  .shot-card p { margin: 0 0 10px; font-size: 13px; color: var(--gray); display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+  .shot-card img { display: block; max-width: 100%; border: 1px solid var(--line); border-radius: 8px; }
+  .src a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .src a:hover { text-decoration-color: var(--accent); }
+  footer { padding: 30px 0 60px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--faint); }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="os-logo" viewBox="0 0 400 100">
+    <path d="M33.292,51.625a13.691,13.691,0,0,0,27.239,0,12.278,12.278,0,0,0,.066-1.4,13.685,13.685,0,1,0-27.369,0,12.755,12.755,0,0,0,.064,1.4M10,50A36.913,36.913,0,1,1,46.912,86.912,36.916,36.916,0,0,1,10,50" fill="#ff2400"/>
+    <path d="M129.242,49.75c0,11.222-7.772,16.123-15.112,16.123-8.219,0-14.55-6.015-14.55-15.611,0-10.159,6.645-16.123,15.048-16.123,8.717,0,14.614,6.331,14.614,15.611m-24.078.316c0,6.646,3.827,11.666,9.214,11.666,5.27,0,9.216-4.956,9.216-11.8,0-5.138-2.57-11.665-9.1-11.665s-9.333,6.029-9.333,11.8" fill="currentColor"/>
+    <path d="M161.607,56.907c0,3.134.066,5.9.248,8.285h-4.888l-.314-4.955h-.132a11.414,11.414,0,0,1-10.041,5.65c-4.772,0-10.473-2.635-10.473-13.291V34.821h5.518V51.638c0,5.768,1.756,9.66,6.778,9.66a7.754,7.754,0,0,0,7.772-7.838V34.821h5.519V56.907Z" fill="currentColor"/>
+    <path d="M189.906,59.542a14.463,14.463,0,0,0,7.276,2.19c4.011,0,5.9-2.006,5.9-4.51,0-2.634-1.573-4.076-5.65-5.583-5.452-1.94-8.021-4.956-8.021-8.587,0-4.889,3.944-8.9,10.473-8.9a15.1,15.1,0,0,1,7.459,1.887l-1.378,4.012A11.857,11.857,0,0,0,199.75,38.3c-3.263,0-5.085,1.887-5.085,4.142,0,2.5,1.822,3.644,5.768,5.138,5.268,2,7.969,4.64,7.969,9.163,0,5.335-4.142,9.161-11.352,9.161a17.287,17.287,0,0,1-8.533-2.135Z" fill="currentColor"/>
+    <path d="M243.846,59.542a14.5,14.5,0,0,0,7.275,2.19c4.011,0,5.9-2.006,5.9-4.51,0-2.634-1.572-4.076-5.65-5.583-5.451-1.94-8.021-4.956-8.021-8.587,0-4.889,3.945-8.9,10.473-8.9a15.089,15.089,0,0,1,7.458,1.887L259.9,40.051a11.865,11.865,0,0,0-6.215-1.756c-3.263,0-5.084,1.887-5.084,4.142,0,2.5,1.821,3.644,5.767,5.138,5.269,2,7.969,4.64,7.969,9.163,0,5.335-4.142,9.161-11.352,9.161a17.29,17.29,0,0,1-8.533-2.135Z" fill="currentColor"/>
+    <path d="M320.029,43.039c0-3.133-.065-5.7-.248-8.217H324.6l.248,4.888h.185a10.451,10.451,0,0,1,9.529-5.584,8.954,8.954,0,0,1,8.587,6.083h.13a12.537,12.537,0,0,1,3.381-3.946,10.388,10.388,0,0,1,6.712-2.137c4.011,0,9.976,2.636,9.976,13.174V65.179h-5.387V47.994c0-5.832-2.138-9.345-6.582-9.345a7.153,7.153,0,0,0-6.527,5.02,9.136,9.136,0,0,0-.433,2.766V65.192h-5.387V47c0-4.823-2.137-8.336-6.331-8.336-3.447,0-5.965,2.766-6.842,5.517a7.579,7.579,0,0,0-.433,2.7V65.192h-5.388V43.039Z" fill="currentColor"/>
+    <path d="M371.5,59.542a14.5,14.5,0,0,0,7.276,2.19c4.009,0,5.9-2.006,5.9-4.51,0-2.634-1.571-4.076-5.649-5.583-5.452-1.94-8.023-4.956-8.023-8.587,0-4.889,3.946-8.9,10.475-8.9a15.089,15.089,0,0,1,7.458,1.887l-1.377,4.012a11.857,11.857,0,0,0-6.213-1.756c-3.264,0-5.085,1.887-5.085,4.142,0,2.5,1.821,3.644,5.767,5.138,5.27,2,7.97,4.64,7.97,9.163,0,5.335-4.144,9.161-11.352,9.161a17.284,17.284,0,0,1-8.533-2.135Z" fill="currentColor"/>
+    <path d="M234.041,34.742l-6.016,17.8c-.747,2.189-1.378,4.745-1.94,6.318h-.132c-.5-1.573-1.257-4.195-1.94-6.2l-6.645-17.918H211.35l11.222,28.012a5.082,5.082,0,0,1,.38,1.468,4.018,4.018,0,0,1-.433,1.325,16.824,16.824,0,0,1-4.64,6.147,14.793,14.793,0,0,1-4.824,2.7l1.494,4.614a15.044,15.044,0,0,0,6.647-3.552c3.762-3.264,6.462-8.639,10.407-19.046l8.284-21.681h-5.846Z" fill="currentColor"/>
+    <path d="M313,51a19.973,19.973,0,0,0,.183-2.583c0-5.6-2.635-14.339-12.571-14.339-8.861,0-14.274,7.236-14.274,16.411s5.6,15.4,14.956,15.4a23.167,23.167,0,0,0,10.014-2.19l-1.375-4.207c-4.627,1.887-8.089,2.254-10.671,1.77a10.636,10.636,0,0,1-3-1.127c-4.09-2.5-4.589-7.8-4.641-8.926,0-.079-.012-.211-.012-.211Zm-12.82-12.924c6.226,0,7.733,5.453,7.668,8.992H291.69c.445-3.539,2.9-8.992,8.494-8.992" fill="currentColor"/>
+    <path d="M183.1,59.6a7.21,7.21,0,0,1-3.422,1.363c-1.913-.026-3.21-1.35-3.21-5.06V38.806h7.863V34.874h-7.863V24.06L170.7,28.175V55.584c0,3.579.734,6.266,2.307,7.9a6.932,6.932,0,0,0,3.185,1.966,8.879,8.879,0,0,0,8.272-1.652Z" fill="currentColor"/>
+    <path d="M281.676,59.6a7.21,7.21,0,0,1-3.422,1.363c-1.914-.026-3.212-1.35-3.212-5.06V38.806h7.865V34.874h-7.865V24.06l-5.767,4.115V55.584c0,3.579.734,6.266,2.307,7.9a6.927,6.927,0,0,0,3.185,1.966,8.879,8.879,0,0,0,8.272-1.652Z" fill="currentColor"/>
+  </symbol>
+
+</defs></svg>
+<style>
+  /* Components: the pipeline, commands and skills. */
+
+
+  .whys { list-style: none; padding: 0; margin: 32px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 24px; }
+  @media (max-width: 960px) { .whys { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .whys { grid-template-columns: 1fr; } }
+  .whys li { font-size: 14px; color: var(--gray); line-height: 1.5; padding-left: 14px; border-left: 2px solid var(--accent); }
+  .whys b { display: block; color: var(--ink); font-size: 15px; margin-bottom: 2px; }
+  .human { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font: 650 11px var(--font); color: #fff; background: var(--ink); border-radius: 999px; padding: 3px 10px 3px 7px; }
+  .human svg { flex: none; }
+
+  .cmds { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  @media (max-width: 1100px) { .cmds { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .cmds { grid-template-columns: 1fr; } }
+  .cmd { border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .cmd code { background: none; padding: 0; font-size: 13px; font-weight: 700; color: var(--accent-ink); word-break: break-word; }
+  .cmd b { font-size: 15px; color: var(--ink); }
+  .cmd span { font-size: 13.5px; color: var(--gray); line-height: 1.5; }
+  .cmd:last-child { border-color: var(--ink); }
+
+  /* Pipeline with its loops */
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); column-gap: 30px; row-gap: 0; position: relative; }
+  .flow .card { position: relative; border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 20px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
+  .flow .card .k { font: 700 11.5px var(--font); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+  .flow .card .t { font-size: 15px; color: var(--ink); line-height: 1.45; }
+  .flow .card .o { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line-2); font-size: 12px; color: var(--faint); }
+  .flow .card.hot { border-color: var(--ink); }
+  .flow .card:not(:last-child)::after { content: ""; position: absolute; right: -24px; top: 50%; width: 18px; height: 2px; background: var(--ink); }
+  .flow .card:not(:last-child)::before { content: ""; position: absolute; right: -25px; top: calc(50% - 4px); border: 5px solid transparent; border-left: 7px solid var(--ink); border-right: 0; }
+  .self-loop { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font: 650 11px var(--font); color: var(--accent-ink); background: var(--accent-soft); border: 1px solid rgba(255,36,0,.25); border-radius: 999px; padding: 3px 9px 3px 6px; }
+  .self-loop svg { flex: none; }
+  .back-loop { grid-column: 3 / 5; grid-row: 2; position: relative; height: 64px; margin-top: 2px; }
+  .back-loop .u { position: absolute; left: 50%; right: 50%; inset-inline: calc((100% - 30px) / 4) calc((100% - 30px) / 4); top: 0; height: 34px; border: 2px solid var(--accent); border-top: 0; border-radius: 0 0 14px 14px; }
+  .back-loop .u::before { content: ""; position: absolute; left: -7px; top: -8px; border: 6px solid transparent; border-bottom: 9px solid var(--accent); border-top: 0; }
+  .back-loop .lbl { position: absolute; left: 0; right: 0; top: 40px; text-align: center; font: 650 12px var(--font); color: var(--accent-ink); }
+  .fwd-note { grid-column: 1 / 3; grid-row: 2; padding-top: 18px; font-size: 12.5px; color: var(--faint); }
+  .loop-legend { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 26px; font-size: 13px; color: var(--gray); }
+  .loop-legend b { color: var(--ink); }
+  @media (max-width: 900px) {
+    .flow { grid-template-columns: 1fr; row-gap: 26px; }
+    .flow .card:not(:last-child)::after { right: auto; left: 50%; top: auto; bottom: -20px; width: 2px; height: 14px; }
+    .flow .card:not(:last-child)::before { right: auto; left: calc(50% - 4px); top: auto; bottom: -25px; border: 5px solid transparent; border-top: 7px solid var(--ink); border-bottom: 0; }
+    .back-loop, .fwd-note { display: none; }
+  }
+
+  table.bench td.l, table.bench td:first-child { white-space: normal; }
+  table.bench.text td { font-family: var(--font); text-align: left; }
+  table.bench.text thead th { text-align: left; }
+  .pill.ask { background: var(--line-2); color: var(--gray); border: 1px solid var(--line); }
+
+  .skills-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+  .skills-grid .col h3 { margin: 0 0 10px; font: 700 11.5px var(--font); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+  .skills-grid .sk { border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; margin-bottom: 10px; }
+  .skills-grid .sk code { display: block; background: none; padding: 0; font-size: 11.5px; color: var(--ink); font-weight: 650; margin-bottom: 4px; word-break: break-word; }
+  .skills-grid .sk span { font-size: 12.5px; color: var(--gray); line-height: 1.4; }
+  @media (max-width: 1000px) { .skills-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .skills-grid { grid-template-columns: 1fr; } }
+
+
+  @media (max-width: 900px) { .run { grid-template-columns: 1fr; gap: 14px; } .run .card::after, .run .card::before { display: none; } }
+
+  @media print {
+    header.mast { position: static; }
+    .copy-btn { display: none; }
+  }
+</style>
+<style>
+  /* Page layer on top of the report theme. */
+  .intro { padding: 48px 0 36px; }
+  .intro h1 { font-size: clamp(30px, 4.2vw, 46px); font-weight: 780; letter-spacing: -.03em; line-height: 1.05; max-width: 940px; }
+  .intro h1 em { font-style: normal; color: var(--accent); }
+  .intro .lead { font-size: 17.5px; max-width: 700px; }
+  .block-head h2 em { font-style: normal; color: var(--accent); }
+  .cap-head .eyebrow { margin-bottom: 8px; }
+  /* Grids size themselves to however many items the plugin ships. */
+  .cmds { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .skills-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .cmd:last-child { border-color: var(--line); }
+  /* Pipeline: cards on row 2, the redesign loop above them (row 1), the gate loop below (row 3). */
+  .flow .card { grid-row: 2; }
+  .flow .card:nth-child(5)::after, .flow .card:nth-child(5)::before { display: none; }
+  .back-loop, .fwd-note { grid-row: 3; }
+  .up-loop { grid-column: 2 / 5; grid-row: 1; position: relative; height: 66px; margin-bottom: 2px; }
+  .up-loop .n { position: absolute; inset-inline: calc((100% - 60px) / 6); bottom: 0; height: 30px; border: 2px dashed var(--ink); border-bottom: 0; border-radius: 14px 14px 0 0; }
+  .up-loop .n::after { content: ""; position: absolute; left: -7px; bottom: -8px; border: 6px solid transparent; border-top: 9px solid var(--ink); border-bottom: 0; }
+  .up-loop .lbl { position: absolute; left: 0; right: 0; top: 4px; text-align: center; font: 650 12px var(--font); color: var(--ink); }
+  @media (max-width: 900px) { .flow .card { grid-row: auto; } .up-loop { display: none; } }
+  @media print { header.mast { position: static; } .copy-btn { display: none; } section.block { break-inside: avoid; } }
+</style>
+
+<header class="mast">
+  <div class="wrap mast-inner">
+    <a class="brand" href="#top" aria-label="OutSystems">
+      <svg class="os-logo" viewBox="0 0 400 100" role="img" aria-label="OutSystems"><use href="#os-logo"/></svg>
+      <span class="sep">/</span>
+      <span class="mast-title">Legacy Modernization Toolkit</span>
+    </a>
+    <nav class="links">
+      <a href="#summary">Overview</a>
+      <a href="#how">How it works</a>
+      <a href="#stacks">Sources</a>
+      <a href="#skills">Skills</a>
+      <a href="#commands">Commands</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+
+  <div class="intro">
+    <p class="eyebrow">Legacy Modernization Toolkit</p>
+    <h1>Modernize into <em>high&#8209;quality apps</em> with a top-class UI, at high fidelity, with minimal human intervention</h1>
+    <p class="lead">AI agents read the legacy source, build the new app on OutSystems, then test and fix it until it passes. Your team makes two decisions, validating the requirements and picking the design, and reviews the result.</p>
+    <ul class="whys">
+      <li><b>High fidelity.</b> Every requirement comes from the code and cites the lines it came from, so the new app keeps the old rules.</li>
+      <li><b>Top-class UI.</b> A modern design you choose, built from standard OutSystems UI blocks and matched screen by screen.</li>
+      <li><b>High quality, proven.</b> 95% of requirements and 95% of the design, or it goes back to the build, with a test for every requirement.</li>
+      <li><b>Minimal human intervention.</b> Agents build, test and fix on their own. You validate the requirements, approve the design and review the result.</li>
+    </ul>
+    <div class="intro-meta">
+      <span class="it"><span class="dot"></span>Open source, MIT licence</span>
+      <span class="it">Builds on <b>OutSystems Developer Cloud</b> with Mentor</span>
+    </div>
+  </div>
+
+  <section class="block" id="summary">
+    <div class="block-head cap-head"><div><p class="eyebrow">Overview</p><h2 class="summary-headline" style="margin:0">An app is done when it meets <em>95%</em> of its requirements and matches <em>95%</em> of its approved design</h2><p>Anything short goes back to the build, with the list of what failed. After the fifth round, what still fails is reported as a gap.</p></div><div class="copy-bar"><button type="button" class="copy-btn" data-target="summary"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>Copy image</button></div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Requirements gate</div><div class="v">95%</div><div class="d">functional coverage, scored against the extracted requirements</div></div>
+      <div class="kpi"><div class="k">Design gate</div><div class="v">95%</div><div class="d">screen-by-screen match to the design you picked; skipped, with the reason, when there is no design to score against</div></div>
+      <div class="kpi"><div class="k">Fix rounds per gate</div><div class="v">5</div><div class="d">each failure goes back to the build with what failed; after the fifth, gaps are reported</div></div>
+      <div class="kpi"><div class="k">Specialist roles</div><div class="v">6</div><div class="d">planner, designer, developer, reviewer, tester, reporter</div></div>
+    </div>
+    <div class="summary-bottom">
+      <div class="whatsnew" role="note">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="#1068eb" stroke-width="1.4"/><path d="M8 7.2V11.5M8 4.6v.1" stroke="#1068eb" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <div><b>What you get at the end.</b>
+          <ul>
+            <li>A running app on your OutSystems tenant, built in small published steps you can open as it grows.</li>
+            <li>A Business Specification of what the legacy app does, in business terms.</li>
+            <li>An Implementation Report that traces each requirement to what was built.</li>
+            <li><b>A test toolkit alongside the report.</b> The same checks the agent ran while building the app, as automated browser tests your team can re-run, one per requirement, with traces and screenshots of each run.</li>
+          </ul></div>
+      </div>
+      <div class="notice" role="note">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5 15 14H1L8 1.5Z" stroke="#c08a00" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6v3.5M8 11.6v.1" stroke="#c08a00" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <div><b>What it needs.</b>
+          <ul>
+            <li>An OutSystems Developer Cloud tenant with Mentor available to the AI agent.</li>
+            <li>Legacy extraction enabled on that tenant for the source language. Lotus Notes is on by default; other languages are enabled on request.</li>
+            <li>A frontier AI model for generation. Smaller models finish too, with more cleanup.</li>
+          </ul></div>
+      </div>
+    </div>
+    <p class="cap-caption">Legacy Modernization Toolkit · Overview</p>
+  </section>
+
+  <section class="block" id="how">
+    <div class="block-head cap-head"><div><p class="eyebrow">How it works</p><h2>From legacy source to a verified app</h2><p>Five stages and three loops. You validate the requirements and choose the design before any screen is built. The app is tested and fixed after every published step, and a failed gate sends it back to the build.</p></div><div class="copy-bar"><button type="button" class="copy-btn" data-target="how"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>Copy image</button></div></div>
+    <div class="flow">
+      <div class="card hot"><span class="k">1 · Extract</span><span class="t">Reads the source and writes down what the app does: data, screens, rules and roles, each traced to its file.</span><span class="human"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5" r="2.6" stroke="currentColor" stroke-width="1.5"/><path d="M3 14c.6-2.8 2.6-4.3 5-4.3s4.4 1.5 5 4.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>You validate the requirements</span><span class="o">Requirements collection and Business Specification</span></div>
+      <div class="card hot"><span class="k">2 · Design</span><span class="t">Draws design options for the new app's screens, in Figma or as HTML mockups.</span><span class="human"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5" r="2.6" stroke="currentColor" stroke-width="1.5"/><path d="M3 14c.6-2.8 2.6-4.3 5-4.3s4.4 1.5 5 4.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>You pick the design</span><span class="o">The approved design the gates check against</span></div>
+      <div class="card"><span class="k">3 · Generate</span><span class="t">Builds on the tenant through Mentor, one small piece at a time.</span>
+        <span class="self-loop"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.6 1.8v3h-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>publish → test → fix, every piece</span>
+        <span class="o">A running app that grows step by step</span></div>
+      <div class="card"><span class="k">4 · Verify</span><span class="t">Drives the app in a browser against every requirement, then compares each screen with the design.</span><span class="o">Two scores against the 95% bar, with any gaps listed</span></div>
+      <div class="card"><span class="k">5 · Hand over</span><span class="t">Writes the Implementation Report and packages every test run during the build into a toolkit your team can re-run.</span><span class="o">Implementation Report and re-runnable test toolkit</span></div>
+      <p class="fwd-note">Each stage hands the next one a reviewable file, so you can stop, check and resume.</p>
+      <div class="back-loop" aria-hidden="true"><div class="u"></div><div class="lbl">a gate fails → back to Generate with what failed, up to 5 rounds</div></div>
+      <div class="up-loop" aria-hidden="true"><div class="lbl">a design problem found while building → back to Design, with the same checks</div><div class="n"></div></div>
+    </div>
+    <div class="loop-legend">
+      <span><b>Human gates.</b> Extraction and the build are separate commands, so you check the extracted requirements and correct anything missing or wrong before the build starts. No screen is built until you pick a design, and you can ask for changes first. The app, its data model and seed data can start while you choose.</span>
+      <span><b>Back to design.</b> If Generate or Verify finds the design can't work as drawn (a missing screen, a rule it can't show), the designer extends or revises it in the style you picked, and the new screens pass the same reviewer and tester checks as the first ones.</span>
+      <span><b>Inner loop.</b> After each published piece the agent opens the app, checks it and fixes it before moving on.</span>
+      <span><b>Outer loop.</b> Below 95% on requirements or design, the failures go back to Generate and Verify runs again, up to 5 rounds. After that, what still fails is listed as a gap in the report. With no design to score against, the design gate is skipped and the report says why.</span>
+      <span><b>Nothing is lost.</b> Every check from both loops ends up in the test toolkit, so you can re-run it after your own changes.</span>
+    </div>
+    <p class="cap-caption">Legacy Modernization Toolkit · How it works</p>
+  </section>
+
+  <section class="block" id="stacks">
+    <div class="block-head cap-head"><div><p class="eyebrow">Sources</p><h2>Which legacy sources it reads</h2><p>The extraction service supports each of these. Lotus Notes runs on every enabled tenant; the others are switched on per tenant.</p></div><div class="copy-bar"><button type="button" class="copy-btn" data-target="stacks"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>Copy image</button></div></div>
+    <div class="table-scroll">
+      <table class="bench text" style="min-width:640px">
+        <thead><tr><th>Source</th><th>What you hand over</th><th>Availability</th></tr></thead>
+        <tbody>
+          <tr><td>Lotus Notes / Domino</td><td>a database export (.dxl)</td><td><span class="pill full">On by default</span></td></tr>
+          <tr><td>COBOL</td><td>programs, copybooks, screen maps (BMS) and JCL</td><td><span class="pill ask">Per tenant</span></td></tr>
+          <tr><td>Java, .NET, Node.js</td><td>the application's source tree</td><td><span class="pill ask">Per tenant</span></td></tr>
+          <tr><td>AS/400</td><td>DDS, RPG and CL source, or a CA 2E (Synon) model export</td><td><span class="pill ask">Per tenant</span></td></tr>
+          <tr><td>AB Suite</td><td>the model export (.pmodel)</td><td><span class="pill ask">Per tenant</span></td></tr>
+          <tr><td>Microsoft Access</td><td>the database file</td><td><span class="pill ask">Per tenant</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap-caption">Legacy Modernization Toolkit · Sources</p>
+  </section>
+
+  <section class="block" id="skills">
+    <div class="block-head cap-head"><div><p class="eyebrow">Skills</p><h2>What the agent knows</h2><p>Each skill is a playbook the AI agent loads when the work calls for it, including the traps that pass every visible check and still break.</p></div><div class="copy-bar"><button type="button" class="copy-btn" data-target="skills"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>Copy image</button></div></div>
+    <div class="skills-grid">
+      <div class="col"><h3>Extract</h3>
+        <div class="sk"><code>legacy-requirements-extraction</code><span>Legacy source into requirements and a Business Specification.</span></div>
+      </div>
+      <div class="col"><h3>Design</h3>
+        <div class="sk"><code>outsystems-figma-design-source</code><span>Colours, spacing and geometry from Figma.</span></div>
+        <div class="sk"><code>outsystems-ui-exactness</code><span>Built screens measurably faithful to the design.</span></div>
+        <div class="sk"><code>outsystems-osui-idioms</code><span>Standard OutSystems UI blocks before custom styling.</span></div>
+      </div>
+      <div class="col"><h3>Build</h3>
+        <div class="sk"><code>outsystems-app-build</code><span>Data, seed, screens, publish and verify.</span></div>
+        <div class="sk"><code>outsystems-ui-recipes</code><span>Sorting, paging, filters, wizards, languages.</span></div>
+      </div>
+      <div class="col"><h3>Fix</h3>
+        <div class="sk"><code>outsystems-block-editing</code><span>Shared navigation, header and footer.</span></div>
+        <div class="sk"><code>outsystems-css-theming</code><span>Why a style shows nothing, fixed at the cause.</span></div>
+        <div class="sk"><code>outsystems-auth-and-deploy</code><span>Real sign-in and deploy failures with no visible cause.</span></div>
+      </div>
+      <div class="col"><h3>Prove</h3>
+        <div class="sk"><code>outsystems-test-evidence-pack</code><span>The re-runnable test toolkit: one browser test per requirement, with traces and screenshots.</span></div>
+        <div class="sk"><code>outsystems-handover-docs</code><span>Business Specification and Implementation Report.</span></div>
+      </div>
+    </div>
+    <p class="cap-caption">Legacy Modernization Toolkit · Skills</p>
+  </section>
+
+  <section class="block" id="commands">
+    <div class="block-head cap-head"><div><p class="eyebrow">Commands</p><h2>One command for each job</h2><p>In Claude Code and Cursor, type the command. In Codex and Kiro, which have no plugin commands, ask the agent to follow the command's file in the plugin's <code>commands</code> folder. Either way, the agent runs that workflow with the skills above.</p></div><div class="copy-bar"><button type="button" class="copy-btn" data-target="commands"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" stroke="currentColor" stroke-width="1.5"/></svg>Copy image</button></div></div>
+    <div class="cmds">
+      <div class="cmd"><code>/extract-requirements</code><b>Turn legacy source into requirements</b><span>Reads the code you upload and publishes the requirements collection and the Business Specification, every item cited to its source lines.</span></div>
+      <div class="cmd"><code>/generate-design-options</code><b>Design the migration only</b><span>About three options, a pause for a pick, then the design gate on the picked option. Does not build or publish.</span></div>
+      <div class="cmd"><code>/workflow-legacy-app</code><b>Run a full migration</b><span>Design options and your pick, the build on your tenant, both 95% gates with their fix rounds, then the Implementation Report and the re-runnable test toolkit.</span></div>
+      <div class="cmd"><code>/how-it-works</code><b>Explain the toolkit</b><span>Builds this page, or answers one question about the toolkit with the matching section.</span></div>    </div>
+    <p class="cap-caption">Legacy Modernization Toolkit · Commands</p>
+  </section>
+</main>
+<footer><div class="wrap src">Legacy Modernization Toolkit · open source under the MIT licence · <a href="https://github.com/OutSystems/outsystems-mcp">github.com/OutSystems/outsystems-mcp</a></div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+function toast(msg) {
+  const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+function showShot(url, opener) {
+  // A native modal dialog: it takes focus, makes the rest of the page inert, closes on Escape,
+  // and hands focus back to the Copy image button that opened it.
+  const dlg = document.createElement("dialog"); dlg.className = "shot-card";
+  dlg.setAttribute("aria-label", "Image to copy");
+  dlg.innerHTML = `<p><span>Right-click the image and choose <b>Copy image</b>.</span><button type="button" class="copy-btn">Close</button></p><img alt="Snapshot of the section">`;
+  dlg.querySelector("img").src = url;
+  dlg.querySelector("button").onclick = () => dlg.close();
+  dlg.addEventListener("click", e => {  // a click on the backdrop lands on the dialog, outside its box
+    const r = dlg.getBoundingClientRect();
+    if (e.target === dlg && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) dlg.close();
+  });
+  dlg.addEventListener("close", () => { dlg.remove(); if (opener) opener.focus(); });
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.querySelector("button").focus();
+}
+async function copySection(btn) {
+  const el = document.getElementById(btn.dataset.target);
+  if (!window.html2canvas) { toast("The image library didn't load. Try reloading the page."); return; }
+  btn.disabled = true;
+  el.classList.add("capturing");
+  try {
+    const canvas = await html2canvas(el, {scale: 2, backgroundColor: "#ffffff", windowWidth: document.documentElement.clientWidth, width: el.scrollWidth});
+    const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
+    try {
+      await navigator.clipboard.write([new ClipboardItem({"image/png": blob})]);
+      toast("Image copied. Paste it into Slack or slides.");
+    } catch (e) {
+      showShot(canvas.toDataURL("image/png"), btn);
+    }
+  } catch (e) {
+    toast("Couldn't render the image: " + e.message);
+  } finally {
+    el.classList.remove("capturing");
+    btn.disabled = false;
+  }
+}
+document.querySelectorAll(".copy-btn[data-target]").forEach(b => b.addEventListener("click", () => copySection(b)));
+</script>
+</html>

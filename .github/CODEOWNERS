@@ -14,3 +14,7 @@
 /tests/skills/app-architecture/                           @OutSystems/rd-ai-platform
 /tests/skills/dependency-impact/                          @OutSystems/rd-ai-platform
 /tests/skills/tenant-architecture/                        @OutSystems/rd-ai-platform
+
+# Legacy Modernization owns its plugin. A later line wins over the line above.
+/legacy-modernization/                                    @OutSystems/legacy-modernization
+/tests/legacy-modernization/                              @OutSystems/legacy-modernization

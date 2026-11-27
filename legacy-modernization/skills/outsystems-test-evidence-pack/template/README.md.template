@@ -1,0 +1,101 @@
+# Test Evidence Pack: {{APP_NAME}}
+
+Re-runnable tests and evidence for the requirements of **{{APP_NAME}}**. The pack ships beside the app as a zip, not inside it, and runs against the deployed app without changing it. The zip already holds the last run's evidence: open `evidence/traceability-matrix.html` to read it before installing anything.
+
+It has three parts:
+
+| Part | Where | What it's for |
+|---|---|---|
+| Playwright tests | `tests/` | One test per requirement or user-journey step, tagged with the requirement's id and named by a test id of its own (`TEST-007`). Re-run them at any time, and keep them as the app's regression suite. |
+| Traceability matrix | `evidence/traceability-matrix.html` (also `.md`, `.csv`) | For each requirement: where it lives in the app, the tests that cover it, the result, and links to the evidence. |
+| HTML report | `evidence/html-report/` | A trace and screenshots for every test, so you can watch a requirement pass or fail without running anything. |
+
+The requirements are in `requirements/requirements.json`. Their ids are the ones the Business Specification and the Implementation Report use, so you can look any result up in either document. Each test also has its own id (`TEST-007`), which the matrix, the full report and the Implementation Report show beside it, so a test the report cites is easy to find here.
+
+## Rerun the tests
+
+After any change to the app, rerun the tests from the results page. Open a terminal in this folder and run:
+
+```
+npm start
+```
+
+That opens the results in your browser. Click **Rerun tests**: the page shows each test as it finishes, then reloads with the new results. To check one fix, open a requirement and click **Rerun** on it instead: only its tests run, and its new result shows on that row beside the last full run's (marked RERUN), with a link to that rerun's own report. The first rerun on a machine also installs what the tests need (the packages, a Chromium browser, and a `.env` copied from `.env.example`), which takes a few minutes. Press Ctrl+C in the terminal to stop.
+
+If you work with Claude, ask it to "rerun the tests": it runs `npm test` and reads `evidence/summary.json`.
+
+To set it up and run it from the terminal instead: You need Node.js 20.12 or later (LTS recommended). The commands are the same in Terminal, PowerShell and cmd.
+
+```
+npm ci
+npm run setup
+copy .env.example .env      # Windows (cmd)
+cp .env.example .env        # macOS / Linux / PowerShell
+npm test
+```
+
+`npm test` runs every test and then builds the matrix. Open `evidence/traceability-matrix.html` in a browser. It shows the pass rate, then every requirement under its section; open one to read its tests as Given / When / Then scenarios, with the failure and its screenshot for a failed test. Click a screen or tag chip to show only those requirements, and click a test for its trace and screenshots in the full report, which has the same look. To browse the full report with traces, run:
+
+```
+npm run report
+```
+
+To run only some requirements:
+
+```
+npm run test:req -- {{EXAMPLE_ID}}
+```
+
+That writes its own report and matrix to `evidence/subset/`, listing only those requirements, and leaves the full run's results in `evidence/` as they were. To run one test, give its id instead: `npm run test:req -- TEST-007`.
+
+On a corporate network, `npm run setup` downloads Chromium through the proxy. If it fails, set `HTTPS_PROXY` first.
+
+## Test another environment
+
+Change `APP_BASE_URL` in `.env` to the app's root URL in that environment, then run `npm test` again. The tests read data but don't change it, unless you set `ALLOW_WRITES=true`. Leave that off on any environment other people use.
+
+## Settings (`.env`)
+
+| Variable | Meaning |
+|---|---|
+| `APP_BASE_URL` | Root URL of the app. |
+| `APP_REVISION` | The app revision the tests run against. The matrix names it, so each result says which build it is about. |
+| `APP_USER`, `APP_PASSWORD` | Optional user for the sign-in tests. Tests that need it are skipped, with the reason, when it's blank. |
+| `APP_USER_WITHOUT_ROLE`, `APP_PASSWORD_WITHOUT_ROLE` | Optional user without the app's privileged role, for the role-gate tests. |
+| `ALLOW_WRITES` | `true` runs tests that create or change data. |
+{{SAMPLE_ROWS}}
+
+## What data the tests expect
+
+{{SEED_DATA}}
+
+## How to read a result
+
+- **Pass**: every test for the requirement ran and passed.
+- **Pass (partial)**: what ran passed, but some tests were skipped, for example because they need a user or need writes enabled.
+- **Fail**: at least one test failed. The matrix shows the first line of the failure, and the report shows the full trace.
+- **Flaky**: a test failed and then passed when retried. It isn't a pass: the result depends on timing or on the machine, and `npm test` fails until it's fixed.
+- **Blocked**: the requirement can't be checked through the app's screens (for example a scheduled job), or every test for it was skipped. The matrix gives the reason.
+- **Not covered**: no test is tagged with the requirement yet.
+
+Tests check what the page shows and the data behind it (row counts, filter values, the contents of exported files), not how it looks pixel for pixel. Screenshots are attached as evidence, not used as pass/fail checks, because font rendering differs between operating systems.
+
+## Adding a test
+
+Give it the next free test id (the highest `TEST-` number in `tests/`, plus one), tag it with the requirement it proves, name its steps Given / When / Then, and the matrix picks it up. An id names one test for as long as that test exists, so never change it; a deleted test's id may go to a new test:
+
+```ts
+test('an approver sees the orders waiting for them', { tag: [testId('TEST-001'), ...req('{{EXAMPLE_ID}}')] }, async ({ page }, testInfo) => {
+  await given('an approver opens the approvals list', async () => {
+    await open(page, '/Approvals');
+  });
+  await then('every order shown is waiting for approval', async () => {
+    expect(new Set(await columnValues(page, 'Status'))).toEqual(new Set(['Pending approval']));
+    await evidence(page, testInfo, 'approvals list');
+  });
+});
+```
+
+Keep commands in `package.json` or in Node scripts, not in shell scripts, so they work the same on every OS.
+
+To pass the pack on with fresh evidence, run `npm test`, then `npm run handover`. It writes `dist/{{PACKAGE_NAME}}.zip` with the tests and that run's matrix, report and traces, and leaves out `.env` and `node_modules`.
