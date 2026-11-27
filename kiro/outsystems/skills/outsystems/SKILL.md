@@ -68,7 +68,7 @@ Discover the live catalog from the MCP server's `tools/list`; treat each tool's 
 - **Publish** — compile edited OML into a new revision that lands in the tenant's Development environment, by asking Mentor to publish inside a mentor turn. There is no separate publish tool; see Caveats.
 - **Deployments** — promote builds across environments, roll back, run impact analyses.
 - **External libraries** — upload, publish, inspect, and fetch source for .NET libraries.
-- **Environments** — enumerate the tenant's environments.
+- **Environments** — enumerate the tenant's environments and the asset portfolios they belong to.
 
 ### Caveats
 
@@ -106,6 +106,7 @@ Cross-tool behaviors not expressible in a single per-tool description:
 
 - `name` is the display form (may contain spaces, e.g. `"AI Agent Feedback Portal"`); `assetName` is the internal identifier (e.g. `"AIAgentFeedbackPortal"`). The `app:` parameter on the context lookups and app search accepts either — case-insensitive substring match against both the display name and its space-stripped variant.
 - The canonical identifier is the **asset key** (UUID). Prefer it across calls; names can be edited, the key is stable.
+- Environments in different asset portfolios can share a name: a tenant with two portfolios has two `Development` environments. Each `env_list` entry carries a `portfolioKey`. When `portfolio_list` is in `tools/list`, call it and name such an environment with the name of the portfolio whose `key` matches (for example "Development (Finance)"); it also answers questions about the portfolios themselves. When `portfolio_list` is not in `tools/list`, do not call it; and when an environment's `portfolioKey` is empty or matches no portfolio, do not guess a portfolio name. In both cases show that environment's `portfolioKey`, or its `env_key` when it has none, next to its name. Either way, pass the `env_key`, never the name, to the call that acts on the environment, and when the user names an environment more than one portfolio has, ask which one they mean.
 
 ## Answering
 
