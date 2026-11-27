@@ -84,6 +84,25 @@ BUSINESS_SPEC = """# Northwind Orders - Business Specification
 """
 
 
+# The current extractor's section 5: numbered REQ-00001 upward, the spec id in Source id.
+NUMBERED_BUSINESS_SPEC = """# Northwind Orders - Business Specification
+
+## 5. Requirements list
+
+### All requirements
+
+| Req ID | Type | Source id | Description |
+|---|---|---|---|
+| REQ-00001 | business rule | PMODEL-ORD100-0001 | An order over the customer's limit waits for approval |
+| REQ-00002 | functional requirement | REQ-001 | Staff can enter orders |
+
+## 9. Open questions
+
+| ID | Question |
+|---|---|
+| UNK-001 | Who approves? |
+"""
+
 def renumber(report: str) -> str:
     """Number section 5's requirement rows REQ-00001 upward, in order (a new row may say REQ-?????)."""
     counter = iter(range(1, 10000))
@@ -642,6 +661,58 @@ class CheckReportIdsTest(unittest.TestCase):
         problems = self.run_check(GOOD, business_specs=[spec])
         self.assertFalse(any("Phase-1" in p for p in problems), problems)
         self.assertTrue(any("PMODEL-ORD100-0001" in p for p in problems), problems)
+
+    def test_a_req_id_numbered_business_spec_reads_its_source_ids(self) -> None:
+        # The current extractor numbers section 5 REQ-00001 upward and cites the spec id in Source id.
+        spec = self.dir / "Northwind-Business-Spec.md"
+        spec.write_text(NUMBERED_BUSINESS_SPEC, encoding="utf-8")
+        self.assertEqual(check_report_ids.business_spec_ids(spec, self.requirements),
+                         ["PMODEL-ORD100-0001", "REQ-001"])
+        self.assertEqual(self.run_check(with_rule(GOOD, "PMODEL-ORD100-0001"), business_specs=[spec]), [])
+        # The Source id is a spec id like any other: the report still needs its rows.
+        problems = self.run_check(GOOD, business_specs=[spec])
+        self.assertTrue(any("no section 5 row: PMODEL-ORD100-0001" in p for p in problems), problems)
+        # The Req ID numbers are the Business Spec's own, never spec ids the report must cite.
+        self.assertFalse(any("REQ-00001" in p or "REQ-00002" in p for p in problems), problems)
+
+    def test_a_split_overview_numbered_by_req_id_reads_its_source_ids(self) -> None:
+        # The overview's table carries a trailing Domains column; the domain specs' tables don't.
+        overview = self.dir / "Northwind-Business-Spec.md"
+        overview.write_text(NUMBERED_BUSINESS_SPEC.replace("| Description |\n|---|---|---|---|",
+                                                           "| Description | Domains |\n|---|---|---|---|---|")
+                            .replace("limit |", "limit | Orders |").replace("orders |", "orders | Orders |"),
+                            encoding="utf-8")
+        domain = self.dir / "domains" / "001-orders" / "Northwind-Orders-Business-Spec.md"
+        domain.parent.mkdir(parents=True)
+        domain.write_text(NUMBERED_BUSINESS_SPEC, encoding="utf-8")
+        for spec in (overview, domain):
+            with self.subTest(spec=spec.name):
+                self.assertEqual(check_report_ids.business_spec_ids(spec, self.requirements, split=True),
+                                 ["PMODEL-ORD100-0001", "REQ-001"])
+        self.assertEqual(self.run_check(with_rule(GOOD, "PMODEL-ORD100-0001"), business_specs=[overview, domain]),
+                         [])
+
+    def test_a_req_id_row_without_a_known_source_id_fails(self) -> None:
+        spec = self.dir / "Northwind-Business-Spec.md"
+        for source in ("", "-", "see rules", "Order total"):
+            with self.subTest(source=source):
+                spec.write_text(NUMBERED_BUSINESS_SPEC.replace("| PMODEL-ORD100-0001 |", "| {} |".format(source)),
+                                encoding="utf-8")
+                problems = self.run_check(with_rule(GOOD, "PMODEL-ORD100-0001"), business_specs=[spec])
+                self.assertEqual(len(problems), 1, problems)
+                self.assertIn("(REQ-00001): the Source id cell", problems[0])
+                self.assertIn("names no spec id", problems[0])
+        # No Source id column at all: the table names no spec id, so it fails rather than passing empty.
+        spec.write_text(NUMBERED_BUSINESS_SPEC.replace("| Source id ", "| Origin "), encoding="utf-8")
+        problems = self.run_check(GOOD, business_specs=[spec])
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("numbered by Req ID but has no Source id column", problems[0])
+
+    def test_a_business_spec_with_neither_table_names_both_shapes(self) -> None:
+        spec = self.dir / "Northwind-Business-Spec.md"
+        spec.write_text("# Northwind\n\n## 5. Requirements list\n\nNone yet.\n", encoding="utf-8")
+        message = self.run_check(GOOD, business_specs=[spec])[0]
+        self.assertIn("table headed ID or numbered by Req ID", message)
 
     def test_merged_ids_are_covered_by_their_parent(self) -> None:
         parent, folded = "PMODEL-ORD100-0001", ["PMODEL-ORD100-0002", "PMODEL-ORD100-0003"]

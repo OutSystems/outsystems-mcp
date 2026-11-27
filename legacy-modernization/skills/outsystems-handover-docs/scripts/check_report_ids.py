@@ -42,7 +42,10 @@ Usage:
 
 `--business-spec` adds the ids the extractor's Business Spec numbers in its
 section 5 table but `requirements.json` doesn't carry (some stacks number their
-rules only there); they are spec ids like any other and need the same rows. For
+rules only there); they are spec ids like any other and need the same rows. That
+table is numbered `REQ-00001` upward in a `Req ID` column and cites each spec id
+in its `Source id` column, which is the id read; a Business Spec from an older
+extraction heads it `ID` and the first cell is the id. For
 an application split into business domains, pass the overview
 (`<Customer>-Business-Spec.md`, whose section 5 and `Requirements to confirm`
 table list every requirement) and each `domains/*/<...>-Business-Spec.md`. An overview
@@ -395,16 +398,19 @@ def requirement_tables(lines: List[str], body_rows: Dict[int, int]) -> Set[int]:
 
 
 def business_spec_ids(path: Path, requirements: Path, split: bool = False) -> Optional[List[str]]:
-    """The ids the first cell of an extractor Business Spec's `| ID | ...` requirement table rows names, in order.
+    """The spec ids an extractor Business Spec's requirement table rows name, in order.
 
-    Those tables are section 5's and, on a split application's overview, the `Requirements to confirm`
-    one that lists the requirements no domain can claim yet. None for a split application's overview
-    (`split`: domain specs were passed too) with no ID table under a requirements heading or with a
-    Domains column: one written
-    before the extractor added those tables numbers nothing (another ID table, a glossary say, doesn't
-    change that), and its domain specs carry the ids. ValueError when
+    A current Business Spec numbers its rows in a `| Req ID | Type | Source id | Description |` table
+    (`REQ-00001` upward) and cites each spec id (`REQ-233`, `RULE-047`, `NFR-001`) in its `Source id`
+    cell, which is the id read here; an older one heads the table `| ID | ...` and the first cell is the
+    id. Those tables are section 5's and, on a split application's overview, the `Requirements to
+    confirm` one that lists the requirements no domain can claim yet. None for a split application's
+    overview (`split`: domain specs were passed too) with no such table under a requirements heading or
+    with a Domains column: one written before the extractor added those tables numbers nothing (another
+    ID table, a glossary say, doesn't change that), and its domain specs carry the ids. ValueError when
     the file isn't one: a Business Brief (it would turn the reporter's own ids into spec ids), a file
-    outside the spec collection, or any other file with neither table.
+    outside the spec collection, or any other file with neither table; and when a table numbered by Req
+    ID has no Source id column or a row whose Source id cell names no spec id.
     """
     home = requirements.resolve().parent
     where = path.resolve().parent
@@ -416,13 +422,20 @@ def business_spec_ids(path: Path, requirements: Path, split: bool = False) -> Op
                          "extractor's Business Spec".format(path.name, requirements.name))
     lines = strip_fences(read(path).splitlines())
     body_rows, headers, separators = table_rows(lines)
-    id_tables = {table for table, header in headers.items()
-                 if header and re.sub(r"[`*_]", "", header[0]).strip() == "id"}
+    # Tables numbered by a Req ID column cite the spec id in Source id; older ones are headed ID.
+    numbered = {table for table, header in headers.items() if column(header, "req id") is not None}
+    id_tables = numbered | {table for table, header in headers.items()
+                            if header and re.sub(r"[`*_]", "", header[0]).strip() == "id"}
     rows = [row for row in (section_rows(lines, "5", body_rows) or []) + to_confirm_rows(lines, body_rows)
             if row.table in id_tables]
     headed = {row.table for row in (section_rows(lines, "5", separators) or []) + to_confirm_rows(lines, separators)}
+    for table in sorted(numbered & ({row.table for row in rows} | headed)):
+        if column(headers[table], "source id") is None:
+            raise ValueError("{}: its requirements table is numbered by Req ID but has no Source id column, so "
+                             "it names no spec id; it starts `| Req ID | Type | Source id | Description |`".format(
+                                 path.name))
     if not rows and id_tables & headed:
-        # A header-only ID table under the right heading: nothing left to confirm, so zero ids.
+        # A header-only requirements table under the right heading: nothing left to confirm, so zero ids.
         return []
     if not rows:
         # An older overview may hold other ID tables (a glossary); only an ID table under a heading about
@@ -436,12 +449,25 @@ def business_spec_ids(path: Path, requirements: Path, split: bool = False) -> Op
         # A flat spec, a domain spec, and a drifted heading have no other file to pass instead.
         if id_tables and not (overview and not current):
             raise ValueError("{}: has an ID table that is not under a section-5 or Requirements to confirm "
-                             "heading; fix the heading".format(path.name))
+                             "heading (an ID or Req ID table); fix the heading".format(path.name))
         # An older overview passed without its domain specs is the one case with a file to pass instead.
         advice = "; pass each domains/*/ Business Spec" if overview else ""
-        raise ValueError("{}: has no section-5 or Requirements to confirm table headed ID, so it numbers no "
-                         "requirements{}".format(path.name, advice))
-    return list(dict.fromkeys(visible(row.first) for row in rows if is_spec_token(visible(row.first))))
+        raise ValueError("{}: has no section-5 or Requirements to confirm table headed ID or numbered by Req "
+                         "ID, so it numbers no requirements{}".format(path.name, advice))
+    ids = []  # type: List[str]
+    for row in rows:
+        if row.table not in numbered:
+            if is_spec_token(visible(row.first)):
+                ids.append(visible(row.first))
+            continue
+        source = row.cell(column(headers[row.table], "source id"))
+        if not is_spec_token(source):
+            raise ValueError("{}:{} ({}): the Source id cell {} names no spec id; every row numbered by Req ID "
+                             "cites the requirement's id (REQ-233, RULE-047, NFR-001) there".format(
+                                 path.name, row.line_no, row.cell(column(headers[row.table], "req id")) or "?",
+                                 repr(source) if source else "is empty"))
+        ids.append(source)
+    return list(dict.fromkeys(ids))
 
 
 def last_section(lines: List[str]) -> str:
